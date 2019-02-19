@@ -1,0 +1,9 @@
+[package]
+name = "hello_cargo"
+version = "0.1.0"
+authors = ["Florian Schmiderer <florian.schmiderer@yahoo.de>"]
+edition = "2018"
+#build = "build.rs"
+
+[dependencies]
+sdl2 = { version = "0.32.1", features = ["bundled", "static-link"]}
