@@ -10,6 +10,7 @@ use ncollide3d::query::{Ray, RayCast};
 use ncollide3d::shape::Cuboid;
 
 #[repr(C)]
+#[derive(Default, Copy, Clone)]
 struct Color {
     red: u8,
     green: u8,
@@ -20,11 +21,6 @@ impl Color {
     fn new(red: u8, green: u8, blue: u8) -> Color {
         Color { red, green, blue }
     }
-}
-
-struct Ray {
-    origin: Vector3<f32>,
-    dir: Unit<Vector3<f32>>,
 }
 
 struct Camera {
@@ -61,9 +57,9 @@ impl Camera {
     }
 }
 
-const ROWS: i32 = 800;
-const COLLS: i32 = 600;
-const PIXELS: i32 = ROWS * COLLS;
+const ROWS: u32 = 800;
+const COLLS: u32 = 600;
+const PIXELS: u32 = ROWS * COLLS;
 const ROWS_F: f32 = ROWS as f32;
 const COLLS_F: f32 = COLLS as f32;
 const ROWS_INV_F: f32 = 1.0 / ROWS_F;
@@ -73,7 +69,7 @@ fn main() {
     let mut fb = mini_gl_fb::get_fancy(Config {
         window_title: "test",
         window_size: (800.0, 600.0),
-        buffer_size: (2, 2),
+        buffer_size: (COLLS, ROWS),
         ..Default::default()
     });
 
@@ -84,7 +80,7 @@ fn main() {
         Color::new(0, 0, 0),
         Color::new(0, 0, 255),
     ];
-    let mut vec = vec![0; PIXELS as usize];
+    let mut vec: Vec<Color> = vec![Default::default(); PIXELS as usize];
     let field_of_view_deg: f32 = 90.;
     let field_of_view_rad = f32::to_radians(field_of_view_deg);
     let field_of_view_scaling = f32::tan(field_of_view_rad / 2.0f32);
@@ -94,7 +90,7 @@ fn main() {
     {
         let mut x = 0;
         let mut y = 0;
-        for elem in vec {
+        for elem in &mut vec {
             let norm_x = x as f32 * COLLS_INV_F;
             let norm_y = y as f32 * ROWS_INV_F;
 
@@ -103,19 +99,23 @@ fn main() {
             let normalised_screen_pixel = Point2::new(screen_x * aspect_ratio_scaling, screen_y);
             let ray_dir = cam.calc_ray_dir(normalised_screen_pixel, field_of_view_scaling);
 
-            let ray = Ray::new(Point3::new(0.0, 0.0, 0.0), ray_dir);
+            let ray = Ray::new(Point3::new(3.0, 3.0, -10.0), ray_dir.into_inner());
 
             let raycast_result = cuoid.toi_and_normal_with_ray(&Isometry3::identity(), &ray, true);
 
-            let normal_as_color = raycast_result. * 128.0 + Vector3::repeat(127.0f32);
-            elem = Color::new(
+            let normal_as_color = match raycast_result {
+                Some(res) => res.normal * 128.0 + Vector3::repeat(127.0f32),
+                None => Vector3::repeat(0.0f32),
+            };
+
+            *elem = Color::new(
                 normal_as_color.x as u8,
                 normal_as_color.y as u8,
                 normal_as_color.z as u8,
             );
             // Do Raytrace
             x += 1;
-            if (x == COLLS) {
+            if x == COLLS {
                 x = 0;
                 y += 1;
             }
@@ -123,6 +123,6 @@ fn main() {
         assert!(y == ROWS && x == 0);
     }
 
-    fb.update_buffer(&buffer);
+    fb.update_buffer(&vec);
     fb.persist();
 }
