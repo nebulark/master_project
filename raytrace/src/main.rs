@@ -9,7 +9,7 @@ use mini_gl_fb::{BufferFormat, Config};
 use nalgebra::{Isometry3, Point2, Point3, Unit, Vector3};
 use ncollide3d::query::{Ray, RayCast};
 use ncollide3d::shape::Cuboid;
-use std::time::SystemTime;
+use std::time::Instant;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone)]
@@ -89,15 +89,15 @@ fn main() {
     let aspect_ratio_scaling = COLLS_F / ROWS_F;
     let cam = Camera::new_with_forward_dir(Vector3::z_axis());
     let cuoid = Cuboid::new(Vector3::new(1.0, 2.0, 1.0));
-    let mut previous = SystemTime::now();
+    let mut previous = Instant::now();
     let mut camera_loc = Point3::new(0.0f32, 0.0, -10.0);
     fb.glutin_handle_basic_input(|fb, input| {
         if input.key_is_down(VirtualKeyCode::Escape) {
             return false;
         }
 
-        let current = SystemTime::now();
-        let delta_seconds = current.duration_since(previous).unwrap();
+        let current = Instant::now();
+        let delta_seconds = current.duration_since(previous);
         let delta_seconds =
             delta_seconds.as_secs() as f32 + delta_seconds.subsec_nanos() as f32 * 1e-9;
         previous = current;
