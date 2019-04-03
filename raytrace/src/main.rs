@@ -4,10 +4,12 @@ extern crate ncollide3d;
 
 mod gof;
 
+use mini_gl_fb::glutin::{MouseButton, VirtualKeyCode};
 use mini_gl_fb::{BufferFormat, Config};
 use nalgebra::{Isometry3, Point2, Point3, Unit, Vector3};
 use ncollide3d::query::{Ray, RayCast};
 use ncollide3d::shape::Cuboid;
+use std::time::SystemTime;
 
 #[repr(C)]
 #[derive(Default, Copy, Clone)]
@@ -87,42 +89,67 @@ fn main() {
     let aspect_ratio_scaling = COLLS_F / ROWS_F;
     let cam = Camera::new_with_forward_dir(Vector3::z_axis());
     let cuoid = Cuboid::new(Vector3::new(1.0, 2.0, 1.0));
-    {
-        let mut x = 0;
-        let mut y = 0;
-        for elem in &mut vec {
-            let norm_x = x as f32 * COLLS_INV_F;
-            let norm_y = y as f32 * ROWS_INV_F;
-
-            let screen_x = (norm_x * 2.0) - 1.0;
-            let screen_y = (norm_y * 2.0) - 1.0;
-            let normalised_screen_pixel = Point2::new(screen_x * aspect_ratio_scaling, screen_y);
-            let ray_dir = cam.calc_ray_dir(normalised_screen_pixel, field_of_view_scaling);
-
-            let ray = Ray::new(Point3::new(3.0, 3.0, -10.0), ray_dir.into_inner());
-
-            let raycast_result = cuoid.toi_and_normal_with_ray(&Isometry3::identity(), &ray, true);
-
-            let normal_as_color = match raycast_result {
-                Some(res) => res.normal * 128.0 + Vector3::repeat(127.0f32),
-                None => Vector3::repeat(0.0f32),
-            };
-
-            *elem = Color::new(
-                normal_as_color.x as u8,
-                normal_as_color.y as u8,
-                normal_as_color.z as u8,
-            );
-            // Do Raytrace
-            x += 1;
-            if x == COLLS {
-                x = 0;
-                y += 1;
-            }
+    let mut previous = SystemTime::now();
+    let mut camera_loc = Point3::new(0.0f32, 0.0, -10.0);
+    fb.glutin_handle_basic_input(|fb, input| {
+        if input.key_is_down(VirtualKeyCode::Escape) {
+            return false;
         }
-        assert!(y == ROWS && x == 0);
-    }
 
-    fb.update_buffer(&vec);
-    fb.persist();
+        let current = SystemTime::now();
+        let delta_seconds = current.duration_since(previous).unwrap();
+        let delta_seconds =
+            delta_seconds.as_secs() as f32 + delta_seconds.subsec_nanos() as f32 * 1e-9;
+        previous = current;
+        if input.mouse_is_down(MouseButton::Left) {}
+
+        if input.key_is_down(VirtualKeyCode::D) {
+            camera_loc.x -= delta_seconds;
+        }
+        if input.key_is_down(VirtualKeyCode::A) {
+            camera_loc.x += delta_seconds;
+        }
+
+        {
+            let mut x = 0;
+            let mut y = 0;
+            for elem in &mut vec {
+                let norm_x = x as f32 * COLLS_INV_F;
+                let norm_y = y as f32 * ROWS_INV_F;
+
+                let screen_x = (norm_x * 2.0) - 1.0;
+                let screen_y = (norm_y * 2.0) - 1.0;
+                let normalised_screen_pixel =
+                    Point2::new(screen_x * aspect_ratio_scaling, screen_y);
+                let ray_dir = cam.calc_ray_dir(normalised_screen_pixel, field_of_view_scaling);
+
+                let ray = Ray::new(camera_loc, ray_dir.into_inner());
+
+                let raycast_result =
+                    cuoid.toi_and_normal_with_ray(&Isometry3::identity(), &ray, true);
+
+                let normal_as_color = match raycast_result {
+                    Some(res) => res.normal * 128.0 + Vector3::repeat(127.0f32),
+                    None => Vector3::repeat(0.0f32),
+                };
+
+                *elem = Color::new(
+                    normal_as_color.x as u8,
+                    normal_as_color.y as u8,
+                    normal_as_color.z as u8,
+                );
+                // Do Raytrace
+                x += 1;
+                if x == COLLS {
+                    x = 0;
+                    y += 1;
+                }
+            }
+            assert!(y == ROWS && x == 0);
+        }
+
+        fb.update_buffer(&vec);
+
+        true
+    });
 }
