@@ -2,13 +2,13 @@ extern crate mini_gl_fb;
 extern crate nalgebra;
 extern crate ncollide3d;
 
-mod gof;
-
 use mini_gl_fb::glutin::{MouseButton, VirtualKeyCode};
 use mini_gl_fb::{BufferFormat, Config};
 use nalgebra::{Isometry3, Point2, Point3, Unit, Vector3};
+use ncollide3d::bounding_volume::AABB;
 use ncollide3d::query::{Ray, RayCast};
-use ncollide3d::shape::Cuboid;
+use ncollide3d::shape::{Ball, Cuboid};
+use ncollide3d::transformation::ToTriMesh;
 use std::time::Instant;
 
 #[repr(C)]
@@ -76,19 +76,18 @@ fn main() {
     });
 
     fb.change_buffer_format::<u8>(BufferFormat::RGB);
-    let buffer = vec![
-        Color::new(255, 0, 0),
-        Color::new(0, 255, 0),
-        Color::new(0, 0, 0),
-        Color::new(0, 0, 255),
-    ];
-    let mut vec: Vec<Color> = vec![Default::default(); PIXELS as usize];
+    let mut image_buffer: Vec<Color> = vec![Default::default(); PIXELS as usize];
     let field_of_view_deg: f32 = 90.;
     let field_of_view_rad = f32::to_radians(field_of_view_deg);
     let field_of_view_scaling = f32::tan(field_of_view_rad / 2.0f32);
     let aspect_ratio_scaling = COLLS_F / ROWS_F;
     let cam = Camera::new_with_forward_dir(Vector3::z_axis());
-    let cuoid = Cuboid::new(Vector3::new(1.0, 2.0, 1.0));
+    //   let cuoid = AABB::new(
+    //       Point3::from(Vector3::repeat(-1.0f32)),
+    //       Point3::from(Vector3::repeat(1.0f32)),
+    //   );
+    let cuoid = Ball::new(2.0f32);
+    //let cuoid = AABB::from_half_extents(Point3::repeat(0.0f32), Vector3::repeat(2.0f32));
     let mut previous = Instant::now();
     let mut camera_loc = Point3::new(0.0f32, 0.0, -10.0);
     fb.glutin_handle_basic_input(|fb, input| {
@@ -109,47 +108,70 @@ fn main() {
         if input.key_is_down(VirtualKeyCode::A) {
             camera_loc.x += delta_seconds;
         }
-
-        {
-            let mut x = 0;
-            let mut y = 0;
-            for elem in &mut vec {
-                let norm_x = x as f32 * COLLS_INV_F;
-                let norm_y = y as f32 * ROWS_INV_F;
-
-                let screen_x = (norm_x * 2.0) - 1.0;
-                let screen_y = (norm_y * 2.0) - 1.0;
-                let normalised_screen_pixel =
-                    Point2::new(screen_x * aspect_ratio_scaling, screen_y);
-                let ray_dir = cam.calc_ray_dir(normalised_screen_pixel, field_of_view_scaling);
-
-                let ray = Ray::new(camera_loc, ray_dir.into_inner());
-
-                let raycast_result =
-                    cuoid.toi_and_normal_with_ray(&Isometry3::identity(), &ray, true);
-
-                let normal_as_color = match raycast_result {
-                    Some(res) => res.normal * 128.0 + Vector3::repeat(127.0f32),
-                    None => Vector3::repeat(0.0f32),
-                };
-
-                *elem = Color::new(
-                    normal_as_color.x as u8,
-                    normal_as_color.y as u8,
-                    normal_as_color.z as u8,
-                );
-                // Do Raytrace
-                x += 1;
-                if x == COLLS {
-                    x = 0;
-                    y += 1;
-                }
-            }
-            assert!(y == ROWS && x == 0);
-        }
-
-        fb.update_buffer(&vec);
+        ray_trace(
+            &mut image_buffer,
+            COLLS,
+            ROWS,
+            aspect_ratio_scaling,
+            field_of_view_scaling,
+            &cam,
+            camera_loc,
+            &cuoid,
+        );
+        fb.update_buffer(&image_buffer);
 
         true
     });
+}
+
+fn ray_trace(
+    buffer: &mut [Color],
+    columns: u32,
+    rows: u32,
+    aspect_ratio_scaling: f32,
+    field_of_view_scaling: f32,
+    cam: &Camera,
+    camera_loc: Point3<f32>,
+    cuoid: &Ball<f32>,
+) {
+    let begin_raytrace = Instant::now();
+    let colums_inverse = 1.0f32 / columns as f32;
+    let rows_inverse = 1.0f32 / rows as f32;
+    let mut x = 0;
+    let mut y = 0;
+    for elem in buffer {
+        let norm_x = x as f32 * colums_inverse;
+        let norm_y = y as f32 * rows_inverse;
+
+        let screen_x = (norm_x * 2.0) - 1.0;
+        let screen_y = (norm_y * 2.0) - 1.0;
+        let normalised_screen_pixel = Point2::new(screen_x * aspect_ratio_scaling, screen_y);
+        let ray_dir = cam.calc_ray_dir(normalised_screen_pixel, field_of_view_scaling);
+
+        let ray = Ray::new(camera_loc, ray_dir.into_inner());
+
+        let raycast_result = cuoid.toi_and_normal_with_ray(&Isometry3::identity(), &ray, true);
+
+        let normal_as_color = match raycast_result {
+            Some(res) => res.normal * 128.0 + Vector3::repeat(127.0f32),
+            None => Vector3::repeat(0.0f32),
+        };
+
+        *elem = Color::new(
+            normal_as_color.x as u8,
+            normal_as_color.y as u8,
+            normal_as_color.z as u8,
+        );
+        // Do Raytrace
+        x += 1;
+        if x == COLLS {
+            x = 0;
+            y += 1;
+        }
+    }
+    assert!(y == ROWS && x == 0);
+    print!(
+        "raytrace time : {} milliseconds\n",
+        begin_raytrace.elapsed().as_millis()
+    );
 }
