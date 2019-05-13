@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <SDL_Dir>$(SolutionDir)external\SDL\</SDL_Dir>
+    <SDL_lib>$(SDL_Dir)lib\win$(PlatformArchitecture)\</SDL_lib>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SDL_Dir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(SDL_lib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2main.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>echo "Copy SDL2.dll to exe file"
+copy /Y $(SDL_lib)SDL2.dll $(targetdir)SDL2.dll</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="SDL_Dir">
+      <Value>$(SDL_Dir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SDL_lib">
+      <Value>$(SDL_lib)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
