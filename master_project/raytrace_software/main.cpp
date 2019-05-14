@@ -148,8 +148,8 @@ int main(int argc, char* argv[])
 				"An SDL2 window",                  // window title
 				SDL_WINDOWPOS_UNDEFINED,           // initial x position
 				SDL_WINDOWPOS_UNDEFINED,           // initial y position
-				800,                               // width, in pixels
-				600,                               // height, in pixels
+				1920,                               // width, in pixels
+				1080,                               // height, in pixels
 				SDL_WINDOW_OPENGL                 // flags - see below
 			) 
 		};
@@ -160,13 +160,6 @@ int main(int argc, char* argv[])
 			printf("Could not create window: %s\n", SDL_GetError());
 			return 1;
 		}
-
-		/*RendererPtr renderer{
-			SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(window.get()))
-		};*/
-
-		/*SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderClear(renderer.get());*/
 
 		Init();
 
