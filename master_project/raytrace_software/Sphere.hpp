@@ -1,0 +1,7 @@
+#pragma once
+#include "vec3.hpp"
+struct Sphere
+{
+	glm::vec3 positon;
+	float radius;
+};
