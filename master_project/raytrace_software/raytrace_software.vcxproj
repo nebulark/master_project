@@ -168,6 +168,8 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Deleters.cpp" />
+    <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Key.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -180,7 +182,9 @@
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="Color.hpp" />
     <ClInclude Include="Deleters.hpp" />
+    <ClInclude Include="InputManager.hpp" />
     <ClInclude Include="Intersection.hpp" />
+    <ClInclude Include="Key.hpp" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Ray.hpp" />
     <ClInclude Include="Sphere.hpp" />

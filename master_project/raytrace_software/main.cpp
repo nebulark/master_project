@@ -10,13 +10,27 @@
 #include "Camera.hpp"
 #include "Intersection.hpp"
 #include "Color.hpp"
+#include "InputManager.hpp"
+
+struct RGB_888_Pixel
+{
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+
+	uint8_t padding;
+};
 
 namespace
 {
-	Sphere sphere;
+	Sphere spheres[2];
 	Camera camera;
+	InputManager inputManager;
 	glm::vec3 camera_pos;
 }
+
+using Clock = std::chrono::steady_clock;
+using FloatSeconds = std::chrono::duration<float>;
 
 Color normal_as_color(glm::vec3 normal)
 {
@@ -27,23 +41,29 @@ Color normal_as_color(glm::vec3 normal)
 
 void Init()
 {
-	sphere = Sphere{ glm::vec3(0.f,0.f, 10.f), 5.f };
+	for (int i = 0; i < std::size(spheres); ++i)
+	{
+		spheres[i] = Sphere{ glm::vec3(2*i - 5.f,0.f, 10.f), 5.f };
+	}
+	
 	camera = Camera::create_with_forward_dir(glm::vec3(0.f, 0.f, 1.f));
 	camera_pos = glm::vec3(0.f);
 }
 
 
-void Draw(SDL_Renderer* renderer)
+void Draw(SDL_Surface* surface)
 {
-	assert(renderer);
+	assert(SDL_PIXELFORMAT_RGB888 == surface->format->format);
+	assert(sizeof(RGB_888_Pixel) == surface->format->BytesPerPixel);
+	assert(nullptr == surface->format->palette);
 
-	SDL_Rect viewport_rect;
+
+	RGB_888_Pixel* Pixels = reinterpret_cast<RGB_888_Pixel*>(surface->pixels);
 
 
-	/* Get the Size of drawing surface */
-	SDL_RenderGetViewport(renderer, &viewport_rect);
+	
 
-	const glm::ivec2 viewport_i(viewport_rect.w, viewport_rect.h);
+	const glm::ivec2 viewport_i(surface->w, surface->h);
 	const glm::vec2 viewport(viewport_i);
 	const glm::vec2 viewport_inverse = 1.f / viewport;
 	const float aspect_ratio_scaling = viewport.x / viewport.y;
@@ -52,6 +72,7 @@ void Draw(SDL_Renderer* renderer)
 	constexpr float field_of_view_rad =  glm::radians(field_of_view_deg);
 	const float field_of_view_scaling = std::tan(field_of_view_rad / 2.0f);
 
+	
 
 	for (int y = 0; y < viewport_i.y; ++y)
 	{
@@ -67,12 +88,22 @@ void Draw(SDL_Renderer* renderer)
 
 			const glm::vec3 ray_dir = camera.calc_ray_dir(normalised_screen_pixel, 1.f);
 
-			std::optional<float> intersection_distance = Intersection::ray_sphere(Ray{ camera_pos, ray_dir }, sphere);
+			int sphereIndex = -1;
+			std::optional<float> intersection_distance = std::nullopt;
+			for (int i = 0; i < std::size(spheres); ++i)
+			{
+				std::optional<float> new_intersection_distance = Intersection::ray_sphere(Ray{ camera_pos, ray_dir }, spheres[i]);
+				if (new_intersection_distance.has_value() && (!intersection_distance.has_value() || *new_intersection_distance < *intersection_distance))
+				{
+					intersection_distance = new_intersection_distance;
+					sphereIndex = i;
+				}
+			}
 			Color color;
 			if (intersection_distance)
 			{
 				const glm::vec3 intersection_point = camera_pos + ray_dir * (*intersection_distance);
-				const glm::vec3 intersection_normal = glm::normalize(intersection_point - sphere.positon);
+				const glm::vec3 intersection_normal = glm::normalize(intersection_point - spheres[sphereIndex].position);
 				color = normal_as_color(intersection_normal);
 			}
 			else
@@ -80,12 +111,32 @@ void Draw(SDL_Renderer* renderer)
 				color = Color(0, 0, 0);
 			}
 
-			SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 0xFF);
-			SDL_RenderDrawPoint(renderer, x, y);
+			RGB_888_Pixel& pixel = Pixels[x + y * viewport_i.x];
+			pixel.r = color.r;
+			pixel.g = color.g;
+			pixel.b = color.b;
+
 		}
 	}
 }
 
+void handle_event(const SDL_Event& event)
+{
+	switch (event.type)
+	{
+	case SDL_EventType::SDL_KEYDOWN:
+		inputManager.update_key_down(event.key);
+		break;
+	case SDL_EventType::SDL_KEYUP:
+		inputManager.update_key_up(event.key);
+		break;
+	case SDL_EventType::SDL_MOUSEMOTION:
+		inputManager.update_mouse(event.motion);
+		break;
+	default:
+		break;
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -97,9 +148,9 @@ int main(int argc, char* argv[])
 				"An SDL2 window",                  // window title
 				SDL_WINDOWPOS_UNDEFINED,           // initial x position
 				SDL_WINDOWPOS_UNDEFINED,           // initial y position
-				640,                               // width, in pixels
-				480,                               // height, in pixels
-				SDL_WINDOW_OPENGL                  // flags - see below
+				800,                               // width, in pixels
+				600,                               // height, in pixels
+				SDL_WINDOW_OPENGL                 // flags - see below
 			) 
 		};
 
@@ -110,34 +161,53 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 
-		RendererPtr renderer{
+		/*RendererPtr renderer{
 			SDL_CreateSoftwareRenderer(SDL_GetWindowSurface(window.get()))
-		};
+		};*/
 
-		SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderClear(renderer.get());
+		/*SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderClear(renderer.get());*/
 
 		Init();
+
+		SDL_Surface* surface = SDL_GetWindowSurface(window.get());
+
+
+		auto previous = Clock::now();
 		while (true) 
 		{
+			auto current = Clock::now();
+			FloatSeconds delta = std::chrono::duration_cast<FloatSeconds>(current - previous);
+			previous = current;
+
 			SDL_Event event;
 			while (SDL_PollEvent(&event)) 
 			{
-				switch (event.type)
+				if (SDL_WINDOWEVENT == event.type && SDL_WINDOWEVENT_CLOSE == event.window.event)
 				{
-					case SDL_WINDOWEVENT:
-					{
-						if (event.window.event == SDL_WINDOWEVENT_CLOSE)
-						{
-							goto end_event_loop;
-						}
-					}
+					goto end_event_loop;
 				}
+				handle_event(event);				
 			}
 			/* do some other stuff here -- draw your app, etc. */
-			Draw(renderer.get());
+
+			if (inputManager.GetKey(KeyCode::KEY_D).IsPressed())
+			{
+				camera_pos.x += delta.count() * 5.f;
+			}
+			if (inputManager.GetKey(KeyCode::KEY_A).IsPressed())
+			{
+				camera_pos.x -= delta.count() * 5.f;
+			}
+
+			SDL_LockSurface(surface);
+
+			Draw(surface);
+
+			SDL_UnlockSurface(surface);
 			SDL_UpdateWindowSurface(window.get());
 			
+			printf("FPS %f \n", 1.f / delta.count());
 		}
 	end_event_loop:;
 		

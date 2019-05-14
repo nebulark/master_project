@@ -5,6 +5,7 @@
 #include <memory>
 #include <cassert>
 #include <cstdint>
+#include <chrono>
 
 #include "SDL.h"
 #include "glm.hpp"

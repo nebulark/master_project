@@ -10,7 +10,7 @@ namespace Intersection
 {
 	std::optional<float> ray_sphere(Ray ray, Sphere sphere)
 	{
-		const glm::vec3 oc = ray.origin - sphere.positon;
+		const glm::vec3 oc = ray.origin - sphere.position;
 		const float a =  glm::dot(ray.direction, ray.direction);
 		const float b = 2.f * glm::dot(oc, ray.direction);
 		const float c = glm::dot(oc, oc) - sphere.radius * sphere.radius;
