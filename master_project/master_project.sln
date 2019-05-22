@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "raytrace_software", "raytra
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vulkan_triangle", "vulkan_triangle\vulkan_triangle.vcxproj", "{B0AC4066-FCD6-47CF-9E05-C8CBE86B118F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{24D228D5-18A4-41CB-85D4-548379D0A99F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{B0AC4066-FCD6-47CF-9E05-C8CBE86B118F}.Release|x64.Build.0 = Release|x64
 		{B0AC4066-FCD6-47CF-9E05-C8CBE86B118F}.Release|x86.ActiveCfg = Release|Win32
 		{B0AC4066-FCD6-47CF-9E05-C8CBE86B118F}.Release|x86.Build.0 = Release|Win32
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Debug|x64.ActiveCfg = Debug|x64
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Debug|x64.Build.0 = Debug|x64
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Debug|x86.ActiveCfg = Debug|Win32
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Debug|x86.Build.0 = Debug|Win32
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x64.ActiveCfg = Release|x64
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x64.Build.0 = Release|x64
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x86.ActiveCfg = Release|Win32
+		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
