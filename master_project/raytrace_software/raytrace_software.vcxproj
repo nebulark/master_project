@@ -59,27 +59,27 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="include_sdl.props" />
-    <Import Project="include_glm.props" />
-    <Import Project="custom_settings.props" />
+    <Import Project="..\common_props\custom_settings.props" />
+    <Import Project="..\common_props\include_glm.props" />
+    <Import Project="..\common_props\include_sdl.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="include_sdl.props" />
-    <Import Project="include_glm.props" />
-    <Import Project="custom_settings.props" />
+    <Import Project="..\common_props\custom_settings.props" />
+    <Import Project="..\common_props\include_glm.props" />
+    <Import Project="..\common_props\include_sdl.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="include_sdl.props" />
-    <Import Project="include_glm.props" />
-    <Import Project="custom_settings.props" />
+    <Import Project="..\common_props\custom_settings.props" />
+    <Import Project="..\common_props\include_glm.props" />
+    <Import Project="..\common_props\include_sdl.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="include_sdl.props" />
-    <Import Project="include_glm.props" />
-    <Import Project="custom_settings.props" />
+    <Import Project="..\common_props\custom_settings.props" />
+    <Import Project="..\common_props\include_glm.props" />
+    <Import Project="..\common_props\include_sdl.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
 			SDL_UnlockSurface(surface);
 			SDL_UpdateWindowSurface(window.get());
 			
-			printf("FPS %f \n", 1.f / delta.count());
+			printf("FPS %f | Milliseconds: %f\n", 1.f / delta.count(), delta.count() * 1'000.f);
 		}
 	end_event_loop:;
 		

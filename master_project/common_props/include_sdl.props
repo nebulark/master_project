@@ -15,8 +15,11 @@
       <AdditionalDependencies>SDL2main.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>echo "Copy SDL2.dll to exe file"
-copy /Y $(SDL_lib)SDL2.dll $(targetdir)SDL2.dll</Command>
+      <Command>if ("$(OutputType)" == "staticlibrary") goto :end
+echo "Copy SDL2.dll to exe file"
+copy /Y $(SDL_lib)SDL2.dll $(targetdir)SDL2.dll
+:end
+</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
