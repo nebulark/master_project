@@ -10,5 +10,6 @@
 // add headers that you want to pre-compile here
 
 #include "SDL.h"
+#include <vulkan/vulkan.hpp>
 
 #endif //PCH_H

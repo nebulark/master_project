@@ -61,21 +61,29 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\common_props\custom_settings.props" />
     <Import Project="..\common_props\include_sdl.props" />
+    <Import Project="..\common_props\include_vulkan_32.props" />
+    <Import Project="..\common_props\include_vulkan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\common_props\custom_settings.props" />
     <Import Project="..\common_props\include_sdl.props" />
+    <Import Project="..\common_props\include_vulkan_32.props" />
+    <Import Project="..\common_props\include_vulkan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\common_props\custom_settings.props" />
     <Import Project="..\common_props\include_sdl.props" />
+    <Import Project="..\common_props\include_vulkan_64.props" />
+    <Import Project="..\common_props\include_vulkan.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\common_props\custom_settings.props" />
     <Import Project="..\common_props\include_sdl.props" />
+    <Import Project="..\common_props\include_vulkan_64.props" />
+    <Import Project="..\common_props\include_vulkan.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -161,6 +169,7 @@
   <ItemGroup>
     <ClInclude Include="Deleters.hpp" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="VulkanDebugReport.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Deleters.cpp" />
@@ -170,6 +179,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="VulkanDebugReport.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

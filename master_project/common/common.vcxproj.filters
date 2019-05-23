@@ -21,12 +21,18 @@
     <ClInclude Include="Deleters.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="VulkanDebugReport.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Deleters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanDebugReport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

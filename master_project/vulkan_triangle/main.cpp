@@ -6,6 +6,7 @@
 
 
 #include "common/Deleters.hpp"
+#include "common/VulkanDebugReport.hpp"
 
 vk::UniqueInstance create_vulkan_instance()
 {
@@ -25,8 +26,8 @@ vk::UniqueInstance create_vulkan_instance()
 	};
 
 	vk::InstanceCreateInfo instanceCreateInfo({}, &application_info,
-		std::size(enabledLayers), enabledLayers,
-		std::size(enabledExtensions), enabledExtensions);
+		static_cast<uint32_t>(std::size(enabledLayers)), enabledLayers,
+		static_cast<uint32_t>(std::size(enabledExtensions)), enabledExtensions);
 
 
 	vk::UniqueInstance instance = vk::createInstanceUnique(instanceCreateInfo);
@@ -36,26 +37,51 @@ vk::UniqueInstance create_vulkan_instance()
 	return instance;
 }
 
-struct ReportCallbacks
+VkBool32 debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT /*objectType*/, uint64_t /*object*/, size_t /*location*/, int32_t /*messageCode*/, const char* /*pLayerPrefix*/, const char* pMessage, void* /*pUserData*/)
 {
-	PFN_vkCreateDebugReportCallbackEXT  pfnVkCreateDebugReportCallbackEXT;
-	PFN_vkDestroyDebugReportCallbackEXT pfnVkDestroyDebugReportCallbackEXT;
-};
-
-ReportCallbacks LoadReportCallbacks(vk::Instance* instance)
-{
-	ReportCallbacks result;
-	result.pfnVkCreateDebugReportCallbackEXT = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(instance->getProcAddr("vkCreateDebugReportCallbackEXT"));
-	result.pfnVkDestroyDebugReportCallbackEXT = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(instance->getProcAddr("vkDestroyDebugReportCallbackEXT"));
+	switch (flags)
+	{
+	case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
+		std::cerr << "INFORMATION: ";
+		break;
+	case VK_DEBUG_REPORT_WARNING_BIT_EXT:
+		std::cerr << "WARNING: ";
+		break;
+	case VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT:
+		std::cerr << "PERFORMANCE WARNING: ";
+		break;
+	case VK_DEBUG_REPORT_ERROR_BIT_EXT:
+		std::cerr << "ERROR: ";
+		break;
+	case VK_DEBUG_REPORT_DEBUG_BIT_EXT:
+		std::cerr << "DEBUG: ";
+		break;
+	default:
+		std::cerr << "unknown flag (" << flags << "): ";
+		break;
+	}
+	std::cerr << pMessage << std::endl;
+	return VK_TRUE;
 }
-
-
 
 
 int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	{
+
+		vk::UniqueInstance instance = create_vulkan_instance();
+		VulkanDebugReportExtension::Load(instance.get());
+		vk::DebugReportFlagsEXT flags(vk::DebugReportFlagBitsEXT::eWarning | vk::DebugReportFlagBitsEXT::ePerformanceWarning | vk::DebugReportFlagBitsEXT::eError);
+		vk::DebugReportCallbackCreateInfoEXT report_callback_create_info(flags, &debugReportCallback);
+		vk::UniqueDebugReportCallbackEXT debugReportCallback = instance->createDebugReportCallbackEXTUnique(report_callback_create_info);
+
+
+
+
+
+
+
 		WindowPtr window{
 				SDL_CreateWindow(
 				"An SDL2 window",                  // window title
