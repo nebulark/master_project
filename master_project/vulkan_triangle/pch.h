@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <chrono>
 #include <algorithm>
+#include <optional>
 
 #include <gsl/gsl>
 #include "SDL.h"

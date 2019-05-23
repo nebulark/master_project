@@ -5,6 +5,8 @@
 
 #include "common/Deleters.hpp"
 #include "common/VulkanDebug.hpp"
+#include "common/VulkanDevice.hpp"
+#include "common/VulkanUtils.hpp"
 
 
 vk::UniqueInstance create_vulkan_instance(gsl::span<const char*> enabledLayers, gsl::span<const char*> enabledExtensions)
@@ -55,18 +57,6 @@ vk::UniqueSurfaceKHR CreateSurface(vk::Instance& instance, SDL_Window* window)
 	);
 }
 
-bool SupportsValidationLayers(gsl::span<const char*> layerNames)
-{
-	const std::vector<vk::LayerProperties> availableLayerProperties = vk::enumerateInstanceLayerProperties();
-	return std::all_of(layerNames.cbegin(), layerNames.cend(), [&availableLayerProperties](const char* layerName)
-	{
-		return std::any_of(availableLayerProperties.cbegin(), availableLayerProperties.cend(), [layerName](const vk::LayerProperties& availableLayerProperty)
-		{
-			return std::strcmp(availableLayerProperty.layerName, layerName) == 0;
-		});
-	});
-
-}
 
 VkBool32 DebugUtilsCallback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
@@ -82,6 +72,29 @@ VkBool32 DebugUtilsCallback(
 	constexpr VkBool32 shouldAbortFunctionCall = VK_TRUE;
 	return shouldAbortFunctionCall;
 }
+
+vk::UniqueDebugUtilsMessengerEXT CreateDebugUtilsMessenger(vk::Instance instance)
+{
+	vk::DebugUtilsMessageSeverityFlagsEXT severityFlags = vk::DebugUtilsMessageSeverityFlagsEXT()
+		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+		| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
+		//| vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
+		;
+
+	vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags = vk::DebugUtilsMessageTypeFlagsEXT()
+		| vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+		| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
+		| vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+		;
+
+	vk::DebugUtilsMessengerCreateInfoEXT debug_utils_create_info(vk::DebugUtilsMessengerCreateFlagsEXT(), severityFlags, messageTypeFlags, &DebugUtilsCallback);
+	vk::UniqueDebugUtilsMessengerEXT messenger = instance.createDebugUtilsMessengerEXTUnique(debug_utils_create_info);
+
+	return messenger;
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -110,32 +123,20 @@ int main(int argc, char* argv[])
 		enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 
-		assert(SupportsValidationLayers(enabledValidationLayers));
+		assert(VulkanUtils::SupportsValidationLayers(enabledValidationLayers));
 		vk::UniqueInstance instance = create_vulkan_instance(enabledValidationLayers, enabledExtensions);
 
 
 		VulkanDebugExtension::LoadDebugUtilsMessengerExtension(instance.get());
 
-		vk::DebugUtilsMessageSeverityFlagsEXT severityFlags = vk::DebugUtilsMessageSeverityFlagsEXT()
-			| vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
-			| vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-			| vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose
-			| vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
-			;
+		vk::UniqueDebugUtilsMessengerEXT messenger = CreateDebugUtilsMessenger(instance.get());
 
-		vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags = vk::DebugUtilsMessageTypeFlagsEXT()
-			| vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
-			| vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
-			| vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-			;
+		vk::UniqueSurfaceKHR surface = CreateSurface(instance.get(), window.get());
 
-		vk::DebugUtilsMessengerCreateInfoEXT debug_utils_create_info(vk::DebugUtilsMessengerCreateFlagsEXT(), severityFlags, messageTypeFlags, &DebugUtilsCallback);
-		vk::UniqueDebugUtilsMessengerEXT messenger = instance->createDebugUtilsMessengerEXTUnique(debug_utils_create_info);
+		const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		VulkanDevice::LogicalDevice logicalDevice = VulkanDevice::CreateLogicalDevice(instance.get(), enabledValidationLayers, deviceExtensions, surface.get());
+		logicalDevice.device->getQueue(logicalDevice.graphicsPresentQueueIdx, 0);
 
-		std::vector<vk::PhysicalDevice> physicalDevices = instance->enumeratePhysicalDevices();
-		assert(!physicalDevices.empty());
-
-		vk::UniqueSurfaceKHR surface = CreateSurface(instance.get(), window.get());	
 	}
 	SDL_Quit();
 		
