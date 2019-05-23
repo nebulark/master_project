@@ -21,7 +21,7 @@
     <ClInclude Include="Deleters.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanDebugReport.hpp">
+    <ClInclude Include="VulkanDebug.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -32,7 +32,7 @@
     <ClCompile Include="Deleters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VulkanDebugReport.cpp">
+    <ClCompile Include="VulkanDebug.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -169,7 +169,7 @@
   <ItemGroup>
     <ClInclude Include="Deleters.hpp" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="VulkanDebugReport.hpp" />
+    <ClInclude Include="VulkanDebug.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Deleters.cpp" />
@@ -179,7 +179,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="VulkanDebugReport.cpp" />
+    <ClCompile Include="VulkanDebug.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
