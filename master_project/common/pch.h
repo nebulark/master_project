@@ -10,6 +10,9 @@
 // add headers that you want to pre-compile here
 
 #include <vector>
+#include <optional>
+#include <array>
+#include <gsl/gsl>
 
 #include "SDL.h"
 #include <vulkan/vulkan.hpp>

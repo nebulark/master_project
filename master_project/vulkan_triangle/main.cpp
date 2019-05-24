@@ -100,14 +100,17 @@ int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	{
+		constexpr int width = 1920;
+		constexpr int height = 1080;
+
 
 		WindowPtr window{
 			SDL_CreateWindow(
 			"An SDL2 window",                  // window title
 			SDL_WINDOWPOS_UNDEFINED,           // initial x position
 			SDL_WINDOWPOS_UNDEFINED,           // initial y position
-			1920,                               // width, in pixels
-			1080,                               // height, in pixels
+			width,                               // width, in pixels
+			height,                               // height, in pixels
 			SDL_WINDOW_VULKAN                 // flags - see below
 			)
 		};
@@ -134,8 +137,71 @@ int main(int argc, char* argv[])
 		vk::UniqueSurfaceKHR surface = CreateSurface(instance.get(), window.get());
 
 		const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-		VulkanDevice::LogicalDevice logicalDevice = VulkanDevice::CreateLogicalDevice(instance.get(), enabledValidationLayers, deviceExtensions, surface.get());
-		logicalDevice.device->getQueue(logicalDevice.graphicsPresentQueueIdx, 0);
+
+		VulkanDevice::QueueRequirement queueRequirement[1];
+		queueRequirement[0].canPresent = true;
+		queueRequirement[0].mincount = 1;
+		queueRequirement[0].minFlags = vk::QueueFlagBits::eGraphics;
+
+		VulkanDevice::DeviceRequirements deviceRequirements;
+		deviceRequirements.queueRequirements = queueRequirement;
+		deviceRequirements.requiredExtensions = deviceExtensions;
+
+		std::optional<VulkanDevice::PickDeviceResult> maybeDeviceResult =
+			VulkanDevice::PickPhysicalDevice(instance.get(), deviceRequirements, &(surface.get()));
+
+		assert(maybeDeviceResult);
+		VulkanDevice::PickDeviceResult deviceResult = std::move(*maybeDeviceResult);
+
+		vk::UniqueDevice logicalDevice = VulkanDevice::CreateLogicalDevice(
+			deviceResult.device, deviceResult.queueResult, enabledValidationLayers, deviceExtensions);
+
+		const vk::SurfaceFormatKHR preferedFormats[] = {
+			vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear},
+		};
+
+		const vk::SurfaceFormatKHR surfaceFormat = VulkanUtils::ChooseSurfaceFormat(
+			deviceResult.device.getSurfaceFormatsKHR(surface.get()),
+			preferedFormats);
+
+		const vk::PresentModeKHR preferedPresentationModes[] = { vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eImmediate };
+
+		const vk::PresentModeKHR presentMode = VulkanUtils::ChoosePresentMode(
+			deviceResult.device.getSurfacePresentModesKHR(surface.get()),
+			preferedPresentationModes
+		);
+
+		const vk::SurfaceCapabilitiesKHR capabilities = deviceResult.device.getSurfaceCapabilitiesKHR(surface.get());
+		const vk::Extent2D extent = VulkanUtils::ChooseExtent(
+			capabilities,
+			vk::Extent2D(width, height)
+		);
+
+		const uint32_t imageCount = VulkanUtils::ChooseImageCount(capabilities, capabilities.minImageCount + 1);
+
+		vk::SwapchainCreateInfoKHR swapchainCreateInfo = vk::SwapchainCreateInfoKHR();
+		swapchainCreateInfo
+			.setSurface(surface.get())
+			.setMinImageCount(imageCount)
+			.setImageFormat(surfaceFormat.format)
+			.setImageColorSpace(surfaceFormat.colorSpace)
+			.setImageExtent(extent)
+			.setImageArrayLayers(1)
+			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+			.setImageSharingMode(vk::SharingMode::eExclusive) // we only have one queue
+			.setPreTransform(capabilities.currentTransform)
+			.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
+			.setPresentMode(presentMode)
+			.setClipped(true)
+			.setOldSwapchain(vk::SwapchainKHR());
+
+		vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderStatic> swapChain =
+			logicalDevice->createSwapchainKHRUnique(swapchainCreateInfo);
+
+		
+
+		//VulkanDevice::LogicalDevice logicalDevice = VulkanDevice::(instance.get(), enabledValidationLayers, deviceExtensions, surface.get());
+		//logicalDevice.device->getQueue(logicalDevice.graphicsPresentQueueIdx, 0);
 
 	}
 	SDL_Quit();
