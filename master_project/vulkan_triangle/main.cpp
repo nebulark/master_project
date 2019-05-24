@@ -7,6 +7,7 @@
 #include "common/VulkanDebug.hpp"
 #include "common/VulkanDevice.hpp"
 #include "common/VulkanUtils.hpp"
+#include "common/FileHelper.hpp"
 
 
 vk::UniqueInstance create_vulkan_instance(gsl::span<const char*> enabledLayers, gsl::span<const char*> enabledExtensions)
@@ -94,7 +95,37 @@ vk::UniqueDebugUtilsMessengerEXT CreateDebugUtilsMessenger(vk::Instance instance
 	return messenger;
 }
 
+vk::UniqueImageView CreateImageView(vk::Image image, vk::Format surfaceFormat, vk::Device logicalDevice)
+{
+	const vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo()
+		.setImage(image)
+		.setViewType(vk::ImageViewType::e2D)
+		.setFormat(surfaceFormat)
+		.setComponents(vk::ComponentMapping()
+			.setR(vk::ComponentSwizzle::eIdentity)
+			.setG(vk::ComponentSwizzle::eIdentity)
+			.setB(vk::ComponentSwizzle::eIdentity)
+			.setA(vk::ComponentSwizzle::eIdentity))
+		.setSubresourceRange(vk::ImageSubresourceRange()
+			.setAspectMask(vk::ImageAspectFlagBits::eColor)
+			.setBaseMipLevel(0)
+			.setLevelCount(1)
+			.setBaseArrayLayer(0)
+			.setLayerCount(1))
+		;
 
+	return logicalDevice.createImageViewUnique(imageViewCreateInfo);
+}
+
+vk::UniqueShaderModule CreateShaderModule(gsl::span<const char> shaderCode, vk::Device logicalDevice)
+{
+	assert(reinterpret_cast<std::uintptr_t>(std::data(shaderCode)) % alignof(uint32_t) == 0);
+
+	vk::ShaderModuleCreateInfo createInfo(vk::ShaderModuleCreateFlags{},
+		std::size(shaderCode), reinterpret_cast<const uint32_t*>(std::data(shaderCode)));
+
+	return logicalDevice.createShaderModuleUnique(createInfo);
+}
 
 int main(int argc, char* argv[])
 {
@@ -160,7 +191,7 @@ int main(int argc, char* argv[])
 			vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Unorm, vk::ColorSpaceKHR::eSrgbNonlinear},
 		};
 
-		const vk::SurfaceFormatKHR surfaceFormat = VulkanUtils::ChooseSurfaceFormat(
+		const vk::SurfaceFormatKHR swapchainFormat = VulkanUtils::ChooseSurfaceFormat(
 			deviceResult.device.getSurfaceFormatsKHR(surface.get()),
 			preferedFormats);
 
@@ -172,20 +203,19 @@ int main(int argc, char* argv[])
 		);
 
 		const vk::SurfaceCapabilitiesKHR capabilities = deviceResult.device.getSurfaceCapabilitiesKHR(surface.get());
-		const vk::Extent2D extent = VulkanUtils::ChooseExtent(
+		const vk::Extent2D swapchainExtent = VulkanUtils::ChooseExtent(
 			capabilities,
 			vk::Extent2D(width, height)
 		);
 
 		const uint32_t imageCount = VulkanUtils::ChooseImageCount(capabilities, capabilities.minImageCount + 1);
 
-		vk::SwapchainCreateInfoKHR swapchainCreateInfo = vk::SwapchainCreateInfoKHR();
-		swapchainCreateInfo
+		const vk::SwapchainCreateInfoKHR swapchainCreateInfo = vk::SwapchainCreateInfoKHR()
 			.setSurface(surface.get())
 			.setMinImageCount(imageCount)
-			.setImageFormat(surfaceFormat.format)
-			.setImageColorSpace(surfaceFormat.colorSpace)
-			.setImageExtent(extent)
+			.setImageFormat(swapchainFormat.format)
+			.setImageColorSpace(swapchainFormat.colorSpace)
+			.setImageExtent(swapchainExtent)
 			.setImageArrayLayers(1)
 			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
 			.setImageSharingMode(vk::SharingMode::eExclusive) // we only have one queue
@@ -198,10 +228,166 @@ int main(int argc, char* argv[])
 		vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderStatic> swapChain =
 			logicalDevice->createSwapchainKHRUnique(swapchainCreateInfo);
 
-		
+		std::vector<vk::Image> swapchainImages = logicalDevice->getSwapchainImagesKHR(swapChain.get());
 
+		vk::UniqueImageView uniqueImage = CreateImageView(swapchainImages[0], swapchainFormat.format, logicalDevice.get());
+		
 		//VulkanDevice::LogicalDevice logicalDevice = VulkanDevice::(instance.get(), enabledValidationLayers, deviceExtensions, surface.get());
 		//logicalDevice.device->getQueue(logicalDevice.graphicsPresentQueueIdx, 0);
+
+		// render pass
+
+		vk::AttachmentDescription colorAttachment = vk::AttachmentDescription()
+			.setFormat(swapchainFormat.format)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR)
+			;
+
+		// has something to do with frag shader layout 0
+		vk::AttachmentReference colorAttachmentRef(0, vk::ImageLayout::eColorAttachmentOptimal);
+		vk::SubpassDescription subpassDescription = vk::SubpassDescription()
+			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+			.setColorAttachmentCount(1)
+			.setPColorAttachments(&colorAttachmentRef);
+
+		vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
+			.setAttachmentCount(1).setPAttachments(&colorAttachment)
+			.setSubpassCount(1).setPSubpasses(&subpassDescription);
+
+		vk::UniqueHandle<vk::RenderPass, vk::DispatchLoaderStatic> renderpass 
+			= logicalDevice->createRenderPassUnique(renderPassCreateInfo);
+
+
+		// graphics pipeline
+
+		std::vector<char> vertShaderCode = FileHelper::LoadFileContent("triangle.vert.spv");
+		std::vector<char> fragShaderCode = FileHelper::LoadFileContent("triangle.frag.spv");
+
+		vk::UniqueShaderModule vertShaderModule = CreateShaderModule(vertShaderCode, logicalDevice.get());
+		vk::UniqueShaderModule fragShaderModule = CreateShaderModule(fragShaderCode, logicalDevice.get());
+
+		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
+		{ 
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eVertex,
+				vertShaderModule.get(),
+				"main"),
+
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eFragment,
+				fragShaderModule.get(),
+				"main"),
+		};
+
+		// same for frag
+
+		// fill out when we use vertex data
+		vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
+
+		// true enables breaking up strips (line, triangels) with special indices   when using drawing with indices 
+		constexpr bool primitiveRestartEnable = false;
+		vk::PipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo(
+			vk::PipelineInputAssemblyStateCreateFlags(),
+			vk::PrimitiveTopology::eTriangleList,
+			primitiveRestartEnable
+		);
+
+		const vk::Viewport viewport = vk::Viewport()
+			.setX(0.f)
+			.setY(0.f)
+			.setWidth(static_cast<float>(swapchainExtent.width))
+			.setHeight(static_cast<float>(swapchainExtent.height))
+			.setMinDepth(0.f)
+			.setMaxDepth(1.f);
+
+		const vk::Rect2D scissor(vk::Offset2D(0, 0), swapchainExtent);
+
+		const vk::PipelineViewportStateCreateInfo viewportStateCreateInfo(
+			vk::PipelineViewportStateCreateFlags(),
+			1, &viewport,
+			1, &scissor);
+
+		vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vk::PipelineRasterizationStateCreateInfo{}
+			.setDepthClampEnable(false)
+			.setRasterizerDiscardEnable(false)
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setLineWidth(1.f)
+			.setCullMode(vk::CullModeFlagBits::eBack)
+			.setFrontFace(vk::FrontFace::eClockwise)
+			.setDepthBiasEnable(false)
+			.setDepthBiasConstantFactor(0.f)
+			.setDepthBiasClamp(0.f)
+			.setDepthBiasSlopeFactor(0.f);
+
+		vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo = vk::PipelineMultisampleStateCreateInfo()
+			.setSampleShadingEnable(false)
+			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+			.setMinSampleShading(1.f)
+			.setPSampleMask(nullptr)
+			.setAlphaToCoverageEnable(false)
+			.setAlphaToOneEnable(false);
+
+		//vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo();
+
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+			.setColorWriteMask(vk::ColorComponentFlags()
+				| vk::ColorComponentFlagBits::eR
+				| vk::ColorComponentFlagBits::eG
+				| vk::ColorComponentFlagBits::eB
+				| vk::ColorComponentFlagBits::eA)
+			.setBlendEnable(false)
+			.setSrcColorBlendFactor(vk::BlendFactor::eOne)
+			.setDstColorBlendFactor(vk::BlendFactor::eZero)
+			.setColorBlendOp(vk::BlendOp::eAdd)
+			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+			.setAlphaBlendOp(vk::BlendOp::eAdd);
+
+		vk::PipelineColorBlendStateCreateInfo colorBlendingStateCreateInfo = vk::PipelineColorBlendStateCreateInfo()
+			.setLogicOpEnable(false)
+			.setLogicOp(vk::LogicOp::eCopy)
+			.setAttachmentCount(1)
+			.setPAttachments(&colorBlendAttachment)
+			.setBlendConstants({ 0.f,0.f,0.f,0.f })
+			;
+
+		// useful for uniforms
+		vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo(
+			vk::PipelineLayoutCreateFlags(),
+			0, nullptr,
+			0, nullptr);
+
+		vk::UniqueHandle<vk::PipelineLayout, vk::DispatchLoaderStatic> pipelineLayout =
+			logicalDevice->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
+
+		vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
+			vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
+			gsl::narrow<uint32_t>(std::size(pipelineShaderStageCreationInfos)),	std::data(pipelineShaderStageCreationInfos),
+			&pipelineVertexInputStateCreateInfo,
+			&pipelineInputAssemblyStateCreateInfo,
+			nullptr, // tesselationstate
+			&viewportStateCreateInfo,
+			&rasterizationStateCreateInfo,
+			&multisampleStateCreateInfo,
+			nullptr, // PipelineDepthStencilStateCreateInfo
+			&colorBlendingStateCreateInfo,
+			nullptr, // dynamic device state
+			pipelineLayout.get(),
+			renderpass.get(),
+			0,
+			vk::Pipeline(),
+			-1);
+
+		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> pipeline =
+			logicalDevice->createGraphicsPipelineUnique(vk::PipelineCache(), graphicsPipelineCreateInfo);
+
 
 	}
 	SDL_Quit();
