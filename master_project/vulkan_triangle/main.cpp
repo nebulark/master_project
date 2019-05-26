@@ -127,12 +127,15 @@ vk::UniqueShaderModule CreateShaderModule(gsl::span<const char> shaderCode, vk::
 	return logicalDevice.createShaderModuleUnique(createInfo);
 }
 
+
 int main(int argc, char* argv[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	{
-		constexpr int width = 1920;
-		constexpr int height = 1080;
+		constexpr int width = 1920 / 2;
+		constexpr int height = 1080 / 2;
+
+		constexpr int maxFramesInFlight = 2;
 
 
 		WindowPtr window{
@@ -230,10 +233,16 @@ int main(int argc, char* argv[])
 
 		std::vector<vk::Image> swapchainImages = logicalDevice->getSwapchainImagesKHR(swapChain.get());
 
-		vk::UniqueImageView uniqueImage = CreateImageView(swapchainImages[0], swapchainFormat.format, logicalDevice.get());
+		std::vector<vk::UniqueImageView> swapchainImageViews;
+		swapchainImageViews.reserve(swapchainImages.size());
+
+		for (const vk::Image& image : swapchainImages)
+		{
+			swapchainImageViews.push_back(CreateImageView(image, swapchainFormat.format, logicalDevice.get()));
+		}
 		
 		//VulkanDevice::LogicalDevice logicalDevice = VulkanDevice::(instance.get(), enabledValidationLayers, deviceExtensions, surface.get());
-		//logicalDevice.device->getQueue(logicalDevice.graphicsPresentQueueIdx, 0);
+		
 
 		// render pass
 
@@ -255,9 +264,19 @@ int main(int argc, char* argv[])
 			.setColorAttachmentCount(1)
 			.setPColorAttachments(&colorAttachmentRef);
 
+		vk::SubpassDependency subpassDependency = vk::SubpassDependency{}
+			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
+			.setDstSubpass(0)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcAccessMask(vk::AccessFlags())
+			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+
 		vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
 			.setAttachmentCount(1).setPAttachments(&colorAttachment)
-			.setSubpassCount(1).setPSubpasses(&subpassDescription);
+			.setSubpassCount(1).setPSubpasses(&subpassDescription)
+			.setDependencyCount(1).setPDependencies(&subpassDependency);
 
 		vk::UniqueHandle<vk::RenderPass, vk::DispatchLoaderStatic> renderpass 
 			= logicalDevice->createRenderPassUnique(renderPassCreateInfo);
@@ -272,7 +291,7 @@ int main(int argc, char* argv[])
 		vk::UniqueShaderModule fragShaderModule = CreateShaderModule(fragShaderCode, logicalDevice.get());
 
 		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
-		{ 
+		{
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eVertex,
@@ -369,7 +388,7 @@ int main(int argc, char* argv[])
 
 		vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
 			vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
-			gsl::narrow<uint32_t>(std::size(pipelineShaderStageCreationInfos)),	std::data(pipelineShaderStageCreationInfos),
+			gsl::narrow<uint32_t>(std::size(pipelineShaderStageCreationInfos)), std::data(pipelineShaderStageCreationInfos),
 			&pipelineVertexInputStateCreateInfo,
 			&pipelineInputAssemblyStateCreateInfo,
 			nullptr, // tesselationstate
@@ -385,10 +404,114 @@ int main(int argc, char* argv[])
 			vk::Pipeline(),
 			-1);
 
-		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> pipeline =
+		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> graphicsPipeline =
 			logicalDevice->createGraphicsPipelineUnique(vk::PipelineCache(), graphicsPipelineCreateInfo);
 
 
+		std::vector<vk::UniqueFramebuffer> swapChainFramebuffers;
+		swapChainFramebuffers.reserve(swapchainImageViews.size());
+		for (vk::UniqueImageView& imageView : swapchainImageViews)
+		{
+			vk::FramebufferCreateInfo framebufferCreateInfo = vk::FramebufferCreateInfo{}
+				.setRenderPass(renderpass.get())
+				.setAttachmentCount(1).setPAttachments(&(imageView.get()))
+				.setWidth(swapchainExtent.width)
+				.setHeight(swapchainExtent.height)
+				.setLayers(1);
+
+			swapChainFramebuffers.push_back(logicalDevice->createFramebufferUnique(framebufferCreateInfo));
+		}
+
+		// command buffers
+
+		vk::CommandPoolCreateInfo commandPoolCreateInfo(
+			vk::CommandPoolCreateFlags() /*there are possible flags*/,
+			deviceResult.queueResult[0].familyIndex);
+		vk::UniqueCommandPool commandPool = logicalDevice->createCommandPoolUnique(commandPoolCreateInfo);
+
+		vk::CommandBufferAllocateInfo commandBufferAllocInfo(
+			commandPool.get(), vk::CommandBufferLevel::ePrimary, gsl::narrow<uint32_t>(swapChainFramebuffers.size()));
+
+		std::vector<vk::UniqueCommandBuffer> commandBuffers = logicalDevice->allocateCommandBuffersUnique(commandBufferAllocInfo);
+		for (size_t i = 0, count = commandBuffers.size(); i < count; ++i)
+		{
+			vk::CommandBufferBeginInfo commandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eSimultaneousUse, nullptr);
+			commandBuffers[i]->begin(commandBufferBeginInfo);
+
+			vk::ClearValue clearColor(vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 1.f }));
+			vk::RenderPassBeginInfo renderpassBeginInfo = vk::RenderPassBeginInfo{}
+				.setRenderPass(renderpass.get())
+				.setFramebuffer(swapChainFramebuffers[i].get())
+				.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), swapchainExtent))
+				.setClearValueCount(1).setPClearValues(&clearColor);
+
+			commandBuffers[i]->beginRenderPass(renderpassBeginInfo, vk::SubpassContents::eInline);
+
+			commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
+			commandBuffers[i]->draw(3, 1, 0, 0);
+			commandBuffers[i]->endRenderPass();
+			commandBuffers[i]->end();
+		}
+
+		vk::Queue graphicsPresentQueue = logicalDevice->getQueue(deviceResult.queueResult[0].familyIndex, 0);
+		//
+
+		// semaphores
+
+		std::array< vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
+		std::array< vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;
+		for (size_t i = 0; i < maxFramesInFlight; ++i)
+		{
+			imageAvailableSemaphores[i] = logicalDevice->createSemaphoreUnique(vk::SemaphoreCreateInfo());
+			renderFinishedSemaphores[i] = logicalDevice->createSemaphoreUnique(vk::SemaphoreCreateInfo());
+		}
+
+		int currentFrame = 0;
+
+		
+		while (true)
+		{
+			SDL_Event event;
+			while (SDL_PollEvent(&event))
+			{
+				if (SDL_WINDOWEVENT == event.type && SDL_WINDOWEVENT_CLOSE == event.window.event)
+				{
+					goto endMainLoop;
+				}
+				//handle_event(event);
+			}
+
+			// draw
+
+
+			constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
+			uint32_t imageIndex = logicalDevice->acquireNextImageKHR(
+				swapChain.get(), noTimeout, imageAvailableSemaphores[currentFrame].get(), vk::Fence()).value;
+
+			vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+			vk::SubmitInfo submitInfo = vk::SubmitInfo{}
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&(imageAvailableSemaphores[currentFrame].get())).setPWaitDstStageMask(waitStages)
+				.setCommandBufferCount(1).setPCommandBuffers(&(commandBuffers[imageIndex].get()))
+				.setSignalSemaphoreCount(1).setPSignalSemaphores(&(renderFinishedSemaphores[currentFrame].get()));
+
+			graphicsPresentQueue.submit(1, &submitInfo, vk::Fence());
+
+			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR{}
+				.setWaitSemaphoreCount(1).setPWaitSemaphores(&(renderFinishedSemaphores[currentFrame].get()))
+				.setSwapchainCount(1).setPSwapchains(&(swapChain.get())).setPImageIndices(&imageIndex);
+
+			graphicsPresentQueue.presentKHR(presentInfo);
+
+			
+			SDL_UpdateWindowSurface(window.get());
+
+			currentFrame = (currentFrame + 1) % maxFramesInFlight;
+		}
+
+	endMainLoop:;
+		logicalDevice->waitIdle();
+		
+		
 	}
 	SDL_Quit();
 		
