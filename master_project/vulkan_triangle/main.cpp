@@ -460,10 +460,12 @@ int main(int argc, char* argv[])
 
 		std::array< vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
 		std::array< vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;
+		std::array< vk::UniqueFence, maxFramesInFlight> inFlightFences;
 		for (size_t i = 0; i < maxFramesInFlight; ++i)
 		{
 			imageAvailableSemaphores[i] = logicalDevice->createSemaphoreUnique(vk::SemaphoreCreateInfo());
 			renderFinishedSemaphores[i] = logicalDevice->createSemaphoreUnique(vk::SemaphoreCreateInfo());
+			inFlightFences[i] = logicalDevice->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
 		}
 
 		int currentFrame = 0;
@@ -485,6 +487,10 @@ int main(int argc, char* argv[])
 
 
 			constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
+
+			logicalDevice->waitForFences(1, &(inFlightFences[currentFrame].get()), true, noTimeout);
+			logicalDevice->resetFences(1, &(inFlightFences[currentFrame].get()));
+
 			uint32_t imageIndex = logicalDevice->acquireNextImageKHR(
 				swapChain.get(), noTimeout, imageAvailableSemaphores[currentFrame].get(), vk::Fence()).value;
 
@@ -494,7 +500,7 @@ int main(int argc, char* argv[])
 				.setCommandBufferCount(1).setPCommandBuffers(&(commandBuffers[imageIndex].get()))
 				.setSignalSemaphoreCount(1).setPSignalSemaphores(&(renderFinishedSemaphores[currentFrame].get()));
 
-			graphicsPresentQueue.submit(1, &submitInfo, vk::Fence());
+			graphicsPresentQueue.submit(1, &submitInfo, inFlightFences[currentFrame].get());
 
 			vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR{}
 				.setWaitSemaphoreCount(1).setPWaitSemaphores(&(renderFinishedSemaphores[currentFrame].get()))
