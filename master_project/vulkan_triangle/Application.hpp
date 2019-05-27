@@ -55,6 +55,9 @@ private:
 	// one for each swapchain image view
 	std::vector<vk::UniqueFramebuffer> m_swapChainFramebuffers;
 
+	vk::UniqueDeviceMemory m_vertexBufferMemory;
+	vk::UniqueBuffer m_vertexBuffer;
+
 	vk::UniqueCommandPool m_graphcisPresentQueueCommandPool;
 
 	// one for each framebuffer

@@ -7,6 +7,60 @@
 
 namespace
 {
+	template<typename T>
+	constexpr vk::Format GlmTypeToVkFormat()
+	{
+		if constexpr (std::is_same_v<glm::vec1, T>) {
+			return vk::Format::eR32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec2, T>) {
+			return vk::Format::eR32G32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec3, T>) {
+			return vk::Format::eR32G32B32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec4, T>) {
+			return vk::Format::eR32G32B32A32Sfloat;
+		}
+		else
+		{
+			static_assert(false, "Type not supported");
+			return vk::Format;
+		}
+	}
+
+	struct Vertex
+	{
+		glm::vec2 pos;
+		glm::vec3 color;
+
+		// maybe move this out, 
+		static vk::VertexInputBindingDescription GetBindingDescription()
+		{
+			vk::VertexInputBindingDescription bindingDescription = vk::VertexInputBindingDescription{}
+				.setBinding(0) // all data is interleave in one array
+				.setStride(sizeof(Vertex))
+				.setInputRate(vk::VertexInputRate::eVertex);
+
+			return bindingDescription;
+		}
+
+		static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDescriptions() {
+			std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = {};
+
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0; // needs to match shader
+			attributeDescriptions[0].format = GlmTypeToVkFormat<decltype(Vertex::pos)>();
+			attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1; // needs to match shader
+			attributeDescriptions[1].format = GlmTypeToVkFormat<decltype(Vertex::color)>();
+			attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+			return attributeDescriptions;
+		}
+	};
 
 	vk::UniqueInstance create_vulkan_instance(gsl::span<const char*> enabledLayers, gsl::span<const char*> enabledExtensions)
 	{
@@ -179,7 +233,15 @@ namespace
 		vk::PipelineLayout pipelineLayout, gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos)
 	{
 		// fill out when we use vertex data
-		vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
+
+		std::array<vk::VertexInputAttributeDescription,2> vertexAttributeDescription = Vertex::GetAttributeDescriptions();
+		vk::VertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDescription();
+
+		vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo = vk::PipelineVertexInputStateCreateInfo{}
+			.setVertexBindingDescriptionCount(1)
+			.setPVertexBindingDescriptions(&vertexBindingDescription)
+			.setVertexAttributeDescriptionCount(gsl::narrow<uint32_t>(std::size(vertexAttributeDescription)))
+			.setPVertexAttributeDescriptions(std::data(vertexAttributeDescription));
 
 		// true enables breaking up strips (line, triangels) with special indices   when using drawing with indices 
 		constexpr bool primitiveRestartEnable = false;
@@ -298,6 +360,29 @@ namespace
 
 
 
+
+
+
+	// suitableMemoryTypesBits - each bit corresponds to whether the device memory type with that index is suitable
+	// if bit 0 is set than the physicalDeviceMemoryProperties.memoryTypes[0] is allowed
+	uint32_t findMemoryTypeIdx(vk::PhysicalDevice physicalDevice, uint32_t suitableMemoryTypesBits, vk::MemoryPropertyFlags properties) {
+		vk::PhysicalDeviceMemoryProperties memProperties = physicalDevice.getMemoryProperties();
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+			if ((suitableMemoryTypesBits & (1 << i))
+				&& ((memProperties.memoryTypes[i].propertyFlags & properties) == properties)) {
+				return i;
+			}
+		}
+
+		throw std::runtime_error("failed to find suitable memory type!");
+	}
+
+	const std::array<Vertex, 3> vertices = {
+		Vertex{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+		Vertex{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+		Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+	};
 }
 
 Application::Application()
@@ -385,6 +470,30 @@ Application::Application()
 	}
 
 	m_currentFrame = 0;
+
+	vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
+		.setSize(sizeof(vertices[0]) * std::size(vertices))
+		.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+		.setSharingMode(vk::SharingMode::eExclusive);
+
+	m_vertexBuffer = m_logicalDevice->createBufferUnique(bufferCreateInfo);
+
+	vk::MemoryRequirements vertexBufferMemoryRequirement = m_logicalDevice->getBufferMemoryRequirements(m_vertexBuffer.get());
+	uint32_t vertexBufferMemoryTypeIdx = findMemoryTypeIdx(m_physicalDevice,
+		vertexBufferMemoryRequirement.memoryTypeBits,
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+	vk::MemoryAllocateInfo vertexBufferMemoryAllocInfo = vk::MemoryAllocateInfo{}
+		.setAllocationSize(vertexBufferMemoryRequirement.size)
+		.setMemoryTypeIndex(vertexBufferMemoryTypeIdx);
+
+	m_vertexBufferMemory = m_logicalDevice->allocateMemoryUnique(vertexBufferMemoryAllocInfo);
+	m_logicalDevice->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
+	{
+		void* mappedVertexBufferMemory = m_logicalDevice->mapMemory(m_vertexBufferMemory.get(), 0, bufferCreateInfo.size);
+		std::memcpy(mappedVertexBufferMemory, std::data(vertices), bufferCreateInfo.size);
+		m_logicalDevice->unmapMemory(m_vertexBufferMemory.get());
+	}
 
 	CreateSwapchain();
 }
@@ -494,7 +603,10 @@ void Application::CreateSwapchain()
 		m_commandBuffers[i]->beginRenderPass(renderpassBeginInfo, vk::SubpassContents::eInline);
 
 		m_commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
-		m_commandBuffers[i]->draw(3, 1, 0, 0);
+
+		vk::DeviceSize offset = 0;
+		m_commandBuffers[i]->bindVertexBuffers(0,1, &(m_vertexBuffer.get()), &offset),
+		m_commandBuffers[i]->draw(std::size(vertices), 1, 0, 0);
 		m_commandBuffers[i]->endRenderPass();
 		m_commandBuffers[i]->end();
 	}

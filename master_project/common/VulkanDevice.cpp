@@ -111,7 +111,7 @@ namespace
 
 			if (staticData.optionalSurface != nullptr)
 			{
-				const bool presentSupport = staticData.device.getSurfaceSupportKHR(i, *staticData.optionalSurface) != VK_FALSE;
+				const bool presentSupport = staticData.device.getSurfaceSupportKHR(gsl::narrow<uint32_t>(i), *staticData.optionalSurface) != VK_FALSE;
 				if (presentSupport != requirement.canPresent)
 				{
 					if (requirement.canPresent)
