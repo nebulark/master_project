@@ -4,6 +4,28 @@
 
 namespace VulkanUtils
 {
+	template<typename Uint>
+	Uint AlignDown(Uint integer, Uint alignment)
+	{
+		static_assert(std::is_unsigned_v<Uint>);
+		const Uint alignMask = alignment - 1;
+
+		// sets everything to zero, defined by align mask
+		Uint result = integer & ~alignMask;
+	
+		assert(result <= integer && (result % alignment == 0));
+		return result;
+	}
+
+	template<typename Uint>
+	Uint AlignUp(Uint integer, Uint alignment)
+	{
+		static_assert(std::is_unsigned_v<Uint>);
+		Uint result = AlignDown(integer + alignment - 1, alignment);
+		assert(result >= integer && (result % alignment == 0));
+		return result;
+	}
+
 	bool SupportsValidationLayers(gsl::span<const char*> layerNames);
 
 	vk::SurfaceFormatKHR ChooseSurfaceFormat(

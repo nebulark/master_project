@@ -37,6 +37,8 @@ template<typename T, size_t SizeMax = 16>
 class SmallArraySet
 {
 public:
+	static_assert(std::is_trivial_v<T>, "Only supports Trivial Types");
+
 	using ValueType = T;
 	using IndexType = SelectInteger<SizeMax>;
 
