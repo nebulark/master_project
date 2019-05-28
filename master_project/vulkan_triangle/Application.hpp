@@ -45,7 +45,8 @@ private:
 	std::vector<VulkanDevice::QueueResult> m_deviceQueueInfo;
 	vk::Queue m_graphicsPresentQueue;
 	vk::Queue m_transferQueue;
-	          
+	
+	vk::Extent2D m_swapchainExtent;
 	vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderStatic> m_swapChain;
 
 	vk::UniqueHandle<vk::RenderPass, vk::DispatchLoaderStatic> m_renderpass;
@@ -54,6 +55,8 @@ private:
 	vk::UniqueShaderModule m_fragShaderModule;
 
 	vk::UniqueHandle<vk::PipelineLayout, vk::DispatchLoaderStatic> m_pipelineLayout;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout;
+
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline;
 
 	// one per swapchain image
@@ -68,6 +71,10 @@ private:
 	SimpleBuffer m_vertexBuffer_quad;
 	SimpleBuffer m_indexBuffer_quad;
 
+	std::vector<SimpleBuffer> m_uniformBuffers;
+	vk::UniqueDescriptorPool m_descriptorPool;
+	std::vector <vk::DescriptorSet> m_descriptorSets;
+
 	vk::UniqueCommandPool m_graphcisPresentQueueCommandPool;
 	vk::UniqueCommandPool m_transferQueueCommandPool;
 
@@ -81,4 +88,7 @@ private:
 	std::array< vk::UniqueSemaphore, maxFramesInFlight> m_renderFinishedSemaphores;
 	std::array< vk::UniqueFence, maxFramesInFlight> m_inFlightFences;
 	int m_currentFrame;
+	float m_rotationDeg;
+
+	std::chrono::time_point<std::chrono::steady_clock> m_lastTime;
 };
