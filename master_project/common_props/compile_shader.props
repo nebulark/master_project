@@ -11,8 +11,10 @@ call "$(ProjectDir)shaders\compile_shaders.bat"
 
 echo "copy shaders"
 
+for %%f in ($(TargetDir)*.spv) do del %%f
+
 for %%i in ($(ProjectDir)shaders\compiled\*.spv) do (
-copy %%~fi   $(TargetDir)%%~ni%%~xi
+copy /Y %%~fi   $(TargetDir)%%~ni%%~xi
 )
 
 </Command>
