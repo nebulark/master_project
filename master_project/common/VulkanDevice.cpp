@@ -165,6 +165,18 @@ std::optional<std::vector<QueueResult>> VulkanDevice::IsMatchingDevice(
 	CalcQueueScoresStaticData staticCalcData;
 	staticCalcData.flagImportance = FindFlagImportance(requirements.queueRequirements);
 	staticCalcData.queueProperties = device.getQueueFamilyProperties();
+
+	// The Vulkan Implementation is no required to specify vk::QueueFlagBits::eTransfer
+	// for queues that specify vk::QueueFlagBits::eCompute and/or vk::QueueFlagBits::eCompute
+	// We force it here, so it always behaves the same
+	for (vk::QueueFamilyProperties& qfProp : staticCalcData.queueProperties)
+	{
+		if ((vk::QueueFlagBits::eCompute | vk::QueueFlagBits::eCompute) & qfProp.queueFlags)
+		{
+			qfProp.queueFlags |= vk::QueueFlagBits::eTransfer;
+		}
+	}
+
 	staticCalcData.device = device;
 	staticCalcData.optionalSurface = optionalSurface;
 	const size_t numQueueFamilies = std::size(staticCalcData.queueProperties);
