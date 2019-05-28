@@ -173,6 +173,7 @@
   <ItemGroup>
     <ClInclude Include="Deleters.hpp" />
     <ClInclude Include="FileHelper.hpp" />
+    <ClInclude Include="SmallArraySet.hpp" />
     <ClInclude Include="VulkanDevice.hpp" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="VulkanDebug.hpp" />
@@ -187,6 +188,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SmallArraySet.cpp" />
     <ClCompile Include="VulkanDebug.cpp" />
     <ClCompile Include="VulkanDevice.cpp" />
     <ClCompile Include="VulkanUtils.cpp" />

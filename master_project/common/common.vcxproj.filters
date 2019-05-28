@@ -33,6 +33,9 @@
     <ClInclude Include="FileHelper.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SmallArraySet.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FileHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SmallArraySet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
