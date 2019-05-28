@@ -30,6 +30,22 @@ namespace
 		}
 	}
 
+	template<typename T>
+	vk::IndexType GetIndexBufferType()
+	{
+		if constexpr (std::is_same_v<uint16_t, T>) {
+			return vk::IndexType::eUint16;
+		}
+		else if constexpr (std::is_same_v<uint32_t, T>) {
+			return vk::IndexType::eUint32;
+		}
+		else
+		{
+			static_assert(false, "Type not supported");
+			return vk::IndexType::eUint16;
+		}
+	}
+
 	struct Vertex
 	{
 		glm::vec2 pos;
@@ -242,7 +258,8 @@ namespace
 			.setVertexBindingDescriptionCount(1)
 			.setPVertexBindingDescriptions(&vertexBindingDescription)
 			.setVertexAttributeDescriptionCount(gsl::narrow<uint32_t>(std::size(vertexAttributeDescription)))
-			.setPVertexAttributeDescriptions(std::data(vertexAttributeDescription));
+			.setPVertexAttributeDescriptions(std::data(vertexAttributeDescription))
+			;
 
 		// true enables breaking up strips (line, triangels) with special indices   when using drawing with indices 
 		constexpr bool primitiveRestartEnable = false;
@@ -415,26 +432,29 @@ namespace
 		return { std::move(bufferMemory), std::move(buffer), size };
 	}
 
+	vk::UniqueCommandBuffer allocSingleCommandBuffer(vk::Device logicaldevice, vk::CommandPool commandPool)
+	{
+		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo{}
+			.setCommandBufferCount(1)
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(commandPool);
+		
+		vk::CommandBuffer cb_temp;
+		logicaldevice.allocateCommandBuffers(&allocInfo, &cb_temp);
+
+		vk::PoolFree<vk::Device, vk::CommandPool, vk::DispatchLoaderStatic> deleter(
+			logicaldevice, allocInfo.commandPool, vk::DispatchLoaderStatic());
+
+		return vk::UniqueCommandBuffer(cb_temp, deleter);
+		
+	}
+
 	void copyBuffer(vk::Device logicaldevice, vk::CommandPool copyCommandPool, vk::Queue transferQueue,
 		vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) 
 	{
 
-		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo{}
-			.setCommandBufferCount(1)
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandPool(copyCommandPool);
-
-
-		vk::UniqueCommandBuffer copyCommandBuffer;
-		{
-			vk::CommandBuffer cb_temp;
-			logicaldevice.allocateCommandBuffers(&allocInfo, &cb_temp);
-
-			vk::PoolFree<vk::Device, vk::CommandPool, vk::DispatchLoaderStatic> deleter(
-				logicaldevice, allocInfo.commandPool, vk::DispatchLoaderStatic());
-
-			copyCommandBuffer = vk::UniqueCommandBuffer(cb_temp, deleter);
-		}
+		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(logicaldevice, copyCommandPool);
+		
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
 		copyCommandBuffer->begin(beginInfo);
@@ -450,11 +470,24 @@ namespace
 		transferQueue.waitIdle();
 	}
 
-	const std::array<Vertex, 3> vertices = {
+	const std::array<Vertex, 3> vertices_triangle = {
 		Vertex{{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
 		Vertex{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
 		Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 	};
+
+	const std::array<Vertex,4> vertices_quad = {
+	Vertex{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+	Vertex{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+	Vertex{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+	Vertex{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	};
+
+	const std::array<uint16_t,6> indices_quad = {
+		0, 1, 2, 2, 3, 0
+	};
+
+	constexpr bool drawQuad = true;
 }
 
 Application::Application()
@@ -476,7 +509,8 @@ Application::Application()
 	const char* enabledValidationLayers[] =
 	{
 		// Enable standard validation layer to find as much errors as possible!
-		"VK_LAYER_KHRONOS_validation"
+		"VK_LAYER_KHRONOS_validation",
+		"VK_LAYER_LUNARG_standard_validation"
 	};
 
 	std::vector<const char*> enabledExtensions = GetSdlExtensions(m_sdlWindow.get());
@@ -554,26 +588,95 @@ Application::Application()
 
 	m_currentFrame = 0;
 
-	uint32_t familyIndices[] = { m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[1].familyIndex };
-	const vk::DeviceSize verticesByteSize = sizeof(vertices[0]) * std::size(vertices);
-	m_vertexBuffer = createBuffer(
-		m_logicalDevice.get(), m_physicalDevice,
-		verticesByteSize,
-		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-		vk::MemoryPropertyFlagBits::eDeviceLocal,
-		familyIndices);
+	uint32_t familyIndices_present_and_transfer[] = { m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[1].familyIndex };
 
-	SimpleBuffer stagingBuffer = createBuffer(
-		m_logicalDevice.get(), m_physicalDevice, verticesByteSize, vk::BufferUsageFlagBits::eTransferSrc,
-		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+	
+	// Quad
+	if(drawQuad)
 	{
-		void* mappedVertexBufferMemory = m_logicalDevice->mapMemory(stagingBuffer.bufferMemory.get(), 0, stagingBuffer.size);
-		std::memcpy(mappedVertexBufferMemory, std::data(vertices), stagingBuffer.size);
-		m_logicalDevice->unmapMemory(stagingBuffer.bufferMemory.get());
+		const vk::DeviceSize indexBufferSize = sizeof(indices_quad[0]) * std::size(indices_quad);
+		const vk::DeviceSize vertexBufferSize = sizeof(vertices_quad[0]) * std::size(vertices_quad);
+		const int32_t stageBufferIdxBegin = 0;
+		const int32_t stageBufferIdxEnd = stageBufferIdxBegin + indexBufferSize;
+
+		const int32_t stageBufferVertexBegin = VulkanUtils::AlignUp<uint32_t>(indexBufferSize, alignof(Vertex));
+		const int32_t stageBufferVertexEnd = stageBufferVertexBegin + vertexBufferSize;
+
+		const vk::DeviceSize stageBufferSize = stageBufferVertexEnd;
+
+
+		SimpleBuffer stagingBuffer = createBuffer(
+			m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(stageBufferSize),
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		{
+			std::byte* mappedVertexBufferMemory = reinterpret_cast<std::byte*>(
+				m_logicalDevice->mapMemory(stagingBuffer.bufferMemory.get(), 0, stagingBuffer.size));
+
+			std::memcpy(mappedVertexBufferMemory + stageBufferIdxBegin, std::data(indices_quad), indexBufferSize);
+			std::memcpy(mappedVertexBufferMemory + stageBufferVertexBegin, std::data(vertices_quad), vertexBufferSize);
+			m_logicalDevice->unmapMemory(stagingBuffer.bufferMemory.get());
+		}
+
+		m_indexBuffer_quad = createBuffer(m_logicalDevice.get(), m_physicalDevice,
+			indexBufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			familyIndices_present_and_transfer);
+
+		m_vertexBuffer_quad = createBuffer(m_logicalDevice.get(), m_physicalDevice,
+			vertexBufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			familyIndices_present_and_transfer);
+
+		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get());
+
+		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+		copyCommandBuffer->begin(beginInfo);
+		{
+			vk::BufferCopy bufferCopy_stage_to_index(stageBufferIdxBegin, 0, indexBufferSize);
+			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_indexBuffer_quad.buffer.get(), bufferCopy_stage_to_index);
+		}
+		{
+			vk::BufferCopy bufferCopy_stage_to_vertex(stageBufferVertexBegin, 0, vertexBufferSize);
+			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_vertexBuffer_quad.buffer.get(), bufferCopy_stage_to_vertex);
+		}
+		copyCommandBuffer->end();
+
+		vk::SubmitInfo submitInfo = vk::SubmitInfo{}
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&(copyCommandBuffer.get()));
+
+		m_transferQueue.submit(submitInfo, vk::Fence{});
+		m_transferQueue.waitIdle();
+		
+	}
+	// Triangel !drawQuad
+	else
+	{
+		const vk::DeviceSize verticesByteSize = sizeof(vertices_triangle[0]) * std::size(vertices_triangle);
+		m_vertexBuffer = createBuffer(
+			m_logicalDevice.get(), m_physicalDevice,
+			verticesByteSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			familyIndices_present_and_transfer);
+
+		SimpleBuffer stagingBuffer = createBuffer(
+			m_logicalDevice.get(), m_physicalDevice, verticesByteSize, vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		{
+			void* mappedVertexBufferMemory = m_logicalDevice->mapMemory(stagingBuffer.bufferMemory.get(), 0, stagingBuffer.size);
+			std::memcpy(mappedVertexBufferMemory, std::data(vertices_triangle), stagingBuffer.size);
+			m_logicalDevice->unmapMemory(stagingBuffer.bufferMemory.get());
+		}
+
+		copyBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get(), m_transferQueue,
+			stagingBuffer.buffer.get(), m_vertexBuffer.buffer.get(), verticesByteSize);
 	}
 
-	copyBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get(), m_transferQueue,
-		stagingBuffer.buffer.get(), m_vertexBuffer.buffer.get(), verticesByteSize);
 
 	CreateSwapchain();
 }
@@ -685,8 +788,25 @@ void Application::CreateSwapchain()
 		m_commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 
 		vk::DeviceSize offset = 0;
-		m_commandBuffers[i]->bindVertexBuffers(0,1, &(m_vertexBuffer.buffer.get()), &offset),
-		m_commandBuffers[i]->draw(gsl::narrow< uint32_t>(std::size(vertices)), 1, 0, 0);
+		constexpr int firstBinding = 0;
+
+		if (drawQuad)
+		{
+			m_commandBuffers[i]->bindIndexBuffer(
+				m_indexBuffer_quad.buffer.get(), offset, GetIndexBufferType<decltype(indices_quad)::value_type>());
+
+			m_commandBuffers[i]->bindVertexBuffers(firstBinding, m_vertexBuffer_quad.buffer.get(), offset);
+			m_commandBuffers[i]->drawIndexed(
+				gsl::narrow<uint32_t>(
+					indices_quad.size()
+					), 1, 0, 0, 0);
+		}
+		else
+		{
+			m_commandBuffers[i]->bindVertexBuffers(firstBinding, m_vertexBuffer.buffer.get(), offset);
+			m_commandBuffers[i]->draw(3, 1, 0, 0);
+		}
+
 		m_commandBuffers[i]->endRenderPass();
 		m_commandBuffers[i]->end();
 	}

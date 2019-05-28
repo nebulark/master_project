@@ -65,6 +65,9 @@ private:
 	// shares memory with transfer and graphicsPresent queue
 	SimpleBuffer m_vertexBuffer;
 
+	SimpleBuffer m_vertexBuffer_quad;
+	SimpleBuffer m_indexBuffer_quad;
+
 	vk::UniqueCommandPool m_graphcisPresentQueueCommandPool;
 	vk::UniqueCommandPool m_transferQueueCommandPool;
 
