@@ -5,6 +5,12 @@
 #include "common/Deleters.hpp"
 #include "common/VulkanDevice.hpp"
 
+struct SimpleBuffer
+{
+	vk::UniqueDeviceMemory bufferMemory;
+	vk::UniqueBuffer buffer;
+	uint32_t size;
+};
 
 
 class Application
@@ -38,7 +44,8 @@ private:
 
 	std::vector<VulkanDevice::QueueResult> m_deviceQueueInfo;
 	vk::Queue m_graphicsPresentQueue;
-
+	vk::Queue m_transferQueue;
+	          
 	vk::UniqueHandle<vk::SwapchainKHR, vk::DispatchLoaderStatic> m_swapChain;
 
 	vk::UniqueHandle<vk::RenderPass, vk::DispatchLoaderStatic> m_renderpass;
@@ -55,10 +62,12 @@ private:
 	// one for each swapchain image view
 	std::vector<vk::UniqueFramebuffer> m_swapChainFramebuffers;
 
-	vk::UniqueDeviceMemory m_vertexBufferMemory;
-	vk::UniqueBuffer m_vertexBuffer;
+	// shares memory with transfer and graphicsPresent queue
+	SimpleBuffer m_vertexBuffer;
 
 	vk::UniqueCommandPool m_graphcisPresentQueueCommandPool;
+	vk::UniqueCommandPool m_transferQueueCommandPool;
+
 
 	// one for each framebuffer
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;

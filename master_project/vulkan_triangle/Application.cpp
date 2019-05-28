@@ -4,6 +4,7 @@
 #include "common/FileHelper.hpp"
 #include "common/VulkanDebug.hpp"
 #include "common/VulkanDevice.hpp"
+#include "common/SmallArraySet.hpp"
 
 namespace
 {
@@ -358,11 +359,6 @@ namespace
 		};
 	}
 
-
-
-
-
-
 	// suitableMemoryTypesBits - each bit corresponds to whether the device memory type with that index is suitable
 	// if bit 0 is set than the physicalDeviceMemoryProperties.memoryTypes[0] is allowed
 	uint32_t findMemoryTypeIdx(vk::PhysicalDevice physicalDevice, uint32_t suitableMemoryTypesBits, vk::MemoryPropertyFlags properties) {
@@ -376,6 +372,82 @@ namespace
 		}
 
 		throw std::runtime_error("failed to find suitable memory type!");
+	}
+
+	SimpleBuffer createBuffer(vk::Device logicalDevice, vk::PhysicalDevice physicalDevice,
+		uint32_t size, vk::BufferUsageFlags usage,
+		vk::MemoryPropertyFlags memoryProperties, gsl::span<const uint32_t> queueFamilyIndices = {})
+	{
+		vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
+			.setSize(size)
+			.setUsage(usage)
+			.setSharingMode(vk::SharingMode::eExclusive);
+
+		// needs to be declared outside as the reference needs to be valid until creation
+		SmallArraySet<uint32_t> uniqueQueuFamilies;
+		if (std::size(queueFamilyIndices) > 1)
+		{
+			uniqueQueuFamilies.add_unique(std::begin(queueFamilyIndices), std::end(queueFamilyIndices));
+			if (uniqueQueuFamilies.size() > 1)
+			{
+				bufferCreateInfo.setSharingMode(vk::SharingMode::eConcurrent)
+					.setQueueFamilyIndexCount(gsl::narrow<uint32_t>(std::size(uniqueQueuFamilies)))
+					.setPQueueFamilyIndices(std::data(uniqueQueuFamilies));
+			}
+		}
+
+		vk::UniqueDeviceMemory bufferMemory;
+		vk::UniqueBuffer buffer = logicalDevice.createBufferUnique(bufferCreateInfo);
+
+
+		vk::MemoryRequirements vertexBufferMemoryRequirement = logicalDevice.getBufferMemoryRequirements(buffer.get());
+		uint32_t vertexBufferMemoryTypeIdx = findMemoryTypeIdx(physicalDevice,
+			vertexBufferMemoryRequirement.memoryTypeBits,
+			memoryProperties);
+
+		vk::MemoryAllocateInfo vertexBufferMemoryAllocInfo = vk::MemoryAllocateInfo{}
+			.setAllocationSize(vertexBufferMemoryRequirement.size)
+			.setMemoryTypeIndex(vertexBufferMemoryTypeIdx);
+
+		bufferMemory = logicalDevice.allocateMemoryUnique(vertexBufferMemoryAllocInfo);
+		logicalDevice.bindBufferMemory(buffer.get(), bufferMemory.get(), 0);
+
+		return { std::move(bufferMemory), std::move(buffer), size };
+	}
+
+	void copyBuffer(vk::Device logicaldevice, vk::CommandPool copyCommandPool, vk::Queue transferQueue,
+		vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) 
+	{
+
+		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo{}
+			.setCommandBufferCount(1)
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(copyCommandPool);
+
+
+		vk::UniqueCommandBuffer copyCommandBuffer;
+		{
+			vk::CommandBuffer cb_temp;
+			logicaldevice.allocateCommandBuffers(&allocInfo, &cb_temp);
+
+			vk::PoolFree<vk::Device, vk::CommandPool, vk::DispatchLoaderStatic> deleter(
+				logicaldevice, allocInfo.commandPool, vk::DispatchLoaderStatic());
+
+			copyCommandBuffer = vk::UniqueCommandBuffer(cb_temp, deleter);
+		}
+		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+		copyCommandBuffer->begin(beginInfo);
+		vk::BufferCopy bufferCopy(0, 0, size);
+		copyCommandBuffer->copyBuffer(srcBuffer, dstBuffer, bufferCopy);
+		copyCommandBuffer->end();
+		
+		vk::SubmitInfo submitInfo = vk::SubmitInfo{}
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&(copyCommandBuffer.get()));
+
+		transferQueue.submit(submitInfo, vk::Fence{});
+		transferQueue.waitIdle();
 	}
 
 	const std::array<Vertex, 3> vertices = {
@@ -423,10 +495,14 @@ Application::Application()
 
 	const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-	VulkanDevice::QueueRequirement queueRequirement[1];
+	VulkanDevice::QueueRequirement queueRequirement[2];
 	queueRequirement[0].canPresent = true;
 	queueRequirement[0].mincount = 1;
 	queueRequirement[0].minFlags = vk::QueueFlagBits::eGraphics;
+
+	queueRequirement[1].canPresent = false;
+	queueRequirement[1].mincount = 1;
+	queueRequirement[1].minFlags = vk::QueueFlagBits::eTransfer;
 
 	VulkanDevice::DeviceRequirements deviceRequirements;
 	deviceRequirements.queueRequirements = queueRequirement;
@@ -454,13 +530,20 @@ Application::Application()
 
 	// command buffers
 
-	vk::CommandPoolCreateInfo commandPoolCreateInfo(
+	vk::CommandPoolCreateInfo commandPoolCreateInfo_graphcisPresentQueue(
 		vk::CommandPoolCreateFlags() /*there are possible flags*/,
 		m_deviceQueueInfo[0].familyIndex);
-	m_graphcisPresentQueueCommandPool = m_logicalDevice->createCommandPoolUnique(commandPoolCreateInfo);
+	m_graphcisPresentQueueCommandPool = m_logicalDevice->createCommandPoolUnique(commandPoolCreateInfo_graphcisPresentQueue);
 
-	m_graphicsPresentQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[0].familyIndex, 0);
+	vk::CommandPoolCreateInfo commandPoolCreateInfo_transferQueue(
+		vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+		m_deviceQueueInfo[1].familyIndex);
+	m_transferQueueCommandPool = m_logicalDevice->createCommandPoolUnique(commandPoolCreateInfo_transferQueue);
 
+
+
+	m_graphicsPresentQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[0].offset);
+	m_transferQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[1].familyIndex, m_deviceQueueInfo[1].offset);
 		
 	for (size_t i = 0; i < maxFramesInFlight; ++i)
 	{
@@ -471,29 +554,26 @@ Application::Application()
 
 	m_currentFrame = 0;
 
-	vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
-		.setSize(sizeof(vertices[0]) * std::size(vertices))
-		.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-		.setSharingMode(vk::SharingMode::eExclusive);
+	uint32_t familyIndices[] = { m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[1].familyIndex };
+	const vk::DeviceSize verticesByteSize = sizeof(vertices[0]) * std::size(vertices);
+	m_vertexBuffer = createBuffer(
+		m_logicalDevice.get(), m_physicalDevice,
+		verticesByteSize,
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+		vk::MemoryPropertyFlagBits::eDeviceLocal,
+		familyIndices);
 
-	m_vertexBuffer = m_logicalDevice->createBufferUnique(bufferCreateInfo);
-
-	vk::MemoryRequirements vertexBufferMemoryRequirement = m_logicalDevice->getBufferMemoryRequirements(m_vertexBuffer.get());
-	uint32_t vertexBufferMemoryTypeIdx = findMemoryTypeIdx(m_physicalDevice,
-		vertexBufferMemoryRequirement.memoryTypeBits,
+	SimpleBuffer stagingBuffer = createBuffer(
+		m_logicalDevice.get(), m_physicalDevice, verticesByteSize, vk::BufferUsageFlagBits::eTransferSrc,
 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-	vk::MemoryAllocateInfo vertexBufferMemoryAllocInfo = vk::MemoryAllocateInfo{}
-		.setAllocationSize(vertexBufferMemoryRequirement.size)
-		.setMemoryTypeIndex(vertexBufferMemoryTypeIdx);
-
-	m_vertexBufferMemory = m_logicalDevice->allocateMemoryUnique(vertexBufferMemoryAllocInfo);
-	m_logicalDevice->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
 	{
-		void* mappedVertexBufferMemory = m_logicalDevice->mapMemory(m_vertexBufferMemory.get(), 0, bufferCreateInfo.size);
-		std::memcpy(mappedVertexBufferMemory, std::data(vertices), bufferCreateInfo.size);
-		m_logicalDevice->unmapMemory(m_vertexBufferMemory.get());
+		void* mappedVertexBufferMemory = m_logicalDevice->mapMemory(stagingBuffer.bufferMemory.get(), 0, stagingBuffer.size);
+		std::memcpy(mappedVertexBufferMemory, std::data(vertices), stagingBuffer.size);
+		m_logicalDevice->unmapMemory(stagingBuffer.bufferMemory.get());
 	}
+
+	copyBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get(), m_transferQueue,
+		stagingBuffer.buffer.get(), m_vertexBuffer.buffer.get(), verticesByteSize);
 
 	CreateSwapchain();
 }
@@ -586,7 +666,7 @@ void Application::CreateSwapchain()
 	vk::CommandBufferAllocateInfo commandBufferAllocInfo(
 		m_graphcisPresentQueueCommandPool.get(), vk::CommandBufferLevel::ePrimary, gsl::narrow<uint32_t>(m_swapChainFramebuffers.size()));
 
-
+	
 	m_commandBuffers = m_logicalDevice->allocateCommandBuffersUnique(commandBufferAllocInfo);
 	for (size_t i = 0, count = m_commandBuffers.size(); i < count; ++i)
 	{
@@ -605,8 +685,8 @@ void Application::CreateSwapchain()
 		m_commandBuffers[i]->bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 
 		vk::DeviceSize offset = 0;
-		m_commandBuffers[i]->bindVertexBuffers(0,1, &(m_vertexBuffer.get()), &offset),
-		m_commandBuffers[i]->draw(std::size(vertices), 1, 0, 0);
+		m_commandBuffers[i]->bindVertexBuffers(0,1, &(m_vertexBuffer.buffer.get()), &offset),
+		m_commandBuffers[i]->draw(gsl::narrow< uint32_t>(std::size(vertices)), 1, 0, 0);
 		m_commandBuffers[i]->endRenderPass();
 		m_commandBuffers[i]->end();
 	}
@@ -654,7 +734,7 @@ bool Application::Update()
 		.setCommandBufferCount(1).setPCommandBuffers(&(m_commandBuffers[imageIndex].get()))
 		.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSemaphores[m_currentFrame].get()));
 
-	m_graphicsPresentQueue.submit(1, &submitInfo, m_inFlightFences[m_currentFrame].get());
+	m_graphicsPresentQueue.submit(submitInfo, m_inFlightFences[m_currentFrame].get());
 
 	vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR{}
 		.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSemaphores[m_currentFrame].get()))
