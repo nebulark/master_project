@@ -65,7 +65,7 @@
     <Import Project="..\common_props\include_vulkan_32.props" />
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
-    <Import Project="..\common_props\compile_shader.props" />
+    <Import Project="..\common_props\include_stb.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -75,7 +75,7 @@
     <Import Project="..\common_props\include_vulkan_32.props" />
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
-    <Import Project="..\common_props\compile_shader.props" />
+    <Import Project="..\common_props\include_stb.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -85,7 +85,7 @@
     <Import Project="..\common_props\include_vulkan_64.props" />
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
-    <Import Project="..\common_props\compile_shader.props" />
+    <Import Project="..\common_props\include_stb.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -95,7 +95,7 @@
     <Import Project="..\common_props\include_vulkan_64.props" />
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
-    <Import Project="..\common_props\compile_shader.props" />
+    <Import Project="..\common_props\include_stb.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -187,6 +187,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="stb_implementation.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
@@ -196,10 +202,6 @@
     <ProjectReference Include="..\common\common.vcxproj">
       <Project>{24d228d5-18a4-41cb-85d4-548379d0a99f}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\triangle.frag" />
-    <None Include="shaders\triangle.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

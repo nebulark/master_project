@@ -14,6 +14,7 @@
 #include "SDL_vulkan.h"
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
+#include "stb/stb_image.h"
 
 #pragma warning(push, 1)   
 #include <vulkan/vulkan.hpp>
