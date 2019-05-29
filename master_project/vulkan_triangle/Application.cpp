@@ -98,7 +98,7 @@ namespace
 
 	std::vector<const char*> GetSdlExtensions(SDL_Window* window)
 	{
-		unsigned int sdl_extension_count = -1;
+		unsigned int sdl_extension_count = 0;
 		{
 			const bool success = SDL_Vulkan_GetInstanceExtensions(window, &sdl_extension_count, nullptr);
 		}
@@ -132,7 +132,7 @@ namespace
 		VkDebugUtilsMessageSeverityFlagBitsEXT           messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT                  messageTypes,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
+		void* /*pUserData*/)
 	{
 		vk::DebugUtilsMessageSeverityFlagBitsEXT severity = static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(messageSeverity);
 		vk::DebugUtilsMessageTypeFlagsEXT types(messageTypes);
@@ -188,10 +188,10 @@ namespace
 
 	vk::UniqueShaderModule CreateShaderModule(gsl::span<const char> shaderCode, vk::Device logicalDevice)
 	{
-		assert(reinterpret_cast<std::uintptr_t>(std::data(shaderCode)) % alignof(uint32_t) == 0);
+		assert(reinterpret_cast<std::uintptr_t>(shaderCode.data()) % alignof(uint32_t) == 0);
 
 		vk::ShaderModuleCreateInfo createInfo(vk::ShaderModuleCreateFlags{},
-			std::size(shaderCode), reinterpret_cast<const uint32_t*>(std::data(shaderCode)));
+			static_cast<size_t>(shaderCode.size()), reinterpret_cast<const uint32_t*>(std::data(shaderCode)));
 
 		return logicalDevice.createShaderModuleUnique(createInfo);
 	}
@@ -616,11 +616,11 @@ Application::Application()
 	{
 		const vk::DeviceSize indexBufferSize = sizeof(indices_quad[0]) * std::size(indices_quad);
 		const vk::DeviceSize vertexBufferSize = sizeof(vertices_quad[0]) * std::size(vertices_quad);
-		const int32_t stageBufferIdxBegin = 0;
-		const int32_t stageBufferIdxEnd = stageBufferIdxBegin + indexBufferSize;
+		const uint32_t stageBufferIdxBegin = 0;
+		const uint32_t stageBufferIdxEnd = stageBufferIdxBegin + indexBufferSize;
 
-		const int32_t stageBufferVertexBegin = VulkanUtils::AlignUp<uint32_t>(indexBufferSize, alignof(Vertex));
-		const int32_t stageBufferVertexEnd = stageBufferVertexBegin + vertexBufferSize;
+		const uint32_t stageBufferVertexBegin = VulkanUtils::AlignUp<uint32_t>(indexBufferSize, alignof(Vertex));
+		const uint32_t stageBufferVertexEnd = stageBufferVertexBegin + vertexBufferSize;
 
 		const vk::DeviceSize stageBufferSize = stageBufferVertexEnd;
 
@@ -716,10 +716,14 @@ void Application::CreateSwapchain()
 	int currentWidth, currentHeight;
 	SDL_GetWindowSize(m_sdlWindow.get(), &currentWidth, &currentHeight);
 
+	assert(currentWidth >= 0 && currentHeight >= 0);
+
 	const vk::SurfaceCapabilitiesKHR capabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
 	m_swapchainExtent = VulkanUtils::ChooseExtent(
 		capabilities,
-		vk::Extent2D(currentWidth, currentHeight)
+		vk::Extent2D(
+			static_cast<uint32_t>(currentWidth),
+			static_cast<uint32_t>(currentHeight))
 	);
 
 	const uint32_t imageCount = VulkanUtils::ChooseImageCount(capabilities, capabilities.minImageCount + 1);
@@ -744,7 +748,7 @@ void Application::CreateSwapchain()
 	std::vector<vk::Image> swapchainImages = m_logicalDevice->getSwapchainImagesKHR(m_swapChain.get());
 
 	vk::DeviceSize uniformBufferSize = sizeof(UniformBufferObject);
-	for (int i = 0; i < swapchainImages.size(); ++i)
+	for (size_t i = 0; i < swapchainImages.size(); ++i)
 	{
 		m_uniformBuffers.push_back(
 			createBuffer(
@@ -918,8 +922,8 @@ bool Application::Update()
 
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 
-	m_logicalDevice->waitForFences(1, &(m_inFlightFences[m_currentFrame].get()), true, noTimeout);
-	m_logicalDevice->resetFences(1, &(m_inFlightFences[m_currentFrame].get()));
+	m_logicalDevice->waitForFences(m_inFlightFences[m_currentFrame].get(), true, noTimeout);
+	m_logicalDevice->resetFences(m_inFlightFences[m_currentFrame].get());
 
 	uint32_t imageIndex = m_logicalDevice->acquireNextImageKHR(
 		m_swapChain.get(), noTimeout, m_imageAvailableSemaphores[m_currentFrame].get(), vk::Fence()).value;

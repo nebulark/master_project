@@ -21,8 +21,8 @@ namespace VulkanDevice
 	struct QueueResult
 	{	
 		uint32_t familyIndex;
-		int32_t count;
-		int32_t offset;
+		uint32_t count;
+		uint32_t offset;
 
 		vk::QueueFlags flags;
 		bool canPresent;

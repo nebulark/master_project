@@ -11,6 +11,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level4</WarningLevel>
       <EnablePREfast>false</EnablePREfast>
+      <AdditionalOptions>/permissive-  /w44061 /w44062  /w44242 /w44254 /w44255 /w44263 /w44266 /w44289 /w44296 /w44388 /w44664 /w44623  /w44643 /w44654  /w45024  /w45025 /w45032 /w45038 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

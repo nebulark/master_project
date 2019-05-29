@@ -8,7 +8,7 @@
 #define PCH_H
 
 // add headers that you want to pre-compile here
-
+#pragma warning(push, 0)
 #include <vector>
 #include <optional>
 #include <array>
@@ -16,5 +16,6 @@
 
 #include "SDL.h"
 #include <vulkan/vulkan.hpp>
+#pragma warning(pop)
 
 #endif //PCH_H

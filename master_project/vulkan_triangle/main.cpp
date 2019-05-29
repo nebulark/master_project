@@ -6,8 +6,7 @@
 #include "Application.hpp"
 
 
-
-int main(int argc, char* argv[])
+int main(int /*argc*/, char* /*argv*/[])
 {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	{

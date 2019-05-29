@@ -15,6 +15,6 @@
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
 
-#pragma warning(push, 0)   
+#pragma warning(push, 1)   
 #include <vulkan/vulkan.hpp>
 #pragma warning(pop)

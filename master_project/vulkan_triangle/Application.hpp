@@ -82,12 +82,12 @@ private:
 	// one for each framebuffer
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
-	static constexpr int maxFramesInFlight = 2;
+	static constexpr size_t maxFramesInFlight = 2;
 
 	std::array< vk::UniqueSemaphore, maxFramesInFlight> m_imageAvailableSemaphores;
 	std::array< vk::UniqueSemaphore, maxFramesInFlight> m_renderFinishedSemaphores;
 	std::array< vk::UniqueFence, maxFramesInFlight> m_inFlightFences;
-	int m_currentFrame;
+	size_t m_currentFrame;
 	float m_rotationDeg;
 
 	std::chrono::time_point<std::chrono::steady_clock> m_lastTime;
