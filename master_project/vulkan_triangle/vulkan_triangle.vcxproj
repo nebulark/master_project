@@ -66,6 +66,7 @@
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
     <Import Project="..\common_props\include_stb.props" />
+    <Import Project="..\common_props\custom_build_tool_spirv.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -76,6 +77,7 @@
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
     <Import Project="..\common_props\include_stb.props" />
+    <Import Project="..\common_props\custom_build_tool_spirv.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -86,6 +88,7 @@
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
     <Import Project="..\common_props\include_stb.props" />
+    <Import Project="..\common_props\custom_build_tool_spirv.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -96,6 +99,7 @@
     <Import Project="..\common_props\include_vulkan.props" />
     <Import Project="..\common_props\include_gsl.props" />
     <Import Project="..\common_props\include_stb.props" />
+    <Import Project="..\common_props\custom_build_tool_spirv.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -202,6 +206,14 @@
     <ProjectReference Include="..\common\common.vcxproj">
       <Project>{24d228d5-18a4-41cb-85d4-548379d0a99f}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\resources\shaders\triangle.frag">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="..\resources\shaders\triangle.vert">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
