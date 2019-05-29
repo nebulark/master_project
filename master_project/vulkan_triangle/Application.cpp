@@ -432,6 +432,52 @@ namespace
 		return { std::move(bufferMemory), std::move(buffer), size };
 	}
 
+	SimpleImage CreateImage2D(vk::Device logicalDevice, vk::PhysicalDevice physicalDevice,
+		vk::Extent2D size, vk::ImageUsageFlags usage, vk::Format format, vk::ImageTiling tiling,
+		vk::MemoryPropertyFlags memoryProperties, gsl::span<const uint32_t> queueFamilyIndices = {})
+	{
+		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
+			.setImageType(vk::ImageType::e2D)
+			.setExtent(vk::Extent3D(size.width, size.height, 1))
+			.setMipLevels(1)
+			.setArrayLayers(1)
+			.setFormat(format)
+			.setTiling(tiling)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setUsage(usage)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setSharingMode(vk::SharingMode::eExclusive);
+
+		// needs to be declared outside as the reference needs to be valid until creation
+		SmallArraySet<uint32_t> uniqueQueueFamilies;
+		if (std::size(queueFamilyIndices) > 1)
+		{
+			uniqueQueueFamilies.add_unique(std::begin(queueFamilyIndices), std::end(queueFamilyIndices));
+			if (uniqueQueueFamilies.size() > 1)
+			{
+				imageCreateInfo.setSharingMode(vk::SharingMode::eConcurrent)
+					.setQueueFamilyIndexCount(gsl::narrow<uint32_t>(std::size(uniqueQueueFamilies)))
+					.setPQueueFamilyIndices(std::data(uniqueQueueFamilies));
+			}
+		}
+
+		SimpleImage result;
+		result.image = logicalDevice.createImageUnique(imageCreateInfo);
+
+		vk::MemoryRequirements imageMemRequirements = logicalDevice.getImageMemoryRequirements(result.image.get());
+		vk::MemoryAllocateInfo allocInfo(
+			imageMemRequirements.size,
+			findMemoryTypeIdx(physicalDevice, imageMemRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)
+		);
+
+		result.imageMemory = logicalDevice.allocateMemoryUnique(allocInfo);
+
+		logicalDevice.bindImageMemory(result.image.get(), result.imageMemory.get(), 0);
+
+		return result;
+	}
+
+
 	vk::UniqueCommandBuffer allocSingleCommandBuffer(vk::Device logicaldevice, vk::CommandPool commandPool)
 	{
 		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo{}
@@ -580,6 +626,8 @@ Application::Application()
 
 	m_pipelineLayout = CreatePipelineLayout(m_logicalDevice.get(), m_descriptorSetLayout.get());
 
+	const uint32_t familyIndices_present_and_transfer[] = { m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[1].familyIndex };
+
 
 	// command buffers
 
@@ -593,7 +641,102 @@ Application::Application()
 		m_deviceQueueInfo[1].familyIndex);
 	m_transferQueueCommandPool = m_logicalDevice->createCommandPoolUnique(commandPoolCreateInfo_transferQueue);
 
+	{
+		int texWidth, texheight, texChannels;
+		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
+		vk::DeviceSize imageSize = texWidth * texheight * 4;
+		assert(pixels);
 
+		SimpleBuffer imageStagingBuffer = createBuffer(m_logicalDevice.get(), m_physicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
+		{
+			void* bufferPtr = m_logicalDevice->mapMemory(imageStagingBuffer.bufferMemory.get(), 0, imageSize);
+			std::memcpy(bufferPtr, pixels, static_cast<size_t>(imageSize));
+			m_logicalDevice->unmapMemory(imageStagingBuffer.bufferMemory.get());
+		}
+
+		stbi_image_free(pixels);
+
+		SimpleImage m_textureImage = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, vk::Extent2D(texWidth, texheight),
+			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Unorm,
+			vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal, familyIndices_present_and_transfer);
+
+		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get());
+
+		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+		copyCommandBuffer->begin(beginInfo);
+		
+		//---------------
+		{
+			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setImage(m_textureImage.image.get())
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1))
+				.setSrcAccessMask(vk::AccessFlags())
+				.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
+
+			copyCommandBuffer->pipelineBarrier(
+				vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer,
+				vk::DependencyFlags(), {}, {}, imageMemoryBarier);
+		}
+
+		//-----------------------
+		vk::BufferImageCopy bufferImageCopy = vk::BufferImageCopy()
+			.setBufferOffset(0)
+			.setBufferRowLength(0)
+			.setBufferImageHeight(0)
+			.setImageSubresource(vk::ImageSubresourceLayers()
+				.setAspectMask(vk::ImageAspectFlagBits::eColor)
+				.setMipLevel(0)
+				.setBaseArrayLayer(0)
+				.setLayerCount(1))
+			.setImageOffset(vk::Offset3D(0, 0, 0))
+			.setImageExtent(vk::Extent3D(texWidth, texheight, 1));
+
+		copyCommandBuffer->copyBufferToImage(imageStagingBuffer.buffer.get(), m_textureImage.image.get(),
+			vk::ImageLayout::eTransferDstOptimal, bufferImageCopy);
+
+		//-------------------------------------
+		{
+			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setImage(m_textureImage.image.get())
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1))
+				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+
+			copyCommandBuffer->pipelineBarrier(
+				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
+				vk::DependencyFlags(), {}, {}, imageMemoryBarier);
+		}
+
+		copyCommandBuffer->end();
+		vk::SubmitInfo submitInfo = vk::SubmitInfo()
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&(copyCommandBuffer.get()))
+			;
+
+		m_transferQueue.submit(submitInfo, vk::Fence());
+		m_transferQueue.waitIdle();
+
+	
+	}
 
 	m_graphicsPresentQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[0].offset);
 	m_transferQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[1].familyIndex, m_deviceQueueInfo[1].offset);
@@ -607,7 +750,6 @@ Application::Application()
 
 	m_currentFrame = 0;
 
-	uint32_t familyIndices_present_and_transfer[] = { m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[1].familyIndex };
 
 
 	

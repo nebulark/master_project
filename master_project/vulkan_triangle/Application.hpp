@@ -12,6 +12,12 @@ struct SimpleBuffer
 	uint32_t size;
 };
 
+struct SimpleImage
+{
+	vk::UniqueDeviceMemory imageMemory;
+	vk::UniqueImage image;
+};
+
 
 class Application
 {

@@ -50,4 +50,9 @@
       <Filter>Shaders</Filter>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\resources\images\texture.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>
