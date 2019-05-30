@@ -95,7 +95,7 @@ namespace
 	}
 
 	vk::UniqueImageView CreateSimpleImageView2D(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags,
-		vk::Device logicalDevice)
+		uint32_t mipMapLevels, vk::Device logicalDevice)
 	{
 		const vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo()
 			.setImage(image)
@@ -109,7 +109,7 @@ namespace
 			.setSubresourceRange(vk::ImageSubresourceRange()
 				.setAspectMask(aspectFlags)
 				.setBaseMipLevel(0)
-				.setLevelCount(1)
+				.setLevelCount(mipMapLevels)
 				.setBaseArrayLayer(0)
 				.setLayerCount(1))
 			;
@@ -168,13 +168,13 @@ namespace
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
 
-	std::array<vk::AttachmentDescription, 2> attackments = { colorAttachment, depthAttachment };
+		std::array<vk::AttachmentDescription, 2> attackments = { colorAttachment, depthAttachment };
 
-	vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
-		.setAttachmentCount(static_cast<uint32_t>(attackments.size())).setPAttachments(attackments.data())
-		.setSubpassCount(1).setPSubpasses(&subpassDescription)
-		.setDependencyCount(1).setPDependencies(&subpassDependency)
-		;
+		vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
+			.setAttachmentCount(static_cast<uint32_t>(attackments.size())).setPAttachments(attackments.data())
+			.setSubpassCount(1).setPSubpasses(&subpassDescription)
+			.setDependencyCount(1).setPDependencies(&subpassDependency)
+			;
 
 		return logicalDevice.createRenderPassUnique(renderPassCreateInfo);
 	}
@@ -384,12 +384,12 @@ namespace
 
 	SimpleImage CreateImage2D(vk::Device logicalDevice, vk::PhysicalDevice physicalDevice,
 		vk::Extent2D size, vk::ImageUsageFlags usage, vk::Format format, vk::ImageTiling tiling,
-		vk::MemoryPropertyFlags memoryProperties, gsl::span<const uint32_t> queueFamilyIndices = {})
+		vk::MemoryPropertyFlags memoryProperties, uint32_t mipMapLevels, gsl::span<const uint32_t> queueFamilyIndices = {})
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo()
 			.setImageType(vk::ImageType::e2D)
 			.setExtent(vk::Extent3D(size.width, size.height, 1))
-			.setMipLevels(1)
+			.setMipLevels(mipMapLevels)
 			.setArrayLayers(1)
 			.setFormat(format)
 			.setTiling(tiling)
@@ -584,8 +584,8 @@ Application::Application()
 					1.f - attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 1],
 				};
 
-				const uint32_t uniqueIndex = gsl::narrow<uint32_t>( m_modelVertices.size());
-				const auto [iter, isUnique] = uniqueVertices.try_emplace(vertex,uniqueIndex);
+				const uint32_t uniqueIndex = gsl::narrow<uint32_t>(m_modelVertices.size());
+				const auto [iter, isUnique] = uniqueVertices.try_emplace(vertex, uniqueIndex);
 				if (isUnique)
 				{
 					m_modelIndices.push_back(uniqueIndex);
@@ -599,7 +599,7 @@ Application::Application()
 			}
 		}
 
-		
+
 	}
 
 	vk::DescriptorSetLayoutBinding uboLayoutBinding = vk::DescriptorSetLayoutBinding{}
@@ -642,11 +642,11 @@ Application::Application()
 	m_transferQueueCommandPool = m_logicalDevice->createCommandPoolUnique(commandPoolCreateInfo_transferQueue);
 
 	{
-		int texWidth, texheight, texChannels;
-		stbi_uc* pixels = stbi_load("chalet.jpg", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
-		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texheight * 4;
+		int texWidth, texHeight, texChannels;
+		stbi_uc* pixels = stbi_load("chalet.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texHeight * 4;
 		assert(pixels);
-
+		m_textureMipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 		SimpleBuffer imageStagingBuffer = createBuffer(m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(imageSize), vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
 		{
@@ -657,11 +657,13 @@ Application::Application()
 
 		stbi_image_free(pixels);
 
-		m_textureImage = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, vk::Extent2D(texWidth, texheight),
-			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Unorm,
-			vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal, familyIndices_present_and_transfer);
+		m_textureImage = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, vk::Extent2D(texWidth, texHeight),
+			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eSampled,
+			vk::Format::eR8G8B8A8Unorm,
+			vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal, m_textureMipLevels,
+			familyIndices_present_and_transfer);
 
-		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(), m_transferQueueCommandPool.get());
+		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(), m_graphcisPresentQueueCommandPool.get());
 
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 		copyCommandBuffer->begin(beginInfo);
@@ -677,7 +679,7 @@ Application::Application()
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
 					.setBaseMipLevel(0)
-					.setLevelCount(1)
+					.setLevelCount(m_textureMipLevels)
 					.setBaseArrayLayer(0)
 					.setLayerCount(1))
 				.setSrcAccessMask(vk::AccessFlags())
@@ -699,32 +701,88 @@ Application::Application()
 				.setBaseArrayLayer(0)
 				.setLayerCount(1))
 			.setImageOffset(vk::Offset3D(0, 0, 0))
-			.setImageExtent(vk::Extent3D(texWidth, texheight, 1));
+			.setImageExtent(vk::Extent3D(texWidth, texHeight, 1));
 
 		copyCommandBuffer->copyBufferToImage(imageStagingBuffer.buffer.get(), m_textureImage.image.get(),
 			vk::ImageLayout::eTransferDstOptimal, bufferImageCopy);
 
-		//-------------------------------------
+		//generate mip maps
+
 		{
-			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
-				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+			const vk::ImageMemoryBarrier blitBarrierPrototype = vk::ImageMemoryBarrier()
+				.setImage(m_textureImage.image.get())
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_textureImage.image.get())
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
 					.setBaseArrayLayer(0)
-					.setLayerCount(1))
-				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-				.setDstAccessMask(vk::AccessFlags());
+					.setLayerCount(1)
+					.setLevelCount(1))
+				;
 
-			copyCommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe,
-				vk::DependencyFlags(), {}, {}, imageMemoryBarier);
+			int32_t mipWidth = texWidth;
+			int32_t mipHeight = texHeight;
+			for (uint32_t mipLevel = 1; mipLevel < m_textureMipLevels; ++mipLevel)
+			{
+				vk::ImageMemoryBarrier preBlitSourceImageBarrier = vk::ImageMemoryBarrier(blitBarrierPrototype)
+					.setSubresourceRange(vk::ImageSubresourceRange(blitBarrierPrototype.subresourceRange)
+						.setBaseMipLevel(mipLevel - 1))
+					.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+					.setNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setDstAccessMask(vk::AccessFlagBits::eTransferRead)
+					;
+
+				copyCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer,
+					vk::DependencyFlags(), {}, {}, preBlitSourceImageBarrier);
+
+				int32_t halfMipWidth = std::max(mipWidth / 2, 1);
+				int32_t halfMipHeight = std::max(mipHeight / 2, 1);
+				vk::ImageBlit imageBlit = vk::ImageBlit()
+					.setSrcOffsets({ vk::Offset3D(0,0,0), vk::Offset3D(mipWidth,mipHeight,1) })
+					.setSrcSubresource(vk::ImageSubresourceLayers()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setMipLevel(mipLevel - 1)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1))
+					.setDstOffsets({ vk::Offset3D(0,0,0), vk::Offset3D(halfMipWidth,halfMipHeight,1) })
+					.setDstSubresource(vk::ImageSubresourceLayers()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setMipLevel(mipLevel)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1))
+					;
+				copyCommandBuffer->blitImage(m_textureImage.image.get(), vk::ImageLayout::eTransferSrcOptimal,
+					m_textureImage.image.get(), vk::ImageLayout::eTransferDstOptimal, imageBlit, vk::Filter::eLinear);
+
+				vk::ImageMemoryBarrier afterBlitSourceImageBarrier = vk::ImageMemoryBarrier(blitBarrierPrototype)
+					.setSubresourceRange(vk::ImageSubresourceRange(blitBarrierPrototype.subresourceRange)
+						.setBaseMipLevel(mipLevel - 1))
+					.setOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+					.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+					.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+					.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+					;
+				copyCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
+					vk::DependencyFlags(), {}, {}, afterBlitSourceImageBarrier);
+
+				mipWidth = halfMipWidth;
+				mipHeight = halfMipHeight;
+			}
+
+			vk::ImageMemoryBarrier lastBlitSourceImageBarrier = vk::ImageMemoryBarrier(blitBarrierPrototype)
+				.setSubresourceRange(vk::ImageSubresourceRange(blitBarrierPrototype.subresourceRange)
+					.setBaseMipLevel(m_textureMipLevels - 1))
+				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+				;
+
+			copyCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
+				vk::DependencyFlags(), {}, {}, lastBlitSourceImageBarrier);
 		}
+
 
 		copyCommandBuffer->end();
 		vk::SubmitInfo submitInfo = vk::SubmitInfo()
@@ -732,8 +790,8 @@ Application::Application()
 			.setPCommandBuffers(&(copyCommandBuffer.get()))
 			;
 
-		m_transferQueue.submit(submitInfo, vk::Fence());
-		m_transferQueue.waitIdle();
+		m_graphicsPresentQueue.submit(submitInfo, vk::Fence());
+		m_graphicsPresentQueue.waitIdle();
 
 		vk::ImageViewCreateInfo viewInfo = vk::ImageViewCreateInfo()
 			.setImage(m_textureImage.image.get())
@@ -742,7 +800,7 @@ Application::Application()
 			.setSubresourceRange(vk::ImageSubresourceRange()
 				.setAspectMask(vk::ImageAspectFlagBits::eColor)
 				.setBaseMipLevel(0)
-				.setLevelCount(1)
+				.setLevelCount(m_textureMipLevels)
 				.setBaseArrayLayer(0)
 				.setLayerCount(1))
 			;
@@ -763,7 +821,7 @@ Application::Application()
 			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
 			.setMipLodBias(0.f)
 			.setMinLod(0.f)
-			.setMaxLod(0.f)
+			.setMaxLod(static_cast<float>(m_textureMipLevels))
 			;
 
 		m_textureSampler = m_logicalDevice->createSamplerUnique(samplerCreateInfo);
@@ -927,18 +985,18 @@ void Application::CreateSwapchain()
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 			));
 	}
-	
+
 	// depth Buffer
-		vk::Format preferedDepthFormats[] = { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint };
-		vk::Format depthFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
-			vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+	vk::Format preferedDepthFormats[] = { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint };
+	vk::Format depthFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
+		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 	{
 		m_depthBuffer = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, m_swapchainExtent,
 			vk::ImageUsageFlagBits::eDepthStencilAttachment,
-			depthFormat, vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal);
+			depthFormat, vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal, 1);
 		m_depthBufferView = CreateSimpleImageView2D(m_depthBuffer.image.get(), depthFormat, vk::ImageAspectFlagBits::eDepth,
-			m_logicalDevice.get());
-		vk::UniqueCommandBuffer transitionLayoutCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(),m_graphcisPresentQueueCommandPool.get());
+			1, m_logicalDevice.get());
+		vk::UniqueCommandBuffer transitionLayoutCommandBuffer = allocSingleCommandBuffer(m_logicalDevice.get(), m_graphcisPresentQueueCommandPool.get());
 
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 		transitionLayoutCommandBuffer->begin(beginInfo);
@@ -975,7 +1033,7 @@ void Application::CreateSwapchain()
 				.setCommandBufferCount(1).setPCommandBuffers(&(transitionLayoutCommandBuffer.get()))
 				;
 
-			m_graphicsPresentQueue.submit(submitInfo,vk::Fence());
+			m_graphicsPresentQueue.submit(submitInfo, vk::Fence());
 			m_graphicsPresentQueue.waitIdle();
 		}
 	}
@@ -1063,7 +1121,7 @@ void Application::CreateSwapchain()
 	for (const vk::Image& image : swapchainImages)
 	{
 		m_swapchainImageViews.push_back(CreateSimpleImageView2D(image, swapchainFormat.format, vk::ImageAspectFlagBits::eColor,
-			m_logicalDevice.get()));
+			1, m_logicalDevice.get()));
 	}
 
 	m_swapChainFramebuffers.reserve(m_swapchainImageViews.size());

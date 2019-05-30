@@ -82,6 +82,8 @@ private:
 
 	SimpleBuffer m_vertexBuffer_model;
 	SimpleBuffer m_indexBuffer_model;
+	uint32_t m_textureMipLevels;
+
 	SimpleImage m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueSampler m_textureSampler;
