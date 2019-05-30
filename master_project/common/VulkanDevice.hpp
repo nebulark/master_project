@@ -15,6 +15,7 @@ namespace VulkanDevice
 	struct DeviceRequirements
 	{
 		gsl::span<const char*> requiredExtensions;
+		vk::PhysicalDeviceFeatures requiredFeatures;
 		gsl::span<QueueRequirement> queueRequirements;
 	};
 
@@ -55,6 +56,5 @@ namespace VulkanDevice
 		vk::PhysicalDevice device,
 		gsl::span<const QueueResult> queues,
 		gsl::span<const char*> enabledValidationLayers,
-		gsl::span<const char*> enabledExtensions);
-
+		gsl::span<const char*> enabledExtensions, vk::PhysicalDeviceFeatures deviceFeatures);
 }

@@ -76,6 +76,9 @@ private:
 
 	SimpleBuffer m_vertexBuffer_quad;
 	SimpleBuffer m_indexBuffer_quad;
+	SimpleImage m_textureImage;
+	vk::UniqueImageView m_textureImageView;
+	vk::UniqueSampler m_textureSampler;
 
 	std::vector<SimpleBuffer> m_uniformBuffers;
 	vk::UniqueDescriptorPool m_descriptorPool;

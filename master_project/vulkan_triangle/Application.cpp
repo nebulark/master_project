@@ -50,6 +50,7 @@ namespace
 	{
 		glm::vec2 pos;
 		glm::vec3 color;
+		glm::vec2 texCoord;
 
 		// maybe move this out, 
 		static vk::VertexInputBindingDescription GetBindingDescription()
@@ -62,8 +63,8 @@ namespace
 			return bindingDescription;
 		}
 
-		static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDescriptions() {
-			std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = {};
+		static std::array<vk::VertexInputAttributeDescription, 3> GetAttributeDescriptions() {
+			std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions = {};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0; // needs to match shader
@@ -75,6 +76,10 @@ namespace
 			attributeDescriptions[1].format = GlmTypeToVkFormat<decltype(Vertex::color)>();
 			attributeDescriptions[1].offset = offsetof(Vertex, color);
 
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2; // needs to match shader
+			attributeDescriptions[2].format = GlmTypeToVkFormat<decltype(Vertex::texCoord)>();
+			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 			return attributeDescriptions;
 		}
 	};
@@ -251,7 +256,7 @@ namespace
 	{
 		// fill out when we use vertex data
 
-		std::array<vk::VertexInputAttributeDescription,2> vertexAttributeDescription = Vertex::GetAttributeDescriptions();
+		std::array<vk::VertexInputAttributeDescription, 3> vertexAttributeDescription = Vertex::GetAttributeDescriptions();
 		vk::VertexInputBindingDescription vertexBindingDescription = Vertex::GetBindingDescription();
 
 		vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo = vk::PipelineVertexInputStateCreateInfo{}
@@ -467,7 +472,7 @@ namespace
 		vk::MemoryRequirements imageMemRequirements = logicalDevice.getImageMemoryRequirements(result.image.get());
 		vk::MemoryAllocateInfo allocInfo(
 			imageMemRequirements.size,
-			findMemoryTypeIdx(physicalDevice, imageMemRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)
+			findMemoryTypeIdx(physicalDevice, imageMemRequirements.memoryTypeBits, memoryProperties)
 		);
 
 		result.imageMemory = logicalDevice.allocateMemoryUnique(allocInfo);
@@ -484,7 +489,7 @@ namespace
 			.setCommandBufferCount(1)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandPool(commandPool);
-		
+
 		vk::CommandBuffer cb_temp;
 		logicaldevice.allocateCommandBuffers(&allocInfo, &cb_temp);
 
@@ -492,22 +497,22 @@ namespace
 			logicaldevice, allocInfo.commandPool, vk::DispatchLoaderStatic());
 
 		return vk::UniqueCommandBuffer(cb_temp, deleter);
-		
+
 	}
 
 	void copyBuffer(vk::Device logicaldevice, vk::CommandPool copyCommandPool, vk::Queue transferQueue,
-		vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size) 
+		vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
 	{
 
 		vk::UniqueCommandBuffer copyCommandBuffer = allocSingleCommandBuffer(logicaldevice, copyCommandPool);
-		
+
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
 		copyCommandBuffer->begin(beginInfo);
 		vk::BufferCopy bufferCopy(0, 0, size);
 		copyCommandBuffer->copyBuffer(srcBuffer, dstBuffer, bufferCopy);
 		copyCommandBuffer->end();
-		
+
 		vk::SubmitInfo submitInfo = vk::SubmitInfo{}
 			.setCommandBufferCount(1)
 			.setPCommandBuffers(&(copyCommandBuffer.get()));
@@ -522,14 +527,14 @@ namespace
 		Vertex{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
 	};
 
-	const std::array<Vertex,4> vertices_quad = {
-	Vertex{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	Vertex{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-	Vertex{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-	Vertex{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+	const std::array<Vertex, 4> vertices_quad = {
+Vertex{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+Vertex{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+Vertex{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+Vertex{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
 	};
 
-	const std::array<uint16_t,6> indices_quad = {
+	const std::array<uint16_t, 6> indices_quad = {
 		0, 1, 2, 2, 3, 0
 	};
 
@@ -543,17 +548,17 @@ namespace
 }
 
 Application::Application()
-{	
+{
 	constexpr int width = 1920 / 2;
 	constexpr int height = 1080 / 2;
 
-	m_sdlWindow = WindowPtr {
+	m_sdlWindow = WindowPtr{
 		SDL_CreateWindow(
-		"An SDL2 window",                
-		SDL_WINDOWPOS_UNDEFINED,          
-		SDL_WINDOWPOS_UNDEFINED,           
-		width,                             
-		height,                               
+		"An SDL2 window",
+		SDL_WINDOWPOS_UNDEFINED,
+		SDL_WINDOWPOS_UNDEFINED,
+		width,
+		height,
 		SDL_WindowFlags::SDL_WINDOW_VULKAN | SDL_WindowFlags::SDL_WINDOW_RESIZABLE
 		)
 	};
@@ -593,6 +598,8 @@ Application::Application()
 	VulkanDevice::DeviceRequirements deviceRequirements;
 	deviceRequirements.queueRequirements = queueRequirement;
 	deviceRequirements.requiredExtensions = deviceExtensions;
+	deviceRequirements.requiredFeatures = vk::PhysicalDeviceFeatures()
+		.setSamplerAnisotropy(true);
 
 	std::optional<VulkanDevice::PickDeviceResult> maybeDeviceResult =
 		VulkanDevice::PickPhysicalDevice(m_vkInstance.get(), deviceRequirements, &(m_surface.get()));
@@ -603,7 +610,10 @@ Application::Application()
 
 
 	m_logicalDevice = VulkanDevice::CreateLogicalDevice(
-		m_physicalDevice, m_deviceQueueInfo, enabledValidationLayers, deviceExtensions);
+		m_physicalDevice, m_deviceQueueInfo, enabledValidationLayers, deviceExtensions, deviceRequirements.requiredFeatures);
+
+	m_graphicsPresentQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[0].offset);
+	m_transferQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[1].familyIndex, m_deviceQueueInfo[1].offset);
 
 	std::vector<char> vertShaderCode = FileHelper::LoadFileContent("triangle.vert.spv");
 	std::vector<char> fragShaderCode = FileHelper::LoadFileContent("triangle.frag.spv");
@@ -618,9 +628,18 @@ Application::Application()
 		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
 		;
 
+	vk::DescriptorSetLayoutBinding samplerLayoutBinding = vk::DescriptorSetLayoutBinding{}
+		.setBinding(1) // matches Shader code
+		.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+		.setDescriptorCount(1)
+		.setStageFlags(vk::ShaderStageFlagBits::eFragment)
+		;
+
+	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+
 	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = vk::DescriptorSetLayoutCreateInfo{}
-		.setBindingCount(1)
-		.setPBindings(&uboLayoutBinding);
+		.setBindingCount(static_cast<uint32_t>(bindings.size()))
+		.setPBindings(bindings.data());
 
 	m_descriptorSetLayout = m_logicalDevice->createDescriptorSetLayoutUnique(descriptorSetLayoutCreateInfo);
 
@@ -644,10 +663,10 @@ Application::Application()
 	{
 		int texWidth, texheight, texChannels;
 		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
-		vk::DeviceSize imageSize = texWidth * texheight * 4;
+		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texheight * 4;
 		assert(pixels);
 
-		SimpleBuffer imageStagingBuffer = createBuffer(m_logicalDevice.get(), m_physicalDevice, imageSize, vk::BufferUsageFlagBits::eTransferSrc,
+		SimpleBuffer imageStagingBuffer = createBuffer(m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(imageSize), vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible);
 		{
 			void* bufferPtr = m_logicalDevice->mapMemory(imageStagingBuffer.bufferMemory.get(), 0, imageSize);
@@ -657,7 +676,7 @@ Application::Application()
 
 		stbi_image_free(pixels);
 
-		SimpleImage m_textureImage = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, vk::Extent2D(texWidth, texheight),
+		m_textureImage = CreateImage2D(m_logicalDevice.get(), m_physicalDevice, vk::Extent2D(texWidth, texheight),
 			vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled, vk::Format::eR8G8B8A8Unorm,
 			vk::ImageTiling::eOptimal, vk::MemoryPropertyFlagBits::eDeviceLocal, familyIndices_present_and_transfer);
 
@@ -665,7 +684,7 @@ Application::Application()
 
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 		copyCommandBuffer->begin(beginInfo);
-		
+
 		//---------------
 		{
 			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
@@ -707,8 +726,8 @@ Application::Application()
 		//-------------------------------------
 		{
 			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
-				.setOldLayout(vk::ImageLayout::eUndefined)
-				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_textureImage.image.get())
@@ -719,10 +738,10 @@ Application::Application()
 					.setBaseArrayLayer(0)
 					.setLayerCount(1))
 				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-				.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
+				.setDstAccessMask(vk::AccessFlags());
 
 			copyCommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,
+				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe,
 				vk::DependencyFlags(), {}, {}, imageMemoryBarier);
 		}
 
@@ -735,12 +754,41 @@ Application::Application()
 		m_transferQueue.submit(submitInfo, vk::Fence());
 		m_transferQueue.waitIdle();
 
-	
+		vk::ImageViewCreateInfo viewInfo = vk::ImageViewCreateInfo()
+			.setImage(m_textureImage.image.get())
+			.setViewType(vk::ImageViewType::e2D)
+			.setFormat(vk::Format::eR8G8B8A8Unorm)
+			.setSubresourceRange(vk::ImageSubresourceRange()
+				.setAspectMask(vk::ImageAspectFlagBits::eColor)
+				.setBaseMipLevel(0)
+				.setLevelCount(1)
+				.setBaseArrayLayer(0)
+				.setLayerCount(1))
+			;
+
+		m_textureImageView = m_logicalDevice->createImageViewUnique(viewInfo);
+		vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
+			.setMagFilter(vk::Filter::eLinear)
+			.setMinFilter(vk::Filter::eLinear)
+			.setAddressModeU(vk::SamplerAddressMode::eRepeat)
+			.setAddressModeV(vk::SamplerAddressMode::eRepeat)
+			.setAddressModeW(vk::SamplerAddressMode::eRepeat)
+			.setAnisotropyEnable(true)
+			.setMaxAnisotropy(16)
+			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+			.setUnnormalizedCoordinates(false)
+			.setCompareEnable(false)
+			.setCompareOp(vk::CompareOp::eAlways)
+			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
+			.setMipLodBias(0.f)
+			.setMinLod(0.f)
+			.setMaxLod(0.f)
+			;
+
+		m_textureSampler = m_logicalDevice->createSamplerUnique(samplerCreateInfo);
 	}
 
-	m_graphicsPresentQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[0].familyIndex, m_deviceQueueInfo[0].offset);
-	m_transferQueue = m_logicalDevice->getQueue(m_deviceQueueInfo[1].familyIndex, m_deviceQueueInfo[1].offset);
-		
+
 	for (size_t i = 0; i < maxFramesInFlight; ++i)
 	{
 		m_imageAvailableSemaphores[i] = m_logicalDevice->createSemaphoreUnique(vk::SemaphoreCreateInfo());
@@ -752,9 +800,9 @@ Application::Application()
 
 
 
-	
+
 	// Quad
-	if(drawQuad)
+	if (drawQuad)
 	{
 		const vk::DeviceSize indexBufferSize = sizeof(indices_quad[0]) * std::size(indices_quad);
 		const vk::DeviceSize vertexBufferSize = sizeof(vertices_quad[0]) * std::size(vertices_quad);
@@ -812,7 +860,7 @@ Application::Application()
 
 		m_transferQueue.submit(submitInfo, vk::Fence{});
 		m_transferQueue.waitIdle();
-		
+
 	}
 	// Triangel !drawQuad
 	else
@@ -894,17 +942,22 @@ void Application::CreateSwapchain()
 	{
 		m_uniformBuffers.push_back(
 			createBuffer(
-				m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(uniformBufferSize),vk::BufferUsageFlagBits::eUniformBuffer,
+				m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(uniformBufferSize), vk::BufferUsageFlagBits::eUniformBuffer,
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 			));
 	}
-
-	vk::DescriptorPoolSize decriptorPoolSize = vk::DescriptorPoolSize()
+	vk::DescriptorPoolSize descriptorPoolSize_ubo = vk::DescriptorPoolSize()
 		.setType(vk::DescriptorType::eUniformBuffer)
 		.setDescriptorCount(gsl::narrow<uint32_t>(swapchainImages.size()));
 
+
+	vk::DescriptorPoolSize descriptorPoolSize_sampler = vk::DescriptorPoolSize()
+		.setType(vk::DescriptorType::eCombinedImageSampler)
+		.setDescriptorCount(gsl::narrow<uint32_t>(swapchainImages.size()));
+
+	std::array<vk::DescriptorPoolSize, 2> descriptorPoolSizes = { descriptorPoolSize_ubo, descriptorPoolSize_sampler };
 	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo()
-		.setPoolSizeCount(1).setPPoolSizes(&decriptorPoolSize)
+		.setPoolSizeCount(static_cast<uint32_t>(descriptorPoolSizes.size())).setPPoolSizes(descriptorPoolSizes.data())
 		.setMaxSets(gsl::narrow<uint32_t>(swapchainImages.size()));
 
 	m_descriptorPool = m_logicalDevice->createDescriptorPoolUnique(descriptorPoolCreateInfo);
@@ -924,14 +977,27 @@ void Application::CreateSwapchain()
 			.setOffset(0)
 			.setRange(sizeof(UniformBufferObject));
 
-		vk::WriteDescriptorSet writeDescriptorSet = vk::WriteDescriptorSet{}
+		vk::DescriptorImageInfo imageInfo = vk::DescriptorImageInfo{}
+			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+			.setImageView(m_textureImageView.get())
+			.setSampler(m_textureSampler.get());
+		std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets;
+		
+	writeDescriptorSets[0] = vk::WriteDescriptorSet{}
 			.setDstSet(m_descriptorSets[i])
 			.setDstBinding(0)
 			.setDstArrayElement(0)
 			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
 			.setDescriptorCount(1).setPBufferInfo(&bufferInfo);
+		
+	writeDescriptorSets[1] = vk::WriteDescriptorSet{}
+			.setDstSet(m_descriptorSets[i])
+			.setDstBinding(1)
+			.setDstArrayElement(0)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+			.setDescriptorCount(1).setPImageInfo(&imageInfo);
 
-		m_logicalDevice->updateDescriptorSets(writeDescriptorSet, {});
+	m_logicalDevice->updateDescriptorSets(writeDescriptorSets, {});
 	}
 
 
@@ -952,7 +1018,7 @@ void Application::CreateSwapchain()
 			"main"),
 	};
 
-	
+
 
 
 	m_graphicsPipeline = CreateGraphicsPipeline(
@@ -982,7 +1048,7 @@ void Application::CreateSwapchain()
 	vk::CommandBufferAllocateInfo commandBufferAllocInfo(
 		m_graphcisPresentQueueCommandPool.get(), vk::CommandBufferLevel::ePrimary, gsl::narrow<uint32_t>(m_swapChainFramebuffers.size()));
 
-	
+
 	m_commandBuffers = m_logicalDevice->allocateCommandBuffersUnique(commandBufferAllocInfo);
 	for (size_t i = 0, count = m_commandBuffers.size(); i < count; ++i)
 	{
@@ -1012,7 +1078,7 @@ void Application::CreateSwapchain()
 			m_commandBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0,
 				m_descriptorSets[i], {});
 
-				m_commandBuffers[i]->drawIndexed(
+			m_commandBuffers[i]->drawIndexed(
 				gsl::narrow<uint32_t>(
 					indices_quad.size()
 					), 1, 0, 0, 0);
@@ -1072,7 +1138,7 @@ bool Application::Update()
 
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
-	const float deltaSeconds= std::chrono::duration<float, std::chrono::seconds::period>(currentTime - m_lastTime).count();
+	const float deltaSeconds = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - m_lastTime).count();
 	m_lastTime = currentTime;
 
 	m_rotationDeg = std::fmod(m_rotationDeg + deltaSeconds * 90.f, 360.f);

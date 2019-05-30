@@ -45,6 +45,67 @@ namespace
 			});
 	}
 
+
+bool HasRequiredFeatures(const vk::PhysicalDevice& device, vk::PhysicalDeviceFeatures requiredFeatures)
+{
+	vk::PhysicalDeviceFeatures supportedFeatures = device.getFeatures();
+
+	return ( !requiredFeatures.robustBufferAccess || supportedFeatures.robustBufferAccess )
+          && ( !requiredFeatures.fullDrawIndexUint32 || supportedFeatures.fullDrawIndexUint32 )
+          && ( !requiredFeatures.imageCubeArray || supportedFeatures.imageCubeArray )
+          && ( !requiredFeatures.independentBlend || supportedFeatures.independentBlend )
+          && ( !requiredFeatures.geometryShader || supportedFeatures.geometryShader )
+          && ( !requiredFeatures.tessellationShader || supportedFeatures.tessellationShader )
+          && ( !requiredFeatures.sampleRateShading || supportedFeatures.sampleRateShading )
+          && ( !requiredFeatures.dualSrcBlend || supportedFeatures.dualSrcBlend )
+          && ( !requiredFeatures.logicOp || supportedFeatures.logicOp )
+          && ( !requiredFeatures.multiDrawIndirect || supportedFeatures.multiDrawIndirect )
+          && ( !requiredFeatures.drawIndirectFirstInstance || supportedFeatures.drawIndirectFirstInstance )
+          && ( !requiredFeatures.depthClamp || supportedFeatures.depthClamp )
+          && ( !requiredFeatures.depthBiasClamp || supportedFeatures.depthBiasClamp )
+          && ( !requiredFeatures.fillModeNonSolid || supportedFeatures.fillModeNonSolid )
+          && ( !requiredFeatures.depthBounds || supportedFeatures.depthBounds )
+          && ( !requiredFeatures.wideLines || supportedFeatures.wideLines )
+          && ( !requiredFeatures.largePoints || supportedFeatures.largePoints )
+          && ( !requiredFeatures.alphaToOne || supportedFeatures.alphaToOne )
+          && ( !requiredFeatures.multiViewport || supportedFeatures.multiViewport )
+          && ( !requiredFeatures.samplerAnisotropy || supportedFeatures.samplerAnisotropy )
+          && ( !requiredFeatures.textureCompressionETC2 || supportedFeatures.textureCompressionETC2 )
+          && ( !requiredFeatures.textureCompressionASTC_LDR || supportedFeatures.textureCompressionASTC_LDR )
+          && ( !requiredFeatures.textureCompressionBC || supportedFeatures.textureCompressionBC )
+          && ( !requiredFeatures.occlusionQueryPrecise || supportedFeatures.occlusionQueryPrecise )
+          && ( !requiredFeatures.pipelineStatisticsQuery || supportedFeatures.pipelineStatisticsQuery )
+          && ( !requiredFeatures.vertexPipelineStoresAndAtomics || supportedFeatures.vertexPipelineStoresAndAtomics )
+          && ( !requiredFeatures.fragmentStoresAndAtomics || supportedFeatures.fragmentStoresAndAtomics )
+          && ( !requiredFeatures.shaderTessellationAndGeometryPointSize || supportedFeatures.shaderTessellationAndGeometryPointSize )
+          && ( !requiredFeatures.shaderImageGatherExtended || supportedFeatures.shaderImageGatherExtended )
+          && ( !requiredFeatures.shaderStorageImageExtendedFormats || supportedFeatures.shaderStorageImageExtendedFormats )
+          && ( !requiredFeatures.shaderStorageImageMultisample || supportedFeatures.shaderStorageImageMultisample )
+          && ( !requiredFeatures.shaderStorageImageReadWithoutFormat || supportedFeatures.shaderStorageImageReadWithoutFormat )
+          && ( !requiredFeatures.shaderStorageImageWriteWithoutFormat || supportedFeatures.shaderStorageImageWriteWithoutFormat )
+          && ( !requiredFeatures.shaderUniformBufferArrayDynamicIndexing || supportedFeatures.shaderUniformBufferArrayDynamicIndexing )
+          && ( !requiredFeatures.shaderSampledImageArrayDynamicIndexing || supportedFeatures.shaderSampledImageArrayDynamicIndexing )
+          && ( !requiredFeatures.shaderStorageBufferArrayDynamicIndexing || supportedFeatures.shaderStorageBufferArrayDynamicIndexing )
+          && ( !requiredFeatures.shaderStorageImageArrayDynamicIndexing || supportedFeatures.shaderStorageImageArrayDynamicIndexing )
+          && ( !requiredFeatures.shaderClipDistance || supportedFeatures.shaderClipDistance )
+          && ( !requiredFeatures.shaderCullDistance || supportedFeatures.shaderCullDistance )
+          && ( !requiredFeatures.shaderFloat64 || supportedFeatures.shaderFloat64 )
+          && ( !requiredFeatures.shaderInt64 || supportedFeatures.shaderInt64 )
+          && ( !requiredFeatures.shaderInt16 || supportedFeatures.shaderInt16 )
+          && ( !requiredFeatures.shaderResourceResidency || supportedFeatures.shaderResourceResidency )
+          && ( !requiredFeatures.shaderResourceMinLod || supportedFeatures.shaderResourceMinLod )
+          && ( !requiredFeatures.sparseBinding || supportedFeatures.sparseBinding )
+          && ( !requiredFeatures.sparseResidencyBuffer || supportedFeatures.sparseResidencyBuffer )
+          && ( !requiredFeatures.sparseResidencyImage2D || supportedFeatures.sparseResidencyImage2D )
+          && ( !requiredFeatures.sparseResidencyImage3D || supportedFeatures.sparseResidencyImage3D )
+          && ( !requiredFeatures.sparseResidency2Samples || supportedFeatures.sparseResidency2Samples )
+          && ( !requiredFeatures.sparseResidency4Samples || supportedFeatures.sparseResidency4Samples )
+          && ( !requiredFeatures.sparseResidency8Samples || supportedFeatures.sparseResidency8Samples )
+          && ( !requiredFeatures.sparseResidency16Samples || supportedFeatures.sparseResidency16Samples )
+          && ( !requiredFeatures.sparseResidencyAliased || supportedFeatures.sparseResidencyAliased )
+          && ( !requiredFeatures.variableMultisampleRate || supportedFeatures.variableMultisampleRate )
+          && ( !requiredFeatures.inheritedQueries || supportedFeatures.inheritedQueries );
+}
 	bool HasSurfaceCapabilities(vk::PhysicalDevice device, vk::SurfaceKHR surface)
 	{
 		VkSurfaceCapabilitiesKHR capabilities =	device.getSurfaceCapabilitiesKHR(surface);
@@ -157,6 +218,10 @@ std::optional<std::vector<QueueResult>> VulkanDevice::IsMatchingDevice(
 		return std::nullopt;
 	}
 
+	if (!HasRequiredFeatures(device, requirements.requiredFeatures))
+	{
+		return std::nullopt;
+	}
 	if (optionalSurface && !HasSurfaceCapabilities(device, *optionalSurface))
 	{
 		return std::nullopt;
@@ -230,7 +295,8 @@ std::optional<VulkanDevice::PickDeviceResult> VulkanDevice::PickPhysicalDevice(v
 	return std::nullopt;
 }
 
-vk::UniqueDevice VulkanDevice::CreateLogicalDevice(vk::PhysicalDevice device, gsl::span<const QueueResult> queues, gsl::span<const char*> enabledValidationLayers, gsl::span<const char*> enabledExtensions)
+vk::UniqueDevice VulkanDevice::CreateLogicalDevice(vk::PhysicalDevice device, gsl::span<const QueueResult> queues,
+	gsl::span<const char*> enabledValidationLayers, gsl::span<const char*> enabledExtensions, vk::PhysicalDeviceFeatures deviceFeatures)
 {
 	// used everywhere as priorities are mandatory, be in truth we don't care about them (at the moment)
 	// works as long as we don't create more than std::size(priorities) queues of the same family
@@ -258,8 +324,6 @@ vk::UniqueDevice VulkanDevice::CreateLogicalDevice(vk::PhysicalDevice device, gs
 			assert(fountIt->queueCount < std::size(priorities));
 		}
 	}
-
-	vk::PhysicalDeviceFeatures deviceFeatures{};
 
 	vk::DeviceCreateInfo deviceCreateInfo(
 		vk::DeviceCreateFlags(),

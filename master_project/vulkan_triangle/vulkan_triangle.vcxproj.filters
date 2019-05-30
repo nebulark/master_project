@@ -44,15 +44,11 @@
     <CustomBuild Include="..\resources\shaders\triangle.frag">
       <Filter>Shaders</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\resources\shaders\triangle.vert" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\resources\shaders\triangle.vert">
-      <Filter>Shaders</Filter>
-    </EmbeddedResource>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="..\resources\images\texture.jpg">
+    <CopyFileToFolders Include="..\resources\images\texture.jpg">
       <Filter>Resource Files</Filter>
-    </Image>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
