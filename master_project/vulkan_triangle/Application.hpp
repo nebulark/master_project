@@ -4,6 +4,7 @@
 
 #include "common/Deleters.hpp"
 #include "common/VulkanDevice.hpp"
+#include "Vertex.hpp"
 
 struct SimpleBuffer
 {
@@ -59,6 +60,8 @@ private:
 
 	vk::UniqueShaderModule m_vertShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule;
+	std::vector<Vertex> m_modelVertices;
+	std::vector<uint32_t> m_modelIndices;
 
 	vk::UniqueHandle<vk::PipelineLayout, vk::DispatchLoaderStatic> m_pipelineLayout;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout;
@@ -77,8 +80,8 @@ private:
 	// shares memory with transfer and graphicsPresent queue
 	SimpleBuffer m_vertexBuffer;
 
-	SimpleBuffer m_vertexBuffer_quad;
-	SimpleBuffer m_indexBuffer_quad;
+	SimpleBuffer m_vertexBuffer_model;
+	SimpleBuffer m_indexBuffer_model;
 	SimpleImage m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueSampler m_textureSampler;

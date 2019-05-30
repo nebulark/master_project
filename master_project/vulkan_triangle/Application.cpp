@@ -8,81 +8,6 @@
 
 namespace
 {
-	template<typename T>
-	constexpr vk::Format GlmTypeToVkFormat()
-	{
-		if constexpr (std::is_same_v<glm::vec1, T>) {
-			return vk::Format::eR32Sfloat;
-		}
-		else if constexpr (std::is_same_v<glm::vec2, T>) {
-			return vk::Format::eR32G32Sfloat;
-		}
-		else if constexpr (std::is_same_v<glm::vec3, T>) {
-			return vk::Format::eR32G32B32Sfloat;
-		}
-		else if constexpr (std::is_same_v<glm::vec4, T>) {
-			return vk::Format::eR32G32B32A32Sfloat;
-		}
-		else
-		{
-			static_assert(false, "Type not supported");
-			return vk::Format;
-		}
-	}
-
-	template<typename T>
-	vk::IndexType GetIndexBufferType()
-	{
-		if constexpr (std::is_same_v<uint16_t, T>) {
-			return vk::IndexType::eUint16;
-		}
-		else if constexpr (std::is_same_v<uint32_t, T>) {
-			return vk::IndexType::eUint32;
-		}
-		else
-		{
-			static_assert(false, "Type not supported");
-			return vk::IndexType::eUint16;
-		}
-	}
-
-	struct Vertex
-	{
-		glm::vec3 pos;
-		glm::vec3 color;
-		glm::vec2 texCoord;
-
-		// maybe move this out, 
-		static vk::VertexInputBindingDescription GetBindingDescription()
-		{
-			vk::VertexInputBindingDescription bindingDescription = vk::VertexInputBindingDescription{}
-				.setBinding(0) // all data is interleave in one array
-				.setStride(sizeof(Vertex))
-				.setInputRate(vk::VertexInputRate::eVertex);
-
-			return bindingDescription;
-		}
-
-		static std::array<vk::VertexInputAttributeDescription, 3> GetAttributeDescriptions() {
-			std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0; // needs to match shader
-			attributeDescriptions[0].format = GlmTypeToVkFormat<decltype(Vertex::pos)>();
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1; // needs to match shader
-			attributeDescriptions[1].format = GlmTypeToVkFormat<decltype(Vertex::color)>();
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-			attributeDescriptions[2].binding = 0;
-			attributeDescriptions[2].location = 2; // needs to match shader
-			attributeDescriptions[2].format = GlmTypeToVkFormat<decltype(Vertex::texCoord)>();
-			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-			return attributeDescriptions;
-		}
-	};
 
 	vk::UniqueInstance create_vulkan_instance(gsl::span<const char*> enabledLayers, gsl::span<const char*> enabledExtensions)
 	{
@@ -547,24 +472,7 @@ namespace
 		Vertex{{-0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}}
 	};
 
-	const std::array<Vertex, 8> vertices_quad = {
-Vertex {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-Vertex	{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-Vertex	{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-Vertex	{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-Vertex	{ {-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-Vertex	{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-Vertex	{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-Vertex	{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-	};
-
-	const std::array<uint16_t, 12> indices_quad = {
-		0, 1, 2, 2, 3, 0,
-		4, 5, 6, 6, 7, 4
-	};
-
-	constexpr bool drawQuad = true;
+	constexpr bool drawMesh = true;
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
@@ -646,6 +554,53 @@ Application::Application()
 
 	m_vertShaderModule = CreateShaderModule(vertShaderCode, m_logicalDevice.get());
 	m_fragShaderModule = CreateShaderModule(fragShaderCode, m_logicalDevice.get());
+	{
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
+		std::string warn, err;
+		bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, "chalet.obj");
+		if (!success)
+		{
+			throw std::runtime_error(warn + err);
+		}
+		std::unordered_map<Vertex, uint32_t> uniqueVertices;
+		for (const tinyobj::shape_t& shape : shapes)
+		{
+			m_modelIndices.reserve(shape.mesh.indices.size());
+			m_modelVertices.reserve(shape.mesh.indices.size());
+
+			for (const tinyobj::index_t& index : shape.mesh.indices)
+			{
+				Vertex vertex = {};
+				vertex.pos = {
+					attrib.vertices[static_cast<size_t>(3) * index.vertex_index + 0],
+					attrib.vertices[static_cast<size_t>(3) * index.vertex_index + 1],
+					attrib.vertices[static_cast<size_t>(3) * index.vertex_index + 2],
+				};
+				// flip y coordinate
+				vertex.texCoord = {
+					attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 0],
+					1.f - attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 1],
+				};
+
+				const uint32_t uniqueIndex = gsl::narrow<uint32_t>( m_modelVertices.size());
+				const auto [iter, isUnique] = uniqueVertices.try_emplace(vertex,uniqueIndex);
+				if (isUnique)
+				{
+					m_modelIndices.push_back(uniqueIndex);
+					m_modelVertices.push_back(vertex);
+				}
+				else
+				{
+					assert(uniqueIndex != iter->second);
+					m_modelIndices.push_back(iter->second);
+				}
+			}
+		}
+
+		
+	}
 
 	vk::DescriptorSetLayoutBinding uboLayoutBinding = vk::DescriptorSetLayoutBinding{}
 		.setBinding(0) // matches Shader code
@@ -688,7 +643,7 @@ Application::Application()
 
 	{
 		int texWidth, texheight, texChannels;
-		stbi_uc* pixels = stbi_load("texture.jpg", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load("chalet.jpg", &texWidth, &texheight, &texChannels, STBI_rgb_alpha);
 		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texheight * 4;
 		assert(pixels);
 
@@ -828,39 +783,39 @@ Application::Application()
 
 
 	// Quad
-	if (drawQuad)
+	if (drawMesh)
 	{
-		const vk::DeviceSize indexBufferSize = sizeof(indices_quad[0]) * std::size(indices_quad);
-		const vk::DeviceSize vertexBufferSize = sizeof(vertices_quad[0]) * std::size(vertices_quad);
+		const uint32_t indexBufferSize = sizeof(m_modelIndices[0]) * gsl::narrow<uint32_t>(std::size(m_modelIndices));
+		const uint32_t vertexBufferSize = sizeof(m_modelVertices[0]) * gsl::narrow<uint32_t>(std::size(m_modelVertices));
 		const uint32_t stageBufferIdxBegin = 0;
 		const uint32_t stageBufferIdxEnd = stageBufferIdxBegin + indexBufferSize;
 
 		const uint32_t stageBufferVertexBegin = VulkanUtils::AlignUp<uint32_t>(indexBufferSize, alignof(Vertex));
 		const uint32_t stageBufferVertexEnd = stageBufferVertexBegin + vertexBufferSize;
 
-		const vk::DeviceSize stageBufferSize = stageBufferVertexEnd;
+		const uint32_t stageBufferSize = stageBufferVertexEnd;
 
 
 		SimpleBuffer stagingBuffer = createBuffer(
-			m_logicalDevice.get(), m_physicalDevice, gsl::narrow<uint32_t>(stageBufferSize),
+			m_logicalDevice.get(), m_physicalDevice, stageBufferSize,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		{
 			std::byte* mappedVertexBufferMemory = reinterpret_cast<std::byte*>(
 				m_logicalDevice->mapMemory(stagingBuffer.bufferMemory.get(), 0, stagingBuffer.size));
 
-			std::memcpy(mappedVertexBufferMemory + stageBufferIdxBegin, std::data(indices_quad), indexBufferSize);
-			std::memcpy(mappedVertexBufferMemory + stageBufferVertexBegin, std::data(vertices_quad), vertexBufferSize);
+			std::memcpy(mappedVertexBufferMemory + stageBufferIdxBegin, std::data(m_modelIndices), indexBufferSize);
+			std::memcpy(mappedVertexBufferMemory + stageBufferVertexBegin, std::data(m_modelVertices), vertexBufferSize);
 			m_logicalDevice->unmapMemory(stagingBuffer.bufferMemory.get());
 		}
 
-		m_indexBuffer_quad = createBuffer(m_logicalDevice.get(), m_physicalDevice,
+		m_indexBuffer_model = createBuffer(m_logicalDevice.get(), m_physicalDevice,
 			indexBufferSize,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal,
 			familyIndices_present_and_transfer);
 
-		m_vertexBuffer_quad = createBuffer(m_logicalDevice.get(), m_physicalDevice,
+		m_vertexBuffer_model = createBuffer(m_logicalDevice.get(), m_physicalDevice,
 			vertexBufferSize,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal,
@@ -872,11 +827,11 @@ Application::Application()
 		copyCommandBuffer->begin(beginInfo);
 		{
 			vk::BufferCopy bufferCopy_stage_to_index(stageBufferIdxBegin, 0, indexBufferSize);
-			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_indexBuffer_quad.buffer.get(), bufferCopy_stage_to_index);
+			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_indexBuffer_model.buffer.get(), bufferCopy_stage_to_index);
 		}
 		{
 			vk::BufferCopy bufferCopy_stage_to_vertex(stageBufferVertexBegin, 0, vertexBufferSize);
-			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_vertexBuffer_quad.buffer.get(), bufferCopy_stage_to_vertex);
+			copyCommandBuffer->copyBuffer(stagingBuffer.buffer.get(), m_vertexBuffer_model.buffer.get(), bufferCopy_stage_to_vertex);
 		}
 		copyCommandBuffer->end();
 
@@ -888,7 +843,7 @@ Application::Application()
 		m_transferQueue.waitIdle();
 
 	}
-	// Triangel !drawQuad
+	// Triangel !drawMesh
 	else
 	{
 		const vk::DeviceSize verticesByteSize = sizeof(vertices_triangle[0]) * std::size(vertices_triangle);
@@ -1001,7 +956,7 @@ void Application::CreateSwapchain()
 				.setNewLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_textureImage.image.get())
+				.setImage(m_depthBuffer.image.get())
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(aspectFlags)
 					.setBaseMipLevel(0)
@@ -1152,18 +1107,18 @@ void Application::CreateSwapchain()
 		vk::DeviceSize offset = 0;
 		constexpr int firstBinding = 0;
 
-		if (drawQuad)
+		if (drawMesh)
 		{
 			m_commandBuffers[i]->bindIndexBuffer(
-				m_indexBuffer_quad.buffer.get(), offset, GetIndexBufferType<decltype(indices_quad)::value_type>());
+				m_indexBuffer_model.buffer.get(), offset, VulkanUtils::GetIndexBufferType<decltype(m_modelIndices)::value_type>());
 
-			m_commandBuffers[i]->bindVertexBuffers(firstBinding, m_vertexBuffer_quad.buffer.get(), offset);
+			m_commandBuffers[i]->bindVertexBuffers(firstBinding, m_vertexBuffer_model.buffer.get(), offset);
 			m_commandBuffers[i]->bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0,
 				m_descriptorSets[i], {});
 
 			m_commandBuffers[i]->drawIndexed(
 				gsl::narrow<uint32_t>(
-					indices_quad.size()
+					m_modelIndices.size()
 					), 1, 0, 0, 0);
 		}
 		else

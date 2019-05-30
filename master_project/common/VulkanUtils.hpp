@@ -44,4 +44,42 @@ namespace VulkanUtils
 
 	uint32_t ChooseImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, uint32_t preferedImageCount);
 
+	template<typename T>
+	constexpr vk::Format GlmTypeToVkFormat()
+	{
+		if constexpr (std::is_same_v<glm::vec1, T>) {
+			return vk::Format::eR32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec2, T>) {
+			return vk::Format::eR32G32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec3, T>) {
+			return vk::Format::eR32G32B32Sfloat;
+		}
+		else if constexpr (std::is_same_v<glm::vec4, T>) {
+			return vk::Format::eR32G32B32A32Sfloat;
+		}
+		else
+		{
+			static_assert(false, "Type not supported");
+			return vk::Format;
+		}
+	}
+
+	template<typename T>
+	vk::IndexType GetIndexBufferType()
+	{
+		if constexpr (std::is_same_v<uint16_t, T>) {
+			return vk::IndexType::eUint16;
+		}
+		else if constexpr (std::is_same_v<uint32_t, T>) {
+			return vk::IndexType::eUint32;
+		}
+		else
+		{
+			static_assert(false, "Type not supported");
+			return vk::IndexType::eUint16;
+		}
+	}
+
 }
