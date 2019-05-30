@@ -74,6 +74,32 @@ vk::PresentModeKHR VulkanUtils::ChoosePresentMode(
 	return ChooseBest(availableModes, preferedModes);	
 }
 
+vk::Format VulkanUtils::ChooseFormat(vk::PhysicalDevice physicalDevice, gsl::span<const vk::Format> preferedFormats,
+	vk::ImageTiling tiling, vk::FormatFeatureFlags featureFlags)
+{
+	for (vk::Format format : preferedFormats)
+	{
+		vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(format);
+		switch (tiling)
+		{
+		case vk::ImageTiling::eOptimal:
+			if (formatProperties.optimalTilingFeatures & featureFlags)
+			{
+				return format;
+			}
+		case vk::ImageTiling::eLinear:
+			if (formatProperties.linearTilingFeatures & featureFlags)
+			{
+				return format;
+			}
+		default:
+			assert(false);
+			return format;
+		}
+	}
+	throw std::runtime_error("failed to find supported format!");
+}
+
 vk::Extent2D VulkanUtils::ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, vk::Extent2D PreferedExtent)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())

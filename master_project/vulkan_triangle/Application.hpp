@@ -71,6 +71,9 @@ private:
 	// one for each swapchain image view
 	std::vector<vk::UniqueFramebuffer> m_swapChainFramebuffers;
 
+	SimpleImage m_depthBuffer;
+	vk::UniqueImageView m_depthBufferView;
+
 	// shares memory with transfer and graphicsPresent queue
 	SimpleBuffer m_vertexBuffer;
 

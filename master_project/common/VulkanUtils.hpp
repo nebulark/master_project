@@ -36,6 +36,10 @@ namespace VulkanUtils
 		gsl::span<const vk::PresentModeKHR> availableModes,
 		gsl::span<const vk::PresentModeKHR> preferedModes);
 
+	inline bool HasStencilComponent(vk::Format format)
+	{ return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint; }
+
+	vk::Format ChooseFormat(vk::PhysicalDevice physicalDevice, gsl::span<const vk::Format> preferedFormats, vk::ImageTiling tiling, vk::FormatFeatureFlags featureFlags);
 	vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, vk::Extent2D referedExtent);
 
 	uint32_t ChooseImageCount(const vk::SurfaceCapabilitiesKHR& capabilities, uint32_t preferedImageCount);
