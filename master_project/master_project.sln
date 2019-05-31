@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vulkan_triangle", "vulkan_t
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{24D228D5-18A4-41CB-85D4-548379D0A99F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vulkan_rasterizer", "vulkan_rasterizer\vulkan_rasterizer.vcxproj", "{CC997A55-ABDD-4500-AF36-EBC65625F229}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x64.Build.0 = Release|x64
 		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x86.ActiveCfg = Release|Win32
 		{24D228D5-18A4-41CB-85D4-548379D0A99F}.Release|x86.Build.0 = Release|Win32
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Debug|x64.ActiveCfg = Debug|x64
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Debug|x64.Build.0 = Debug|x64
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Debug|x86.ActiveCfg = Debug|Win32
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Debug|x86.Build.0 = Debug|Win32
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Release|x64.ActiveCfg = Release|x64
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Release|x64.Build.0 = Release|x64
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Release|x86.ActiveCfg = Release|Win32
+		{CC997A55-ABDD-4500-AF36-EBC65625F229}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

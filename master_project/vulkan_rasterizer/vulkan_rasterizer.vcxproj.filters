@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Code">
+      <UniqueIdentifier>{567d28e3-5682-4931-96f7-505db94a763f}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd;cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{a5427f0d-3a7a-404f-95b5-998b31b64c05}</UniqueIdentifier>
+      <Extensions>frag,vert</Extensions>
+    </Filter>
+    <Filter Include="Natvis">
+      <UniqueIdentifier>{c85775bc-b2d6-4f1f-9f74-fa17733dc5b8}</UniqueIdentifier>
+      <Extensions>natvis</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="stb_implementation.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyObj_implementation.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Application_Rasterizer.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="VmaRAII.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicBackend.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Application_Rasterizer.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="VmaRAII.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicBackend.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="GetSizeUint32.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
+      <Filter>Natvis</Filter>
+    </Natvis>
+    <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis">
+      <Filter>Natvis</Filter>
+    </Natvis>
+  </ItemGroup>
+</Project>
