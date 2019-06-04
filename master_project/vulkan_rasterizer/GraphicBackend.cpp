@@ -598,6 +598,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 void GraphicsBackend::Render()
 {
+	
+
+	glm::mat4 modelMat = glm::rotate(glm::mat4(1.0f), glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 viewMat = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 projMat = glm::perspective(glm::radians(45.0f),
+		static_cast<float>(m_swapchain.extent.width) / static_cast<float>(m_swapchain.extent.height), 0.1f, 10.0f);
+	projMat[1][1] *= -1;
+
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
@@ -628,6 +636,13 @@ void GraphicsBackend::Render()
 		drawBuffer.bindIndexBuffer(m_modelBuffer.buffer, m_modelBuffer.indexOffset, m_modelBuffer.indexType);
 		drawBuffer.bindVertexBuffers(0, m_modelBuffer.buffer, m_modelBuffer.vertexOffset);
 		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, m_descriptorSet_texture.get(), {});
+		PushConstant_ModelViewProjection pushConstant = {};
+		pushConstant.model = modelMat;
+		pushConstant.viewprojection = projMat * viewMat;
+
+		drawBuffer.pushConstants<PushConstant_ModelViewProjection>(
+			m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+
 		drawBuffer.drawIndexed(m_modelBuffer.indexCount, 1, 0, 0, 0);
 		drawBuffer.endRenderPass();
 		drawBuffer.end();
