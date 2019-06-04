@@ -1,6 +1,7 @@
 
 #include "pch.h"
 #include "VulkanUtils.hpp"
+#include "FileHelper.hpp"
 
 
 namespace
@@ -121,5 +122,22 @@ uint32_t VulkanUtils::ChooseImageCount(const vk::SurfaceCapabilitiesKHR& capabil
 	}
 
 	return std::clamp(preferedImageCount, capabilities.minImageCount, capabilities.maxImageCount);
+}
+
+vk::UniqueShaderModule VulkanUtils::CreateShaderModule(gsl::span<const char> shaderCode, vk::Device logicalDevice)
+{
+	assert(reinterpret_cast<std::uintptr_t>(shaderCode.data()) % alignof(uint32_t) == 0);
+
+	vk::ShaderModuleCreateInfo createInfo(vk::ShaderModuleCreateFlags{},
+		static_cast<size_t>(shaderCode.size()), reinterpret_cast<const uint32_t*>(std::data(shaderCode)));
+
+	return logicalDevice.createShaderModuleUnique(createInfo);
+}
+
+vk::UniqueShaderModule VulkanUtils::CreateShaderModuleFromFile(const char* fileName, vk::Device logicalDevice)
+{
+	std::vector<char> shaderCode = FileHelper::LoadFileContent(fileName);
+
+	return CreateShaderModule(shaderCode, logicalDevice);
 }
 

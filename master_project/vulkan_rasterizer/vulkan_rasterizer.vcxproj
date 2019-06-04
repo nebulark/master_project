@@ -196,7 +196,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application_Rasterizer.cpp" />
+    <ClCompile Include="CommandBufferUtils.cpp" />
+    <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="GraphicBackend.cpp" />
+    <ClCompile Include="GraphicsPipeline.cpp" />
+    <ClCompile Include="Loader.cpp" />
     <ClCompile Include="main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
@@ -209,26 +213,46 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Renderpass.cpp" />
     <ClCompile Include="stb_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Swapchain.cpp" />
     <ClCompile Include="tinyObj_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Vertex.cpp" />
+    <ClCompile Include="VmaAllocationsPool.cpp" />
     <ClCompile Include="VmaRAII.cpp" />
+    <ClCompile Include="vma_implementation.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application_Rasterizer.hpp" />
+    <ClInclude Include="CommandBufferUtils.hpp" />
+    <ClInclude Include="DebugUtils.hpp" />
     <ClInclude Include="GraphicBackend.hpp" />
+    <ClInclude Include="GraphicsPipeline.hpp" />
+    <ClInclude Include="Loader.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="GetSizeUint32.hpp" />
+    <ClInclude Include="PushConstants.hpp" />
+    <ClInclude Include="Renderpass.hpp" />
+    <ClInclude Include="Swapchain.hpp" />
+    <ClInclude Include="Vertex.hpp" />
+    <ClInclude Include="VmaAllocationsPool.hpp" />
     <ClInclude Include="VmaRAII.hpp" />
+    <ClInclude Include="VmaUtils.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\common\common.vcxproj">
@@ -238,6 +262,14 @@
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis" />
     <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shaders\shader.frag">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="shaders\shader.vert">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

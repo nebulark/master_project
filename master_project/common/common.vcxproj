@@ -193,6 +193,14 @@
     <ClCompile Include="VulkanDevice.cpp" />
     <ClCompile Include="VulkanUtils.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\resources\models\chalet.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\resources\models\chalet.obj">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -3,6 +3,7 @@
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 #include "VmaRAII.hpp"
 #include "common/Deleters.hpp"
+#include "GraphicBackend.hpp"
 
 class Application_Rasterizer
 {
@@ -15,4 +16,5 @@ private:
 
 
 	WindowPtr m_sdlWindow;
+	GraphicsBackend m_graphcisBackend;
 };

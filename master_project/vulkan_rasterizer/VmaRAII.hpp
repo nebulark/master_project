@@ -3,17 +3,46 @@
 #include <memory>
 #include <vulkan/vulkan.hpp>
 
+namespace DetailVmaRAII
+{
+
+}
+
+
+namespace vk
+{
+
+  template <typename Dispatch> class UniqueHandleTraits<VmaAllocator, Dispatch>
+  {
+  public: using deleter =
+	  struct {
+	  void destroy(VmaAllocator allocator)
+	  {
+		  vmaDestroyAllocator(allocator);
+	  }
+  };
+  };
+/*
+#define DEFINE_VK_DELETER_TRAIT(handletype, deleterfunctionname) \ 
+template <typename Dispatch> class UniqueHandleTraits<handletype, Dispatch> \
+  {\
+  public: using deleter =\
+	  struct {
+	  void destroy(handletype handle)\
+	  {\
+		  deleterfunctionname(handle);\
+	  }\
+  };\
+  };
+
+
+ #undef VK_DELETER_TRAIT
+ */
+}
 namespace VmaRAII
 {
-	struct VmaAllocatorDeleter
-	{
-		void operator()(VmaAllocator allocator)
-		{
-			vmaDestroyAllocator(allocator);
-		}
-	};
-
-	std::unique_ptr<VmaAllocator_T, VmaAllocatorDeleter> VmaAllocatorUnique(const VmaAllocatorCreateInfo& createInfo)
+	using UniqueVmaAllocator = vk::UniqueHandle<VmaAllocator, vk::DispatchLoaderStatic>;
+	inline UniqueVmaAllocator CreateVmaAllocatorUnique(const VmaAllocatorCreateInfo& createInfo)
 	{
 		VmaAllocator alloc;
 		VkResult vkResult = vmaCreateAllocator(&createInfo, &alloc);
@@ -22,9 +51,8 @@ namespace VmaRAII
 			vk::Result result = reinterpret_cast<vk::Result&>(vkResult);
 			throw std::runtime_error(vk::to_string(result));
 		}
-		return std::unique_ptr<VmaAllocator_T, VmaAllocatorDeleter>(alloc);
+		return UniqueVmaAllocator(alloc);
 	}
 
-	using UniqueVmaAllocator = 	std::unique_ptr<VmaAllocator_T, VmaAllocatorDeleter>;
-
 }
+

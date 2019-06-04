@@ -60,4 +60,14 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\resources\models\chalet.jpg">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="..\resources\models\chalet.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+  </ItemGroup>
 </Project>

@@ -4,8 +4,11 @@
 
 namespace VulkanUtils
 {
+	template<typename T>
+	using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
 	template<typename Uint>
-	Uint AlignDown(Uint integer, Uint alignment)
+	inline Uint AlignDown(Uint integer, Uint alignment)
 	{
 		static_assert(std::is_unsigned_v<Uint>);
 		const Uint alignMask = alignment - 1;
@@ -18,7 +21,7 @@ namespace VulkanUtils
 	}
 
 	template<typename Uint>
-	Uint AlignUp(Uint integer, Uint alignment)
+	inline Uint AlignUp(Uint integer, Uint alignment)
 	{
 		static_assert(std::is_unsigned_v<Uint>);
 		Uint result = AlignDown(integer + alignment - 1, alignment);
@@ -67,12 +70,13 @@ namespace VulkanUtils
 	}
 
 	template<typename T>
-	vk::IndexType GetIndexBufferType()
+	constexpr vk::IndexType GetIndexBufferType()
 	{
-		if constexpr (std::is_same_v<uint16_t, T>) {
+		using NakedType = remove_cvref_t<T>;
+		if constexpr (std::is_same_v<uint16_t, NakedType>) {
 			return vk::IndexType::eUint16;
 		}
-		else if constexpr (std::is_same_v<uint32_t, T>) {
+		else if constexpr (std::is_same_v<uint32_t, NakedType>) {
 			return vk::IndexType::eUint32;
 		}
 		else
@@ -80,6 +84,35 @@ namespace VulkanUtils
 			static_assert(false, "Type not supported");
 			return vk::IndexType::eUint16;
 		}
+	}
+	
+	template<typename T>
+	inline constexpr vk::IndexType GetIndexBufferType_v = GetIndexBufferType<T>();
+
+	template<typename T>
+	constexpr vk::IndexType GetIndexBufferType(const T&)
+	{
+		return GetIndexBufferType<T>();
+	}
+
+	vk::UniqueShaderModule CreateShaderModule(gsl::span<const char> shaderCode, vk::Device logicalDevice);
+	vk::UniqueShaderModule CreateShaderModuleFromFile(const char* fileName, vk::Device logicalDevice);
+
+	inline vk::UniqueCommandBuffer allocSingleCommandBuffer(vk::Device logicaldevice, vk::CommandPool commandPool)
+	{
+		vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo{}
+			.setCommandBufferCount(1)
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(commandPool);
+
+		vk::CommandBuffer cb_temp;
+		logicaldevice.allocateCommandBuffers(&allocInfo, &cb_temp);
+
+		vk::PoolFree<vk::Device, vk::CommandPool, vk::DispatchLoaderStatic> deleter(
+			logicaldevice, allocInfo.commandPool, vk::DispatchLoaderStatic());
+
+		return vk::UniqueCommandBuffer(cb_temp, deleter);
+
 	}
 
 }

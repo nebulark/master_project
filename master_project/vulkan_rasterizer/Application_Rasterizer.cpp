@@ -24,10 +24,25 @@ Application_Rasterizer::Application_Rasterizer()
 		)
 	};
 
+	m_graphcisBackend.Init(m_sdlWindow.get());
 
 }
 
 bool Application_Rasterizer::Update()
 {
-	VmaAllocator
+
+	SDL_Event event;
+	while (SDL_PollEvent(&event))
+	{
+		if (SDL_WINDOWEVENT == event.type && SDL_WINDOWEVENT_CLOSE == event.window.event)
+		{
+			m_graphcisBackend.WaitIdle();
+			return false;
+		}
+		//handle_event(event);
+	}
+	m_graphcisBackend.Render();
+	SDL_UpdateWindowSurface(m_sdlWindow.get());
+	return true;
 }
+

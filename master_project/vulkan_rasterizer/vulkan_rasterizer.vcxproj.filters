@@ -11,7 +11,7 @@
     </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{a5427f0d-3a7a-404f-95b5-998b31b64c05}</UniqueIdentifier>
-      <Extensions>frag,vert</Extensions>
+      <Extensions>frag;vert</Extensions>
     </Filter>
     <Filter Include="Natvis">
       <UniqueIdentifier>{c85775bc-b2d6-4f1f-9f74-fa17733dc5b8}</UniqueIdentifier>
@@ -40,6 +40,33 @@
     <ClCompile Include="GraphicBackend.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Swapchain.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderpass.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicsPipeline.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Vertex.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Loader.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugUtils.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="VmaAllocationsPool.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandBufferUtils.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="vma_implementation.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -57,6 +84,36 @@
     <ClInclude Include="GetSizeUint32.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="Swapchain.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderpass.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsPipeline.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Vertex.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="PushConstants.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Loader.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugUtils.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="VmaUtils.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="VmaAllocationsPool.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandBufferUtils.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -65,5 +122,13 @@
     <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis">
       <Filter>Natvis</Filter>
     </Natvis>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader.frag">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shaders\shader.vert">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>
