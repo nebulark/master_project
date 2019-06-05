@@ -82,7 +82,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	assert(VulkanUtils::SupportsValidationLayers(enabledValidationLayers));
 
 	m_vkInstance = CreateVulkanInstance("Vulkan Rasterizer", enabledValidationLayers, enabledExtensions);
-	VulkanDebugExtension::LoadDebugUtilsMessengerExtension(m_vkInstance.get());
+	VulkanDebug::LoadDebugUtilsExtension(m_vkInstance.get());
 
 	m_debugUtilsMessenger = DebugUtils::CreateDebugUtilsMessenger(m_vkInstance.get());
 	m_surface = CreateSurface(m_vkInstance.get(), window);
@@ -200,6 +200,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_textureImage = m_ImagePool.Alloc(imageCreateInfo, vmaAllocImage);
 
+		
+		VulkanDebug::SetObjectName(m_device.get(), m_textureImage, "texture Image");
 
 		vk::UniqueCommandBuffer loadBuffer = CbUtils::AllocateSingle(m_device.get(), m_transferQueuePool.get());
 		loadBuffer->begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));

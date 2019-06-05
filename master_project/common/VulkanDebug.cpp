@@ -7,16 +7,13 @@ namespace
 {
 	// These will be loaded Dynamically
 
-	// old interface
-	PFN_vkCreateDebugReportCallbackEXT  pfnVkCreateDebugReportCallbackEXT = nullptr;
-	PFN_vkDestroyDebugReportCallbackEXT pfnVkDestroyDebugReportCallbackEXT = nullptr;
-
-	// new interface
 	PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT = nullptr;
 	PFN_vkDestroyDebugUtilsMessengerEXT pfnVkDestroyDebugUtilsMessengerEXT = nullptr;
+
+	PFN_vkSetDebugUtilsObjectNameEXT pfnVkSetDebugUtilsObjectNameEXT = nullptr;
 }
 
-void VulkanDebugExtension::LoadDebugUtilsMessengerExtension(const vk::Instance& instance)
+void VulkanDebug::LoadDebugUtilsExtension(const vk::Instance& instance)
 {
 	assert(pfnVkCreateDebugUtilsMessengerEXT == nullptr);
 	pfnVkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(instance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
@@ -24,24 +21,15 @@ void VulkanDebugExtension::LoadDebugUtilsMessengerExtension(const vk::Instance& 
 	assert(pfnVkDestroyDebugUtilsMessengerEXT == nullptr);
 	pfnVkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(instance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
 
+	assert(pfnVkSetDebugUtilsObjectNameEXT == nullptr);
+	pfnVkSetDebugUtilsObjectNameEXT = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(instance.getProcAddr("vkSetDebugUtilsObjectNameEXT"));
+
 	assert(pfnVkCreateDebugUtilsMessengerEXT && "Required " VK_EXT_DEBUG_UTILS_EXTENSION_NAME " extension");
 }
 
-void VulkanDebugExtension::LoadDebugReportCallbackExtension(const vk::Instance& instance)
-{
-	assert(pfnVkCreateDebugReportCallbackEXT == nullptr);
-	pfnVkCreateDebugReportCallbackEXT = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(instance.getProcAddr("vkCreateDebugReportCallbackEXT"));
-
-	assert(pfnVkDestroyDebugReportCallbackEXT == nullptr);
-	pfnVkDestroyDebugReportCallbackEXT = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(instance.getProcAddr("vkDestroyDebugReportCallbackEXT"));
-
-	assert(pfnVkCreateDebugReportCallbackEXT && "Requires " VK_EXT_DEBUG_REPORT_EXTENSION_NAME " extension");
-}
 
 
-
-
-// Define the Debug Report functions, which are delcared in the vulkan header and are used by the DispatchLoaderStatic
+// Define the Debug  functions, which are delcared in the vulkan header and are used by the DispatchLoaderStatic
 // They are defined in vulkan_core.h, but have not declaration
 // They need to be in global namespace and match the definition in vulkan_core.h (thats why it is in extern "C") to successfully link
 extern "C"
@@ -52,7 +40,7 @@ extern "C"
 		const VkAllocationCallbacks* pAllocator,
 		VkDebugUtilsMessengerEXT* pMessenger)
 	{
-		assert(pfnVkCreateDebugUtilsMessengerEXT && "Need to call VulkanDebugReportExtension::LoadDebugUtilsMessengerExtension before this can be used");
+		assert(pfnVkCreateDebugUtilsMessengerEXT && "Need to call VulkanDebug::LoadDebugUtilsExtension before this can be used");
 		return pfnVkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger);
 	}
 
@@ -61,22 +49,15 @@ extern "C"
 		VkDebugUtilsMessengerEXT                    messenger,
 		const VkAllocationCallbacks* pAllocator)
 	{
-		assert(pfnVkDestroyDebugUtilsMessengerEXT && "Need to call VulkanDebugReportExtension::LoadDebugUtilsMessengerExtension before this can be used");
+		assert(pfnVkDestroyDebugUtilsMessengerEXT && "Need to call VulkanDebug::LoadDebugUtilsExtension before this can be used");
 		pfnVkDestroyDebugUtilsMessengerEXT(instance, messenger, pAllocator);
 	}
 
-
-	VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback)
+	VKAPI_ATTR VkResult VKAPI_CALL vkSetDebugUtilsObjectNameEXT(VkDevice device, const VkDebugUtilsObjectNameInfoEXT* pNameInfo)
 	{
-		assert(pfnVkCreateDebugReportCallbackEXT && "Need to call VulkanDebugReportExtension::LoadDebugReportCallbackExtension before this can be used");
-		return ::pfnVkCreateDebugReportCallbackEXT(instance, pCreateInfo, pAllocator, pCallback);
+		assert(pfnVkSetDebugUtilsObjectNameEXT && "Need to call VulkanDebug::LoadDebugUtilsExtension before this can be used");
+		return ::pfnVkSetDebugUtilsObjectNameEXT(device, pNameInfo);
 	}
-
-	VKAPI_ATTR void VKAPI_CALL vkDestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator)
-	{
-		assert(pfnVkDestroyDebugReportCallbackEXT && "Need to call VulkanDebugReportExtension::LoadDebugReportCallbackExtension before this can be used");
-		::pfnVkDestroyDebugReportCallbackEXT(instance, callback, pAllocator);
-	}	
 }
 
 
