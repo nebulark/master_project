@@ -26,9 +26,9 @@ Application_Rasterizer::Application_Rasterizer()
 
 	m_graphcisBackend.Init(m_sdlWindow.get());
 
-	m_camera.SetPerspection( 0.1f, 10.0f, glm::radians(45.f), glm::vec2(width, height));
-	m_camera.m_position = { 2.f,2.f,2.f };
-	m_camera.LookAt( glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	m_camera.SetPerspection( 0.1f, 100.0f, glm::radians(45.f), glm::vec2(width, height));
+	m_camera.m_position =  glm::vec3(0.f, 0.05f, 3.f) * 20.f;
+	m_camera.LookDir( glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 bool Application_Rasterizer::Update()

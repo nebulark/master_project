@@ -140,4 +140,18 @@
       <Filter>Shader</Filter>
     </CustomBuild>
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="models\cone.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="models\cube.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="models\sphere.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+    <Object Include="models\torus.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+  </ItemGroup>
 </Project>

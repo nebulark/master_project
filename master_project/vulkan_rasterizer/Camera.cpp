@@ -3,39 +3,9 @@
 
 glm::mat4 Camera::CalcViewMatrix() const
 {
-	glm::mat4 view = glm::lookAt(glm::vec3(0.f), glm::vec3(-2.0f, -2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	//return glm::translate(view, -glm::vec3(2.f, 2.f, 0.f));
-
-
-	glm::mat4 result = view;
-	return glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(-2.0f, -2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-
-#if 0
-	glm::mat3 rotationMat = glm::mat3_cast(glm::quatLookAt(-glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 1.0f)));
-		//glm::mat3_cast(m_rotation);
-	glm::vec3 forwardVector = rotationMat * glm::vec3(0, 0, 1);
-	glm::vec3 upVector = rotationMat * glm::vec3(0, 1, 0);
-
-//	return glm::lookAtRH(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::quat	bla = glm::toQuat(glm::lookAtRH(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
-
-//	return glm::translate(glm::mat4_cast(glm::normalize(glm::quatLookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 1.0f)))), -m_position);
-
-
-	//return glm::mat4_cast(bla);
-
-	//return glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-
-
-
-
-
-
-		return glm::lookAt(m_position, m_position + forwardVector, upVector);
-#endif
+	glm::mat4 camera = glm::mat4_cast(m_rotation);
+	camera = glm::translate(camera, m_position);
+	return glm::inverse(camera);
 }
 
 void Camera::SetPerspection(float nearPlane, float farPlane, float fieldOfView, glm::vec2 aspectRatio)
@@ -67,12 +37,12 @@ void Camera::UpdateLocation(float forwardInput, float leftInput)
 	m_position += leftInput * rightVector;
 }
 
-void Camera::LookAt(glm::vec3 pos, glm::vec3 UpDir)
+void Camera::LookAt(glm::vec3 pos, glm::vec3 upDir)
 {
-	m_rotation = glm::toQuat(glm::lookAt(m_position, pos, UpDir));
+	LookDir(pos - m_position, upDir);
 }
 
-void Camera::LookDir(glm::vec3 Dir, glm::vec3 UpDir)
+void Camera::LookDir(glm::vec3 dir, glm::vec3 upDir)
 {
-	LookAt(m_position + Dir, UpDir);
+	m_rotation = glm::quatLookAt(dir, upDir);
 }

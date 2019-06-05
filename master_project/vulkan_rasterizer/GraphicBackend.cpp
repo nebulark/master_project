@@ -309,7 +309,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 	{
 
-		auto [vertices, indices] = Vertex::LoadObjWithIndices("chalet.obj");
+		auto [vertices, indices] = Vertex::LoadObjWithIndices("torus.obj");
 		const uint32_t indexBufferSize = sizeof(indices[0]) * GetSizeUint32(indices);
 		const uint32_t vertexBufferSize = sizeof(vertices[0]) * GetSizeUint32(vertices);
 		const uint32_t stageBufferIdxBegin = 0;
@@ -691,8 +691,6 @@ void GraphicsBackend::Render(const Camera& camera)
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
 
-	glm::mat4 modelMat = glm::rotate(glm::mat4(1.0f), glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
-
 	VmaAllocation* ubo_Allocation = m_BufferPool.GetAllocation(m_ubo_buffer[m_currentframe]);
 	{
 		void* bufferMemory;
@@ -743,13 +741,27 @@ void GraphicsBackend::Render(const Camera& camera)
 		};
 
 		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+		
+
+		glm::vec3 positions[] = {
+			glm::vec3(0),
+			glm::vec3(0.f,1.f,0.f),
+			glm::vec3(0.f,-1.f, 0.f),
+			glm::vec3(-1.f,0.f,0.f),
+			glm::vec3(-2.f,0.f,0.f),
+			glm::vec3(0.f,0.f, 1.f)
+		};
+		for (const glm::vec3& pos : positions)
+		{
+
 		PushConstant_ModelMat pushConstant = {};
-		pushConstant.model = modelMat;
+		pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
 
 		drawBuffer.pushConstants<PushConstant_ModelMat>(
 			m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
 		drawBuffer.drawIndexed(m_modelBuffer.indexCount, 1, 0, 0, 0);
+		}
 		drawBuffer.endRenderPass();
 		drawBuffer.end();
 

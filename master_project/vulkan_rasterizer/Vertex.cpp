@@ -15,8 +15,8 @@ const std::array<vk::VertexInputAttributeDescription, 3> Vertex::AttributeDescri
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1; // needs to match shader
-		attributeDescriptions[1].format = VulkanUtils::GlmTypeToVkFormat<decltype(Vertex::color)>();
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
+		attributeDescriptions[1].format = VulkanUtils::GlmTypeToVkFormat<decltype(Vertex::normal)>();
+		attributeDescriptions[1].offset = offsetof(Vertex, normal);
 
 		attributeDescriptions[2].binding = 0;
 		attributeDescriptions[2].location = 2; // needs to match shader
@@ -72,12 +72,26 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices
 					attrib.vertices[static_cast<size_t>(3) * index.vertex_index + 1],
 					attrib.vertices[static_cast<size_t>(3) * index.vertex_index + 2],
 				};
-				// flip y coordinate
-				vertex.texCoord = {
-					attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 0],
-					1.f - attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 1],
-				};
 
+				if (!attrib.normals.empty() && index.normal_index != -1)
+				{
+					vertex.normal = {
+
+					attrib.normals[static_cast<size_t>(3) * index.normal_index + 0],
+					attrib.normals[static_cast<size_t>(3) * index.normal_index + 1],
+					attrib.normals[static_cast<size_t>(3) * index.normal_index + 2],
+					};
+				}
+				if (!attrib.texcoords.empty() && index.vertex_index != -1)
+				{
+
+					// flip y coordinate
+					vertex.texCoord = {
+						attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 0],
+						1.f - attrib.texcoords[static_cast<size_t>(2) * index.texcoord_index + 1],
+					};
+
+				}
 				const uint32_t uniqueIndex = gsl::narrow<uint32_t>(vertices.size());
 				const auto [iter, isUnique] = uniqueVertices.try_emplace(vertex, uniqueIndex);
 				if (isUnique)
@@ -94,3 +108,4 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices
 		}
 		return std::pair{ std::move(vertices), std::move(indices) };
 }
+

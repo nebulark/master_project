@@ -11,10 +11,10 @@ layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
 } u_grd;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
+layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexCoord;
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
@@ -25,6 +25,6 @@ void main() {
 	vec4(inPosition, 1.0);
 
 //	gl_Position = vec4(clamp(inPosition, vec3(-1.0), vec3(+1.0)), 1.0);
-    fragColor = inColor;
+    fragNormal = inNormal;
     fragTexCoord = inTexCoord;
 }

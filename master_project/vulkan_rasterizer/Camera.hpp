@@ -13,8 +13,8 @@ public:
 
 	void UpdateFromMouse(float yawInput, float pitchInput);
 	void UpdateLocation(float forwardInput, float leftInput);
-	void LookAt(glm::vec3 pos, glm::vec3 UpDir);
-	void LookDir(glm::vec3 Dir, glm::vec3 UpDir);
+	void LookAt(glm::vec3 pos, glm::vec3 upDir);
+	void LookDir(glm::vec3 dir, glm::vec3 upDir);
 
 	glm::quat m_rotation;
 	glm::vec3 m_position;
