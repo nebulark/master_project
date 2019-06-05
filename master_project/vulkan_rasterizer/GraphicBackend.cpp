@@ -11,6 +11,8 @@
 #include "DebugUtils.hpp"
 #include "CommandBufferUtils.hpp"
 #include "Vertex.hpp"
+#include "Camera.hpp"
+#include "UniformBufferObjects.hpp"
 
 const vk::BufferUsageFlags ModelBuffer::usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer;
 namespace
@@ -487,84 +489,169 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	// Descriptor Sets - Combined Image Sampler
 	{
-		vk::DescriptorSetLayoutBinding descriptorSetBinding_texture[] = {
-	vk::DescriptorSetLayoutBinding{}
-		.setBinding(0)
-		.setDescriptorCount(1)
-		.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-		.setStageFlags(vk::ShaderStageFlagBits::eFragment),
+		{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_texture[] = {
+		vk::DescriptorSetLayoutBinding{}
+			.setBinding(0)
+			.setDescriptorCount(1)
+			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+			.setStageFlags(vk::ShaderStageFlagBits::eFragment),
+
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_texture))
+				.setPBindings(descriptorSetBinding_texture)
+				;
+
+			m_descriptorSetLayout_texture = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_texture);
+		}
+		{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_ubo[] =
+			{
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0) // matches Shader code
+					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDescriptorCount(1)
+					.setStageFlags(vk::ShaderStageFlagBits::eVertex),
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_ubo = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_ubo))
+				.setPBindings(descriptorSetBinding_ubo)
+				;
+
+			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_ubo);
+		}
+		vk::DescriptorPoolSize descritproPoolSizes[] =
+		{
+
+		vk::DescriptorPoolSize()
+			.setType(vk::DescriptorType::eCombinedImageSampler)
+			.setDescriptorCount(1),
+
+		vk::DescriptorPoolSize{}
+			.setType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(2),
+
+
+
 		};
 
-
-		vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
-			.setBindingCount(GetSizeUint32(descriptorSetBinding_texture))
-			.setPBindings(descriptorSetBinding_texture)
-			;
-
-		m_descriptorSetLayout_texture = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_texture);
-
-		vk::DescriptorPoolSize descriptorPoolSize_sampler = vk::DescriptorPoolSize()
-			.setType(vk::DescriptorType::eCombinedImageSampler)
-			.setDescriptorCount(1);
-
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo_sampler = vk::DescriptorPoolCreateInfo()
-			.setPoolSizeCount(1).setPPoolSizes(&descriptorPoolSize_sampler)
-			.setMaxSets(1);
+			.setPoolSizeCount(GetSizeUint32(descritproPoolSizes)).setPPoolSizes(descritproPoolSizes)
+			.setMaxSets(3);
 
 
 		m_descriptorPool = m_device->createDescriptorPoolUnique(descriptorPoolCreateInfo_sampler);
 
-		vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
-			.setDescriptorPool(m_descriptorPool.get())
-			.setDescriptorSetCount(1)
-			.setPSetLayouts(&(m_descriptorSetLayout_texture.get()));
+		{
+			vk::DescriptorSetLayout layouts[] = {
+				m_descriptorSetLayout_texture.get(),
+				m_descriptorSetLayout_ubo.get(),
+				m_descriptorSetLayout_ubo.get() // we need two as we write it each frame, so we can leave one alone until its finished		
+			};
+
+			vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
+				.setDescriptorPool(m_descriptorPool.get())
+				.setDescriptorSetCount(GetSizeUint32(layouts))
+				.setPSetLayouts(layouts);
 
 
-		m_descriptorSet_texture = std::move(m_device->allocateDescriptorSetsUnique(descritproSetAllocateInfo)[0]);
+			std::vector<vk::DescriptorSet> descriptorSets = m_device->allocateDescriptorSets(descritproSetAllocateInfo);
+			m_descriptorSet_texture = std::move(descriptorSets[0]);
+			m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
+			m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
+		}
+		{
+			vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
+				.setMagFilter(vk::Filter::eLinear)
+				.setMinFilter(vk::Filter::eLinear)
+				.setAddressModeU(vk::SamplerAddressMode::eRepeat)
+				.setAddressModeV(vk::SamplerAddressMode::eRepeat)
+				.setAddressModeW(vk::SamplerAddressMode::eRepeat)
+				//	.setAnisotropyEnable(true)
+				//	.setMaxAnisotropy(16)
+				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+				.setUnnormalizedCoordinates(false)
+				.setCompareEnable(false)
+				.setCompareOp(vk::CompareOp::eAlways)
+				.setMipmapMode(vk::SamplerMipmapMode::eLinear)
+				.setMipLodBias(0.f)
+				.setMinLod(0.f)
+				.setMaxLod(static_cast<float>(1))
+				;
 
-		vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
-			.setMagFilter(vk::Filter::eLinear)
-			.setMinFilter(vk::Filter::eLinear)
-			.setAddressModeU(vk::SamplerAddressMode::eRepeat)
-			.setAddressModeV(vk::SamplerAddressMode::eRepeat)
-			.setAddressModeW(vk::SamplerAddressMode::eRepeat)
-			//	.setAnisotropyEnable(true)
-			//	.setMaxAnisotropy(16)
-			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
-			.setUnnormalizedCoordinates(false)
-			.setCompareEnable(false)
-			.setCompareOp(vk::CompareOp::eAlways)
-			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
-			.setMipLodBias(0.f)
-			.setMinLod(0.f)
-			.setMaxLod(static_cast<float>(1))
-			;
+			m_textureSampler = m_device->createSamplerUnique(samplerCreateInfo);
 
-		m_textureSampler = m_device->createSamplerUnique(samplerCreateInfo);
+			vk::DescriptorImageInfo imageInfo = vk::DescriptorImageInfo{}
+				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setImageView(m_textureImageView.get())
+				.setSampler(m_textureSampler.get());
 
-		vk::DescriptorImageInfo imageInfo = vk::DescriptorImageInfo{}
-			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-			.setImageView(m_textureImageView.get())
-			.setSampler(m_textureSampler.get());
+			vk::WriteDescriptorSet writeDescriptorSet = vk::WriteDescriptorSet{}
+				.setDstSet(m_descriptorSet_texture)
+				.setDstBinding(0) // matches shader code
+				.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+				.setDstArrayElement(0)
+				.setDescriptorCount(1).setPImageInfo(&imageInfo);
 
-		vk::WriteDescriptorSet writeDescriptorSet = vk::WriteDescriptorSet{}
-			.setDstSet(m_descriptorSet_texture.get())
-			.setDstBinding(0) // matches shader code
-			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-			.setDstArrayElement(0)
-			.setDescriptorCount(1).setPImageInfo(&imageInfo);
+			m_device->updateDescriptorSets(writeDescriptorSet, {});
+		}
+		{
 
-		m_device->updateDescriptorSets(writeDescriptorSet, {});
+			vk::DeviceSize uniformBufferSize = sizeof(Ubo_GlobalRenderData);
+			for (size_t i = 0; i < m_ubo_buffer.size(); ++i)
+			{
+				const vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
+					.setSize(uniformBufferSize)
+					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo allocCreateInfo = {};
+				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+				m_ubo_buffer[i] = m_BufferPool.Alloc(bufferCreateInfo, allocCreateInfo);
+			}
+
+
+			std::array<vk::DescriptorBufferInfo, std::tuple_size_v<decltype(m_ubo_buffer)>> descriptorBufferInfos;
+			std::array<vk::WriteDescriptorSet, std::tuple_size_v<decltype(m_ubo_buffer)>> writeDescriptorSets;
+
+			for (size_t i = 0; i < descriptorBufferInfos.size(); ++i)
+			{
+
+			descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
+				.setBuffer(m_ubo_buffer[i])
+				.setOffset(0)
+				.setRange(sizeof(Ubo_GlobalRenderData));
+			
+
+			writeDescriptorSets[i] = vk::WriteDescriptorSet{}
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDstArrayElement(0)
+				.setDstBinding(0) // matches shader code
+				.setDstSet(m_descriptorSet_ubo[i])
+				.setPBufferInfo(&descriptorBufferInfos[i])
+				;
+			}
+
+		m_device->updateDescriptorSets(writeDescriptorSets, {});
+
+
+		}
 	}
 
 	vk::PushConstantRange pushConstantRange_modelViewProjection = vk::PushConstantRange{}
 		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
 		.setOffset(0)
-		.setSize(sizeof(PushConstant_ModelViewProjection));
+		.setSize(sizeof(PushConstant_ModelMat));
 
 
+	vk::DescriptorSetLayout layouts[] = { m_descriptorSetLayout_texture.get(), m_descriptorSetLayout_ubo.get() };
 	vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
-		.setSetLayoutCount(1).setPSetLayouts(&(m_descriptorSetLayout_texture.get()))
+		.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
 		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange_modelViewProjection);
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
@@ -598,19 +685,32 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 }
 
-void GraphicsBackend::Render()
+void GraphicsBackend::Render(const Camera& camera)
 {
-	
-
-	glm::mat4 modelMat = glm::rotate(glm::mat4(1.0f), glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
-	glm::mat4 viewMat = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	glm::mat4 projMat = glm::perspective(glm::radians(45.0f),
-		static_cast<float>(m_swapchain.extent.width) / static_cast<float>(m_swapchain.extent.height), 0.1f, 10.0f);
-	projMat[1][1] *= -1;
-
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
+
+	glm::mat4 modelMat = glm::rotate(glm::mat4(1.0f), glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	VmaAllocation* ubo_Allocation = m_BufferPool.GetAllocation(m_ubo_buffer[m_currentframe]);
+	{
+		void* bufferMemory;
+		vmaMapMemory(m_allocator.get(), *ubo_Allocation, &bufferMemory);
+		Ubo_GlobalRenderData renderData;
+		renderData.proj = camera.GetProjectionMatrix();
+		renderData.view = camera.CalcViewMatrix();
+
+#if 0
+	renderData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	renderData.proj = glm::perspective(glm::radians(45.0f),
+		static_cast<float>(m_swapchain.extent.width) / static_cast<float>(m_swapchain.extent.height), 0.1f, 10.0f);
+#endif
+
+		std::memcpy(bufferMemory, &renderData, sizeof(renderData));
+		vmaUnmapMemory(m_allocator.get(), *ubo_Allocation);
+	}
+
 
 	uint32_t imageIndex;
 	vk::Result aquireResult = m_device->acquireNextImageKHR(
@@ -637,12 +737,16 @@ void GraphicsBackend::Render()
 		drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 		drawBuffer.bindIndexBuffer(m_modelBuffer.buffer, m_modelBuffer.indexOffset, m_modelBuffer.indexType);
 		drawBuffer.bindVertexBuffers(0, m_modelBuffer.buffer, m_modelBuffer.vertexOffset);
-		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, m_descriptorSet_texture.get(), {});
-		PushConstant_ModelViewProjection pushConstant = {};
-		pushConstant.model = modelMat;
-		pushConstant.viewprojection = projMat * viewMat;
+		std::array<vk::DescriptorSet,2> descriptorSets = {
+			m_descriptorSet_texture,
+			m_descriptorSet_ubo[m_currentframe] 
+		};
 
-		drawBuffer.pushConstants<PushConstant_ModelViewProjection>(
+		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+		PushConstant_ModelMat pushConstant = {};
+		pushConstant.model = modelMat;
+
+		drawBuffer.pushConstants<PushConstant_ModelMat>(
 			m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
 		drawBuffer.drawIndexed(m_modelBuffer.indexCount, 1, 0, 0, 0);
@@ -650,7 +754,7 @@ void GraphicsBackend::Render()
 		drawBuffer.end();
 
 
-	vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+		vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
 		m_graphicsPresentQueues[0].submit(vk::SubmitInfo{}
 			.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
 			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)

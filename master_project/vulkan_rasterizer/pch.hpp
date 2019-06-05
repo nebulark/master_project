@@ -20,6 +20,9 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "gtx/hash.hpp"
 #include "gtc/matrix_transform.hpp"
+#include "gtc/quaternion.hpp"
+#include "gtx/quaternion.hpp"
+
 
 #include "stb/stb_image.h"
 #include "tinyObj/tiny_obj_loader.h"

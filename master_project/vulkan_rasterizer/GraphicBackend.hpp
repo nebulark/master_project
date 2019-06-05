@@ -7,6 +7,7 @@
 
 #include "VmaAllocationsPool.hpp"
 
+class Camera;
 
 struct ModelBuffer
 {
@@ -23,7 +24,7 @@ class GraphicsBackend
 {
 public:
 	void Init(SDL_Window* window);
-	void Render();
+	void Render(const Camera& camera);
 	void WaitIdle() { m_device->waitIdle(); }
 private:
 	static constexpr int MaxInFlightFrames = 2;
@@ -53,12 +54,17 @@ private:
 
 	vk::UniqueRenderPass m_colorDepthRenderPass;
 
+	vk::UniqueDescriptorPool m_descriptorPool;
+
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_texture;
-	vk::UniqueDescriptorSet m_descriptorSet_texture;
+	vk::DescriptorSet m_descriptorSet_texture;
+
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_ubo;
+	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_ubo;
+	std::array<vk::Buffer, MaxInFlightFrames> m_ubo_buffer;
 
 	vk::UniquePipelineLayout m_pipelineLayout;
 
-	vk::UniqueDescriptorPool m_descriptorPool;
 	std::array<vk::UniqueCommandPool, MaxInFlightFrames> m_graphicsPresentCommandPools;
 	std::array<vk::UniqueCommandBuffer, MaxInFlightFrames> m_graphicsPresentBuffer;
 

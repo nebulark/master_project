@@ -4,6 +4,7 @@
 #include "VmaRAII.hpp"
 #include "common/Deleters.hpp"
 #include "GraphicBackend.hpp"
+#include "Camera.hpp"
 
 class Application_Rasterizer
 {
@@ -17,4 +18,5 @@ private:
 
 	WindowPtr m_sdlWindow;
 	GraphicsBackend m_graphcisBackend;
+	Camera m_camera;
 };

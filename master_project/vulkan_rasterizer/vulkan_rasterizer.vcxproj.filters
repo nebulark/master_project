@@ -67,6 +67,9 @@
     <ClCompile Include="vma_implementation.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -114,6 +117,12 @@
     <ClInclude Include="CommandBufferUtils.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="Camera.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="UniformBufferObjects.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -124,11 +133,11 @@
     </Natvis>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\shader.frag">
+    <CustomBuild Include="shaders\shader.frag">
       <Filter>Shader</Filter>
-    </None>
-    <None Include="shaders\shader.vert">
+    </CustomBuild>
+    <CustomBuild Include="shaders\shader.vert">
       <Filter>Shader</Filter>
-    </None>
+    </CustomBuild>
   </ItemGroup>
 </Project>
