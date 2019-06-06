@@ -70,6 +70,12 @@
     <ClCompile Include="Camera.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="InputManager.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Key.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -123,6 +129,12 @@
     <ClInclude Include="UniformBufferObjects.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="InputManager.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Key.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -141,17 +153,9 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <Object Include="models\cone.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
-    <Object Include="models\cube.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
-    <Object Include="models\sphere.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
-    <Object Include="models\torus.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
+    <CopyFileToFolders Include="models\cone.obj" />
+    <CopyFileToFolders Include="models\cube.obj" />
+    <CopyFileToFolders Include="models\sphere.obj" />
+    <CopyFileToFolders Include="models\torus.obj" />
   </ItemGroup>
 </Project>

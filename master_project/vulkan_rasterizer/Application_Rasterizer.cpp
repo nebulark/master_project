@@ -29,11 +29,16 @@ Application_Rasterizer::Application_Rasterizer()
 	m_camera.SetPerspection( 0.1f, 100.0f, glm::radians(45.f), glm::vec2(width, height));
 	m_camera.m_position =  glm::vec3(0.f, 0.05f, 3.f) * 20.f;
 	m_camera.LookDir( glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_lastTime = ClockType::now();
 }
 
 bool Application_Rasterizer::Update()
 {
+	ClockType::time_point currentTime = ClockType::now();
+	const float DeltaSeconds = FloatSeconds(currentTime - m_lastTime).count();
+	m_lastTime = currentTime;
 
+	m_inputManager.StartNewFrame();
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
@@ -42,10 +47,88 @@ bool Application_Rasterizer::Update()
 			m_graphcisBackend.WaitIdle();
 			return false;
 		}
-		//handle_event(event);
+		HandleEvent(event);
 	}
+	GameUpdate(DeltaSeconds);
 	m_graphcisBackend.Render(m_camera);
 	SDL_UpdateWindowSurface(m_sdlWindow.get());
 	return true;
+}
+
+void Application_Rasterizer::HandleEvent(SDL_Event event)
+{
+	switch (event.type)
+	{
+	case SDL_EventType::SDL_KEYDOWN:
+		m_inputManager.update_key_down(event.key);
+		break;
+	case SDL_EventType::SDL_KEYUP:
+		m_inputManager.update_key_up(event.key);
+		break;
+	case SDL_EventType::SDL_MOUSEMOTION:
+		m_inputManager.update_mouse(event.motion);
+	default:
+		break;
+	}
+}
+
+void Application_Rasterizer::GameUpdate(float DeltaSeconds)
+{	
+	constexpr float movementMultiplicator = 10.f;
+	constexpr float pitchMultiplicator = 2.f;
+	constexpr float yawMultiplicator = 2.f;
+	float yawInput = 0;
+	float pitchInput = 0;
+	float rightInput = 0;
+	float forwardInput = 0;
+	float upInput = 0;
+
+	if (m_inputManager.GetKey(KeyCode::KEY_W).IsPressed())
+	{
+		forwardInput += 1.f;
+	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_S).IsPressed())
+	{
+		forwardInput -= 1.f;
+	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_D).IsPressed())
+	{
+		rightInput += 1.f;
+	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_A).IsPressed())
+	{
+		rightInput -= 1.f;
+	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_Q).IsPressed())
+	{
+		upInput += 1.f;
+	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_E).IsPressed())
+	{
+		upInput -= 1.f;
+	}
+
+
+	if (!m_inputManager.GetKey(KeyCode::KEY_LEFT_SHIFT).IsPressed())
+	{
+		yawInput += m_inputManager.GetMouseMotion().x * DeltaSeconds * yawMultiplicator;
+		pitchInput += m_inputManager.GetMouseMotion().y * DeltaSeconds * pitchMultiplicator;
+		m_camera.UpdateFromMouse(yawInput, pitchInput);
+	}
+
+	forwardInput *= DeltaSeconds * movementMultiplicator;
+	rightInput *= DeltaSeconds * movementMultiplicator;
+	upInput *= DeltaSeconds * movementMultiplicator;
+	
+	m_camera.UpdateLocation(forwardInput, rightInput, upInput);
+
+	std::printf("delta secs: %f \n", DeltaSeconds);
+
+
 }
 

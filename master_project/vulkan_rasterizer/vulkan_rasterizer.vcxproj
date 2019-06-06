@@ -201,6 +201,8 @@
     <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="GraphicBackend.cpp" />
     <ClCompile Include="GraphicsPipeline.cpp" />
+    <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Key.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
@@ -245,6 +247,8 @@
     <ClInclude Include="DebugUtils.hpp" />
     <ClInclude Include="GraphicBackend.hpp" />
     <ClInclude Include="GraphicsPipeline.hpp" />
+    <ClInclude Include="InputManager.hpp" />
+    <ClInclude Include="Key.hpp" />
     <ClInclude Include="Loader.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="GetSizeUint32.hpp" />

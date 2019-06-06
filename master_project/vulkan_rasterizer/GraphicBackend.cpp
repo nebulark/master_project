@@ -699,12 +699,6 @@ void GraphicsBackend::Render(const Camera& camera)
 		renderData.proj = camera.GetProjectionMatrix();
 		renderData.view = camera.CalcViewMatrix();
 
-#if 0
-	renderData.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	renderData.proj = glm::perspective(glm::radians(45.0f),
-		static_cast<float>(m_swapchain.extent.width) / static_cast<float>(m_swapchain.extent.height), 0.1f, 10.0f);
-#endif
-
 		std::memcpy(bufferMemory, &renderData, sizeof(renderData));
 		vmaUnmapMemory(m_allocator.get(), *ubo_Allocation);
 	}

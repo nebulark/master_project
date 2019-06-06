@@ -3,8 +3,9 @@
 
 glm::mat4 Camera::CalcViewMatrix() const
 {
-	glm::mat4 camera = glm::mat4_cast(m_rotation);
+	glm::mat4 camera{1};
 	camera = glm::translate(camera, m_position);
+	camera = camera * glm::mat4_cast(m_rotation);
 	return glm::inverse(camera);
 }
 
@@ -23,18 +24,20 @@ const glm::mat4& Camera::GetProjectionMatrix() const
 
 void Camera::UpdateFromMouse(float yawInput, float pitchInput)
 {
-	glm::quat yawRotation = glm::angleAxis(yawInput, glm::vec3(0, 1, 0));
-	glm::quat pitchRotation = glm::angleAxis(pitchInput, glm::vec3(1, 0, 0));
+	glm::quat yawRotation = glm::angleAxis(yawInput, glm::vec3(0, -1, 0));
+	glm::quat pitchRotation = glm::angleAxis(pitchInput, glm::vec3(-1, 0, 0));
 	m_rotation = glm::normalize(yawRotation * m_rotation * pitchRotation);
 }
 
-void Camera::UpdateLocation(float forwardInput, float leftInput)
+void Camera::UpdateLocation(float forwardInput, float rightInput, float upInput)
 {
-	glm::vec3 forwardVector = m_rotation * glm::vec3(0, 0, 1);
+	glm::vec3 forwardVector = m_rotation * glm::vec3(0, 0, -1);
+	glm::vec3 upVector = m_rotation * glm::vec3(0, 1, 0);
 	glm::vec3 rightVector = m_rotation * glm::vec3(1, 0, 0);
 
 	m_position += forwardInput * forwardVector;
-	m_position += leftInput * rightVector;
+	m_position += upInput * upVector;
+	m_position += rightInput * rightVector;
 }
 
 void Camera::LookAt(glm::vec3 pos, glm::vec3 upDir)
