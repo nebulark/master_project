@@ -55,12 +55,15 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 	for (const char* filename : objFileNames)
 	{
 
+		// we could also use the member variable, but we would need to keep it up to date
+		const int currentIndexBufferElementCount = initialIndexElementCount + indices.size();
 		StaticSceneMesh staticSceneMesh;
 		staticSceneMesh.meshName = filename;
-		staticSceneMesh.firstIndex = gsl::narrow<uint32_t>(initialIndexElementCount + indices.size());
+		staticSceneMesh.indexBufferOffset = currentIndexBufferElementCount * sizeof(IndexType);
 
 		Vertex::LoadObjWithIndices_append(filename, vertices, indices);
-		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(initialIndexElementCount + indices.size() - staticSceneMesh.firstIndex);
+		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(indices.size() - currentIndexBufferElementCount);
+		
 		m_meshes.push_back(std::move(staticSceneMesh));
 	}
 

@@ -9,7 +9,7 @@
 struct StaticSceneMesh
 {
 	std::string meshName;
-	uint32_t firstIndex;
+	vk::DeviceSize indexBufferOffset;
 	uint32_t indexCount;
 };
 

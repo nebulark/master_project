@@ -567,7 +567,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_staticSceneData = std::make_unique<StaticSceneData>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" };
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 
@@ -617,9 +617,7 @@ void GraphicsBackend::Render(const Camera& camera)
 		drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 
 		gsl::span<const StaticSceneMesh> meshes = m_staticSceneData->GetMeshes();
-		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[0].firstIndex, StaticSceneData::IndexBufferIndexType);
 		const vk::DeviceSize zeroOffset = 0;
-		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
 		std::array<vk::DescriptorSet, 2> descriptorSets = {
 			m_descriptorSet_texture,
 			m_descriptorSet_ubo[m_currentframe]
@@ -636,16 +634,19 @@ void GraphicsBackend::Render(const Camera& camera)
 			glm::vec3(-2.f,0.f,0.f),
 			glm::vec3(0.f,0.f, 1.f)
 		};
-		for (const glm::vec3& pos : positions)
+		for (int i = 0; i< std::size(positions); ++i)
 		{
-
+			const glm::vec3& pos = positions[i];
 			PushConstant_ModelMat pushConstant = {};
 			pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
+
+		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % 2].indexBufferOffset, StaticSceneData::IndexBufferIndexType);
+		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
 
 			drawBuffer.pushConstants<PushConstant_ModelMat>(
 				m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
-			drawBuffer.drawIndexed(meshes[0].indexCount, 1, 0, 0, 0);
+			drawBuffer.drawIndexed(meshes[i % 2].indexCount, 1, 0, 0, 0);
 		}
 		drawBuffer.endRenderPass();
 		drawBuffer.end();
