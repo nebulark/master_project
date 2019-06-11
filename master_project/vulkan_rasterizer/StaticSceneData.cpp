@@ -1,15 +1,15 @@
 #include "pch.hpp"
 #include "StaticSceneData.hpp"
 #include "GetSizeUint32.hpp"
-#include "UniqueVmaBuffer.h"
+#include "UniqueVmaBuffer.hpp"
 #include "UniqueVmaMemoryMap.hpp"
 #include "CommandBufferUtils.hpp"
 
 
-StaticSceneData::StaticSceneData(VmaBufferPool& allocationPool)
+StaticSceneData::StaticSceneData(VmaAllocator allocator)
 	: m_vertexBufferElementCount(0)
 	, m_indexBufferElementCount(0)
-	, m_bufferPoolRef(&allocationPool)
+	, m_allocator(allocator)
 {
 
 	// TODO: arbitrary values, benchmark what we really need
@@ -26,7 +26,7 @@ StaticSceneData::StaticSceneData(VmaBufferPool& allocationPool)
 			.setUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst)
 			.setSize(m_vertexBufferMaxElements * sizeof(VertexType));
 
-		m_vertexBuffer = allocationPool.Alloc(vertexBufferCreateInfo, vmaAllocInfo_gpuOnly);
+		m_vertexBuffer = UniqueVmaBuffer(allocator, vertexBufferCreateInfo, vmaAllocInfo_gpuOnly);
 	}
 
 	{
@@ -35,13 +35,8 @@ StaticSceneData::StaticSceneData(VmaBufferPool& allocationPool)
 			.setUsage(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst)
 			.setSize(m_indexBufferMaxElements * sizeof(IndexType));
 
-		m_indexBuffer = allocationPool.Alloc(indexBufferCreateInfo, vmaAllocInfo_gpuOnly);
+		m_indexBuffer = UniqueVmaBuffer(allocator, indexBufferCreateInfo, vmaAllocInfo_gpuOnly);
 	}
-}
-StaticSceneData::~StaticSceneData()
-{
-	m_bufferPoolRef->Destroy(m_indexBuffer);
-	m_bufferPoolRef->Destroy(m_vertexBuffer);
 }
 
 
@@ -62,10 +57,10 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 
 		StaticSceneMesh staticSceneMesh;
 		staticSceneMesh.meshName = filename;
-		staticSceneMesh.firstIndex = initialIndexElementCount + indices.size();
+		staticSceneMesh.firstIndex = gsl::narrow<uint32_t>(initialIndexElementCount + indices.size());
 
 		Vertex::LoadObjWithIndices_append(filename, vertices, indices);
-		staticSceneMesh.indexCount = initialIndexElementCount + indices.size() - staticSceneMesh.firstIndex;
+		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(initialIndexElementCount + indices.size() - staticSceneMesh.firstIndex);
 		m_meshes.push_back(std::move(staticSceneMesh));
 	}
 
@@ -93,7 +88,7 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 
 		VmaAllocationCreateInfo vmaAllocCreateInfo = {};
 		vmaAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
-		UniqueVmaBuffer stagingBuffer(m_bufferPoolRef->GetVmaAllocator(), stagingBufferCreateInfo, vmaAllocCreateInfo);
+		UniqueVmaBuffer stagingBuffer(m_allocator, stagingBufferCreateInfo, vmaAllocCreateInfo);
 
 		{
 			UniqueVmaMemoryMap memoryMap(stagingBuffer.GetAllocator(), stagingBuffer.GetAllocation());
@@ -111,11 +106,11 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 		
 		{
 			const vk::BufferCopy bufferCopyIndices(stageBufferIndicesBegin, indexBufferOffset, indicesByteSize);
-			copyCommandBuffer->copyBuffer(stagingBuffer.Get(), m_indexBuffer, bufferCopyIndices);
+			copyCommandBuffer->copyBuffer(stagingBuffer.Get(), m_indexBuffer.Get(), bufferCopyIndices);
 		}
 		{
 			const vk::BufferCopy bufferCopyVertices(stageBufferVertexBegin, vertexBufferOffset, verticesByteSize);
-			copyCommandBuffer->copyBuffer(stagingBuffer.Get(), m_vertexBuffer, bufferCopyVertices);
+			copyCommandBuffer->copyBuffer(stagingBuffer.Get(), m_vertexBuffer.Get(), bufferCopyVertices);
 		}
 
 	
@@ -133,6 +128,6 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 
 	}
 	// increment Elemement count to match our new size
-	m_indexBufferElementCount += indices.size();
-	m_vertexBufferElementCount += vertices.size();
+	m_indexBufferElementCount += GetSizeUint32(indices);
+	m_vertexBufferElementCount += GetSizeUint32(vertices);
 }

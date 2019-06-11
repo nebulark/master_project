@@ -565,7 +565,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-	m_staticSceneData = std::make_unique<StaticSceneData>(m_BufferPool);
+	m_staticSceneData = std::make_unique<StaticSceneData>(m_allocator.get());
 
 	const char* objsToLoad[] = { "torus.obj" };
 	// use graphics present queue to avoid ownership transfer

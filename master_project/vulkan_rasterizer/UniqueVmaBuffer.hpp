@@ -5,6 +5,8 @@
 class UniqueVmaBuffer
 {
 public:
+	UniqueVmaBuffer() : m_buffer(nullptr), m_allocator(nullptr), m_allocation(nullptr){}
+
 	UniqueVmaBuffer(
 		VmaAllocator allocator, const vk::BufferCreateInfo& bufferCreateInfo,
 		const VmaAllocationCreateInfo& vmaAllocationCreateInfo);
@@ -27,7 +29,7 @@ private:
 	VmaAllocation m_allocation;
 };
 
-UniqueVmaBuffer::UniqueVmaBuffer(VmaAllocator allocator, const vk::BufferCreateInfo& bufferCreateInfo, const VmaAllocationCreateInfo& vmaAllocationCreateInfo)
+inline UniqueVmaBuffer::UniqueVmaBuffer(VmaAllocator allocator, const vk::BufferCreateInfo& bufferCreateInfo, const VmaAllocationCreateInfo& vmaAllocationCreateInfo)
 	: m_buffer(nullptr)
 	, m_allocator(allocator)
 	, m_allocation(nullptr)
@@ -38,7 +40,7 @@ UniqueVmaBuffer::UniqueVmaBuffer(VmaAllocator allocator, const vk::BufferCreateI
 	m_buffer = cBuffer;
 }
 
-UniqueVmaBuffer::UniqueVmaBuffer(UniqueVmaBuffer&& rhs) noexcept
+inline UniqueVmaBuffer::UniqueVmaBuffer(UniqueVmaBuffer&& rhs) noexcept
 	: m_buffer(rhs.m_buffer)
 	, m_allocator(rhs.m_allocator)
 	, m_allocation(rhs.m_allocation)
@@ -46,7 +48,7 @@ UniqueVmaBuffer::UniqueVmaBuffer(UniqueVmaBuffer&& rhs) noexcept
 	rhs.m_buffer = nullptr;
 }
 
-UniqueVmaBuffer& UniqueVmaBuffer::operator=(UniqueVmaBuffer&& rhs) noexcept
+inline UniqueVmaBuffer& UniqueVmaBuffer::operator=(UniqueVmaBuffer&& rhs) noexcept
 {
 	std::swap(m_buffer, rhs.m_buffer);
 	std::swap(m_allocator, rhs.m_allocator);
@@ -54,7 +56,7 @@ UniqueVmaBuffer& UniqueVmaBuffer::operator=(UniqueVmaBuffer&& rhs) noexcept
 	return *this;
 }
 
-UniqueVmaBuffer::~UniqueVmaBuffer()
+inline UniqueVmaBuffer::~UniqueVmaBuffer()
 {
 	if (m_buffer)
 	{

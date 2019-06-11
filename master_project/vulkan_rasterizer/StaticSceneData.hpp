@@ -4,7 +4,7 @@
 #include <string>
 #include "Vertex.hpp"
 #include "common/VulkanUtils.hpp"
-#include "VmaAllocationsPool.hpp"
+#include "UniqueVmaBuffer.hpp"
 
 struct StaticSceneMesh
 {
@@ -22,7 +22,7 @@ public:
 	using IndexType = uint32_t;
 	static constexpr vk::IndexType IndexBufferIndexType = VulkanUtils::GetIndexBufferType_v<IndexType>;
 
-	StaticSceneData(VmaBufferPool& allocationPool);
+	StaticSceneData(VmaAllocator allocator);
 
 	void LoadObjs(gsl::span<const char* const> objFileNames, vk::Device device,
 		vk::CommandPool transferPool, vk::Queue transferQueue);
@@ -31,20 +31,19 @@ public:
 	StaticSceneData& operator=(const StaticSceneData&) = delete;
 
 	// For now just delete these, we can implement them later
-	StaticSceneData(StaticSceneData&& rhs) noexcept = delete;
-	StaticSceneData& operator=(StaticSceneData&& rhs) noexcept = delete;
+	StaticSceneData(StaticSceneData&& rhs) noexcept = default;
+	StaticSceneData& operator=(StaticSceneData&& rhs) noexcept = default;
 
-	~StaticSceneData();
 
-	vk::Buffer GetVertexBuffer() { return m_vertexBuffer; }
-	vk::Buffer GetIndexBuffer() { return m_indexBuffer; }
+	vk::Buffer GetVertexBuffer() { return m_vertexBuffer.Get(); }
+	vk::Buffer GetIndexBuffer() { return m_indexBuffer.Get(); }
 	gsl::span<const StaticSceneMesh> GetMeshes() const { return m_meshes; }
 private:
 	// TODO: Handle Queue Ownerships?
 
 
 	// stores all vertices of the Scene
-	vk::Buffer m_vertexBuffer;
+	UniqueVmaBuffer m_vertexBuffer;
 
 	int m_vertexBufferMaxElements;
 	// number of used vertices in Vertex buffer, each Index in IndexBuffer MUST be lower than this value!
@@ -52,7 +51,7 @@ private:
 
 	// stores all indices to the scene,
 	// indices are relative to m_vertexBuffer! VertexBufferOffset when drawing should always be 0!
-	vk::Buffer m_indexBuffer;
+	UniqueVmaBuffer m_indexBuffer;
 	int m_indexBufferMaxElements;
 	// number of used indices in index Buffer
 	// when drawing the firstIndex + indexCount MUST be lower or equal than this value!
@@ -60,7 +59,7 @@ private:
 
 	std::vector<StaticSceneMesh> m_meshes;
 
-	VmaBufferPool* m_bufferPoolRef;
+	VmaAllocator m_allocator;
 
 };
 

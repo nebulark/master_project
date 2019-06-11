@@ -255,7 +255,7 @@
     <ClInclude Include="VmaAllocationsPool.hpp" />
     <ClInclude Include="UniqueVmaMemoryMap.hpp" />
     <ClInclude Include="VmaRAII.hpp" />
-    <ClInclude Include="UniqueVmaBuffer.h" />
+    <ClInclude Include="UniqueVmaBuffer.hpp" />
     <ClInclude Include="VmaUtils.hpp" />
   </ItemGroup>
   <ItemGroup>
