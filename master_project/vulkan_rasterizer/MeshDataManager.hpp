@@ -5,39 +5,34 @@
 #include "Vertex.hpp"
 #include "common/VulkanUtils.hpp"
 #include "UniqueVmaBuffer.hpp"
+#include "MeshDataRef.hpp"
 
-struct StaticSceneMesh
-{
-	std::string meshName;
-	vk::DeviceSize indexBufferOffset;
-	uint32_t indexCount;
-};
 
 // contains data to draw meshes
 // only handles data storage, instancing must be handled somewhere else
-class StaticSceneData 
+class MeshDataManager 
 {
 public:
 	using VertexType = Vertex;
 	using IndexType = uint32_t;
 	static constexpr vk::IndexType IndexBufferIndexType = VulkanUtils::GetIndexBufferType_v<IndexType>;
 
-	StaticSceneData(VmaAllocator allocator);
+	MeshDataManager(VmaAllocator allocator);
 
 	void LoadObjs(gsl::span<const char* const> objFileNames, vk::Device device,
 		vk::CommandPool transferPool, vk::Queue transferQueue);
 
-	StaticSceneData(const StaticSceneData&) = delete;
-	StaticSceneData& operator=(const StaticSceneData&) = delete;
+	MeshDataManager(const MeshDataManager&) = delete;
+	MeshDataManager& operator=(const MeshDataManager&) = delete;
 
 	// For now just delete these, we can implement them later
-	StaticSceneData(StaticSceneData&& rhs) noexcept = default;
-	StaticSceneData& operator=(StaticSceneData&& rhs) noexcept = default;
+	MeshDataManager(MeshDataManager&& rhs) noexcept = default;
+	MeshDataManager& operator=(MeshDataManager&& rhs) noexcept = default;
 
 
 	vk::Buffer GetVertexBuffer() { return m_vertexBuffer.Get(); }
 	vk::Buffer GetIndexBuffer() { return m_indexBuffer.Get(); }
-	gsl::span<const StaticSceneMesh> GetMeshes() const { return m_meshes; }
+	gsl::span<const MeshDataRef> GetMeshes() const { return m_meshes; }
 private:
 	// TODO: Handle Queue Ownerships?
 
@@ -57,16 +52,19 @@ private:
 	// when drawing the firstIndex + indexCount MUST be lower or equal than this value!
 	int m_indexBufferElementCount;
 
-	std::vector<StaticSceneMesh> m_meshes;
+	std::vector<MeshDataRef> m_meshes;
 
 	VmaAllocator m_allocator;
 
 };
 
 
-struct bla
+struct DrawIndirectData
 {
-vk::Buffer m_drawIndexedIndirectBuffer;
+	DrawIndirectData(VmaAllocator allocator);
+
+	
+	vk::Buffer m_drawIndexedIndirectBuffer;
 	vk::DeviceSize m_drawIndexedIndirectSizeBytes;
 
 	int m_drawIndexedIndirectBufferElementCount;

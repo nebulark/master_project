@@ -1,12 +1,12 @@
 #include "pch.hpp"
-#include "StaticSceneData.hpp"
+#include "MeshDataManager.hpp"
 #include "GetSizeUint32.hpp"
 #include "UniqueVmaBuffer.hpp"
 #include "UniqueVmaMemoryMap.hpp"
 #include "CommandBufferUtils.hpp"
 
 
-StaticSceneData::StaticSceneData(VmaAllocator allocator)
+MeshDataManager::MeshDataManager(VmaAllocator allocator)
 	: m_vertexBufferElementCount(0)
 	, m_indexBufferElementCount(0)
 	, m_allocator(allocator)
@@ -40,7 +40,7 @@ StaticSceneData::StaticSceneData(VmaAllocator allocator)
 }
 
 
-void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
+void MeshDataManager::LoadObjs(gsl::span<const char* const> objFileNames,
 	vk::Device device, vk::CommandPool transferPool, vk::Queue transferQueue)
 {
 
@@ -57,7 +57,7 @@ void StaticSceneData::LoadObjs(gsl::span<const char* const> objFileNames,
 
 		// we could also use the member variable, but we would need to keep it up to date
 		const int currentIndexBufferElementCount = initialIndexElementCount + indices.size();
-		StaticSceneMesh staticSceneMesh;
+		MeshDataRef staticSceneMesh;
 		staticSceneMesh.meshName = filename;
 		staticSceneMesh.indexBufferOffset = currentIndexBufferElementCount * sizeof(IndexType);
 

@@ -76,10 +76,10 @@
     <ClCompile Include="Key.cpp">
       <Filter>Code</Filter>
     </ClCompile>
-    <ClCompile Include="StaticSceneData.cpp">
+    <ClCompile Include="UniqueVmaMemoryMap.cpp">
       <Filter>Code</Filter>
     </ClCompile>
-    <ClCompile Include="UniqueVmaMemoryMap.cpp">
+    <ClCompile Include="MeshDataManager.cpp">
       <Filter>Code</Filter>
     </ClCompile>
   </ItemGroup>
@@ -141,13 +141,16 @@
     <ClInclude Include="Key.hpp">
       <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="StaticSceneData.hpp">
-      <Filter>Code</Filter>
-    </ClInclude>
     <ClInclude Include="UniqueVmaMemoryMap.hpp">
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="UniqueVmaBuffer.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshDataRef.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshDataManager.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

@@ -6,7 +6,7 @@
 #include "common/VulkanDevice.hpp"
 
 #include "VmaAllocationsPool.hpp"
-#include "StaticSceneData.hpp"
+#include "MeshDataManager.hpp"
 
 class Camera;
 
@@ -67,5 +67,5 @@ private:
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
 	
-	std::unique_ptr<StaticSceneData> m_staticSceneData;
+	std::unique_ptr<MeshDataManager> m_staticSceneData;
 };

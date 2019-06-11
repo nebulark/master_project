@@ -565,7 +565,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-	m_staticSceneData = std::make_unique<StaticSceneData>(m_allocator.get());
+	m_staticSceneData = std::make_unique<MeshDataManager>(m_allocator.get());
 
 	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" };
 	// use graphics present queue to avoid ownership transfer
@@ -616,7 +616,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 		drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 
-		gsl::span<const StaticSceneMesh> meshes = m_staticSceneData->GetMeshes();
+		gsl::span<const MeshDataRef> meshes = m_staticSceneData->GetMeshes();
 		const vk::DeviceSize zeroOffset = 0;
 		std::array<vk::DescriptorSet, 2> descriptorSets = {
 			m_descriptorSet_texture,
@@ -640,7 +640,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			PushConstant_ModelMat pushConstant = {};
 			pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
 
-		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % 2].indexBufferOffset, StaticSceneData::IndexBufferIndexType);
+		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % 2].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
 		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
 
 			drawBuffer.pushConstants<PushConstant_ModelMat>(
