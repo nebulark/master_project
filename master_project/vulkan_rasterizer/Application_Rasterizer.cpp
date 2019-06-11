@@ -127,7 +127,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	
 	m_camera.UpdateLocation(forwardInput, rightInput, upInput);
 
-	std::printf("delta secs: %f \n", DeltaSeconds);
+	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
 
 
 }
