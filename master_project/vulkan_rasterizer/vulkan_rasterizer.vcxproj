@@ -124,8 +124,6 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -144,8 +142,6 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -160,8 +156,6 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -176,8 +170,6 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -217,6 +209,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Renderpass.cpp" />
+    <ClCompile Include="StaticSceneData.cpp" />
     <ClCompile Include="stb_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -232,6 +225,7 @@
     </ClCompile>
     <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="VmaAllocationsPool.cpp" />
+    <ClCompile Include="UniqueVmaMemoryMap.cpp" />
     <ClCompile Include="VmaRAII.cpp" />
     <ClCompile Include="vma_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -254,11 +248,14 @@
     <ClInclude Include="GetSizeUint32.hpp" />
     <ClInclude Include="PushConstants.hpp" />
     <ClInclude Include="Renderpass.hpp" />
+    <ClInclude Include="StaticSceneData.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="UniformBufferObjects.hpp" />
     <ClInclude Include="Vertex.hpp" />
     <ClInclude Include="VmaAllocationsPool.hpp" />
+    <ClInclude Include="UniqueVmaMemoryMap.hpp" />
     <ClInclude Include="VmaRAII.hpp" />
+    <ClInclude Include="UniqueVmaBuffer.h" />
     <ClInclude Include="VmaUtils.hpp" />
   </ItemGroup>
   <ItemGroup>

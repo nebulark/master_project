@@ -92,6 +92,7 @@ public:
 	VmaAllocationsPool& operator=(VmaAllocationsPool&& rhs) = default;
 	~VmaAllocationsPool();
 
+	VmaAllocator GetVmaAllocator() { return m_allocator; }
 	
 private:
 
@@ -100,10 +101,6 @@ private:
 	VmaAllocator m_allocator;
 	std::map<Type, VmaAllocation> m_storage;
 };
-
-
-using VmaImagePool = VmaAllocationsPool<vk::Image>;
-using VmaBufferPool = VmaAllocationsPool<vk::Buffer>;
 
 template<typename Type>
 void VmaAllocationsPool<Type>::Init(VmaAllocator allocator)
@@ -203,4 +200,7 @@ void VmaAllocationsPool<Type>::swap(VmaAllocationsPool& rhs)
 	std::swap(m_counter, rhs.m_counter);
 	std::swap(m_allocator, rhs.m_allocator);
 }
+
+using VmaImagePool = VmaAllocationsPool<vk::Image>;
+using VmaBufferPool = VmaAllocationsPool<vk::Buffer>;
 

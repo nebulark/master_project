@@ -1,3 +1,4 @@
+#include "pch.hpp"
 #include "CommandBufferUtils.hpp"
 
 vk::UniqueCommandBuffer CbUtils::AllocateSingle(vk::Device device, vk::CommandPool pool)

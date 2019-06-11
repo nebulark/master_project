@@ -14,7 +14,6 @@
 #include "Camera.hpp"
 #include "UniformBufferObjects.hpp"
 
-const vk::BufferUsageFlags ModelBuffer::usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer;
 namespace
 {
 
@@ -91,14 +90,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-	VulkanDevice::QueueRequirement queueRequirement[2];
+	VulkanDevice::QueueRequirement queueRequirement[1];
 	queueRequirement[0].canPresent = true;
-	queueRequirement[0].mincount = GetSizeUint32(m_graphicsPresentQueues);
+	queueRequirement[0].mincount = 1;
 	queueRequirement[0].minFlags = vk::QueueFlagBits::eGraphics;
-
-	queueRequirement[1].canPresent = false;
-	queueRequirement[1].mincount = GetSizeUint32(m_transferQueues);
-	queueRequirement[1].minFlags = vk::QueueFlagBits::eTransfer;
 
 	VulkanDevice::DeviceRequirements deviceRequirements;
 	deviceRequirements.queueRequirements = queueRequirement;
@@ -123,13 +118,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_ImagePool.Init(m_allocator.get());
 
 	m_graphicsPresentQueueInfo = maybeDeviceResult->queueResult[0];
-	m_transferQueueInfo = maybeDeviceResult->queueResult[1];
-
 	{
-		for (uint32_t i = 0; i < GetSizeUint32(m_graphicsPresentQueues); ++i)
-		{
-			m_graphicsPresentQueues[i] = m_device->getQueue(m_graphicsPresentQueueInfo.familyIndex, m_graphicsPresentQueueInfo.offset + i);
-		}
+		m_graphicsPresentQueues = m_device->getQueue(m_graphicsPresentQueueInfo.familyIndex, m_graphicsPresentQueueInfo.offset);
 		const vk::CommandPoolCreateInfo graphcisPresentCommandPoolInfo = vk::CommandPoolCreateInfo{}
 			.setFlags(vk::CommandPoolCreateFlagBits::eTransient)
 			.setQueueFamilyIndex(m_graphicsPresentQueueInfo.familyIndex);
@@ -139,18 +129,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_graphicsPresentCommandPools[i] = m_device->createCommandPoolUnique(graphcisPresentCommandPoolInfo);
 			m_graphicsPresentBuffer[i] = CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[i].get());
 		}
-	}
-	{
-		for (uint32_t i = 0; i < GetSizeUint32(m_transferQueues); ++i)
-		{
-			m_transferQueues[i] = m_device->getQueue(m_transferQueueInfo.familyIndex, m_transferQueueInfo.offset + i);
-		}
-
-		const vk::CommandPoolCreateInfo transferCommandPoolInfo = vk::CommandPoolCreateInfo{}
-			.setFlags(vk::CommandPoolCreateFlagBits::eTransient)
-			.setQueueFamilyIndex(m_transferQueueInfo.familyIndex);
-
-		m_transferQueuePool = m_device->createCommandPoolUnique(transferCommandPoolInfo);
 	}
 
 
@@ -202,10 +180,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_textureImage = m_ImagePool.Alloc(imageCreateInfo, vmaAllocImage);
 
-		
+
 		VulkanDebug::SetObjectName(m_device.get(), m_textureImage, "texture Image");
 
-		vk::UniqueCommandBuffer loadBuffer = CbUtils::AllocateSingle(m_device.get(), m_transferQueuePool.get());
+		vk::UniqueCommandBuffer loadBuffer = CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
 		loadBuffer->begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		{
@@ -256,30 +234,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setBaseArrayLayer(0)
 					.setLayerCount(1))
 				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-				.setDstAccessMask(vk::AccessFlagBits::eTransferWrite);
-
-			loadBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, imageMemoryBarier1);
-
-			// Change format to match shader and give acess rights to graphcis queue
-			vk::ImageMemoryBarrier imageMemoryBarier2 = vk::ImageMemoryBarrier{}
-				.setOldLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setSrcQueueFamilyIndex(m_transferQueueInfo.familyIndex)
-				.setDstQueueFamilyIndex(m_graphicsPresentQueueInfo.familyIndex)
-				.setImage(m_textureImage)
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1))
-				.setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
 				.setDstAccessMask(vk::AccessFlagBits::eShaderRead);
 
 			loadBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, imageMemoryBarier2);
-		}
+				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, imageMemoryBarier1);
+
+			}
 
 		loadBuffer->end();
 
@@ -289,8 +249,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPCommandBuffers(&(loadBuffer.get()))
 			;
 
-		m_transferQueues[0].submit(submitInfo, vk::Fence());
-		m_transferQueues[0].waitIdle();
+		m_graphicsPresentQueues.submit(submitInfo, vk::Fence());
+		m_graphicsPresentQueues.waitIdle();
 
 		vmaDestroyBuffer(m_allocator.get(), stageBuffer, stageBufferAllocation);
 
@@ -307,85 +267,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_textureImageView = m_device->createImageViewUnique(imageViewCreateInfo);
 	}
-	{
-
-		auto [vertices, indices] = Vertex::LoadObjWithIndices("torus.obj");
-		const uint32_t indexBufferSize = sizeof(indices[0]) * GetSizeUint32(indices);
-		const uint32_t vertexBufferSize = sizeof(vertices[0]) * GetSizeUint32(vertices);
-		const uint32_t stageBufferIdxBegin = 0;
-		const uint32_t stageBufferIdxEnd = stageBufferIdxBegin + indexBufferSize;
-
-		const uint32_t stageBufferVertexBegin = VulkanUtils::AlignUp<uint32_t>(indexBufferSize, alignof(Vertex));
-		const uint32_t stageBufferVertexEnd = stageBufferVertexBegin + vertexBufferSize;
-
-		const uint32_t stageBufferSize = stageBufferVertexEnd;
-
-		VkBufferCreateInfo stagingBufferInfo = vk::BufferCreateInfo{}
-			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
-			.setSize(stageBufferSize)
-			.setSharingMode(vk::SharingMode::eExclusive);
-
-		VmaAllocationCreateInfo vmaAllocInfo = {};
-		vmaAllocInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
-		VmaAllocation stageBufferAllocation;
-		VkBuffer stageBuffer;
-
-		vmaCreateBuffer(m_allocator.get(), &stagingBufferInfo, &vmaAllocInfo, &stageBuffer, &stageBufferAllocation, nullptr);
-		{
-			void* vbufferPtr = nullptr;
-			VkResult result = vmaMapMemory(m_allocator.get(), stageBufferAllocation, &vbufferPtr);
-			assert(result == VkResult::VK_SUCCESS);
-			std::byte * bufferPtr = reinterpret_cast<std::byte*>(vbufferPtr);
-
-			std::memcpy(bufferPtr + stageBufferIdxBegin, indices.data(), indexBufferSize);
-			std::memcpy(bufferPtr + stageBufferVertexBegin, vertices.data(), vertexBufferSize);
-			vmaUnmapMemory(m_allocator.get(), stageBufferAllocation);
-		}
-
-		vk::BufferCreateInfo modelBufferCreateInfo = vk::BufferCreateInfo{}
-			.setUsage(ModelBuffer::usage | vk::BufferUsageFlagBits::eTransferDst)
-			.setSize(stageBufferSize)
-			;
-		VmaAllocationCreateInfo vmaModelBufferInfo = {};
-		vmaModelBufferInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
-		m_modelBuffer = {};
-		m_modelBuffer.buffer = m_BufferPool.Alloc(modelBufferCreateInfo, vmaModelBufferInfo);
-		m_modelBuffer.indexCount = GetSizeUint32(indices);
-		m_modelBuffer.indexOffset = stageBufferIdxBegin;
-		m_modelBuffer.vertexOffset = stageBufferVertexBegin;
-		m_modelBuffer.indexType = VulkanUtils::GetIndexBufferType_v<decltype(indices[0])>;
-		m_modelBuffer.totalBufferSize = stageBufferSize;
-
-		vk::UniqueCommandBuffer copyCommandBuffer = CbUtils::AllocateSingle(m_device.get(), m_transferQueuePool.get());
-
-		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		copyCommandBuffer->begin(beginInfo);
-		{
-			vk::BufferCopy bufferCopy(stageBufferIdxBegin, 0, stageBufferSize);
-			copyCommandBuffer->copyBuffer(stageBuffer, m_modelBuffer.buffer, bufferCopy);
-			vk::BufferMemoryBarrier bufferMemoryBarrier = vk::BufferMemoryBarrier{}
-.setBuffer(m_modelBuffer.buffer)
-				.setSrcQueueFamilyIndex(m_transferQueueInfo.familyIndex)
-				.setDstQueueFamilyIndex(m_graphicsPresentQueueInfo.familyIndex)
-				.setOffset(0)
-				.setSize(m_modelBuffer.totalBufferSize);
-
-			copyCommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eBottomOfPipe,
-				vk::DependencyFlags(), {}, bufferMemoryBarrier, {});
-
-		}
-		copyCommandBuffer->end();
-
-		vk::SubmitInfo submitInfo = vk::SubmitInfo{}
-			.setCommandBufferCount(1)
-			.setPCommandBuffers(&(copyCommandBuffer.get()));
-
-		m_transferQueues[0].submit(submitInfo, vk::Fence{});
-		m_transferQueues[0].waitIdle();
-
-		vmaDestroyBuffer(m_allocator.get(), stageBuffer, stageBufferAllocation);
-	}
 
 	int windowWidth, windowHeight;
 	SDL_GetWindowSize(window, &windowWidth, &windowHeight);
@@ -398,7 +279,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo{}
-.setImageType(vk::ImageType::e2D)
+			.setImageType(vk::ImageType::e2D)
 			.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
 			.setFormat(m_depthFormat)
 			.setExtent(vk::Extent3D(m_swapchain.extent.width, m_swapchain.extent.height, 1))
@@ -410,8 +291,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		vmaAllocImage.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
 		m_depthBuffer = m_ImagePool.Alloc(imageCreateInfo, vmaAllocImage);
-		vk::UniqueCommandBuffer transitionLayoutCommandBuffer = 
-			CbUtils::AllocateSingle(m_device.get(), m_transferQueuePool.get());
+		vk::UniqueCommandBuffer transitionLayoutCommandBuffer =
+			CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
 
 		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 		transitionLayoutCommandBuffer->begin(beginInfo);
@@ -427,8 +308,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
 				.setOldLayout(vk::ImageLayout::eUndefined)
 				.setNewLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-				.setSrcQueueFamilyIndex(m_transferQueueInfo.familyIndex)
-				.setDstQueueFamilyIndex(m_graphicsPresentQueueInfo.familyIndex)
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_depthBuffer)
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(aspectFlags)
@@ -448,19 +329,19 @@ void GraphicsBackend::Init(SDL_Window* window)
 				.setCommandBufferCount(1).setPCommandBuffers(&(transitionLayoutCommandBuffer.get()))
 				;
 
-			m_transferQueues[0].submit(submitInfo, vk::Fence());
-			m_transferQueues[0].waitIdle();
+			m_graphicsPresentQueues.submit(submitInfo, vk::Fence());
+			m_graphicsPresentQueues.waitIdle();
 
 			m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
-.setViewType(vk::ImageViewType::e2D)
-			.setFormat(m_depthFormat)
-			.setImage(m_depthBuffer)
-			.setSubresourceRange(vk::ImageSubresourceRange()
-				.setAspectMask(vk::ImageAspectFlagBits::eDepth)
-				.setBaseMipLevel(0)
-				.setLevelCount(1)
-				.setBaseArrayLayer(0)
-				.setLayerCount(1)));
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(m_depthFormat)
+				.setImage(m_depthBuffer)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eDepth)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)));
 		}
 	}
 	m_colorDepthRenderPass = Renderpass::Create_withDepth(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
@@ -621,23 +502,23 @@ void GraphicsBackend::Init(SDL_Window* window)
 			for (size_t i = 0; i < descriptorBufferInfos.size(); ++i)
 			{
 
-			descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
-				.setBuffer(m_ubo_buffer[i])
-				.setOffset(0)
-				.setRange(sizeof(Ubo_GlobalRenderData));
-			
+				descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
+					.setBuffer(m_ubo_buffer[i])
+					.setOffset(0)
+					.setRange(sizeof(Ubo_GlobalRenderData));
 
-			writeDescriptorSets[i] = vk::WriteDescriptorSet{}
-				.setDescriptorCount(1)
-				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-				.setDstArrayElement(0)
-				.setDstBinding(0) // matches shader code
-				.setDstSet(m_descriptorSet_ubo[i])
-				.setPBufferInfo(&descriptorBufferInfos[i])
-				;
+
+				writeDescriptorSets[i] = vk::WriteDescriptorSet{}
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDstArrayElement(0)
+					.setDstBinding(0) // matches shader code
+					.setDstSet(m_descriptorSet_ubo[i])
+					.setPBufferInfo(&descriptorBufferInfos[i])
+					;
 			}
 
-		m_device->updateDescriptorSets(writeDescriptorSets, {});
+			m_device->updateDescriptorSets(writeDescriptorSets, {});
 
 
 		}
@@ -683,6 +564,13 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_imageAvailableSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
+
+	m_staticSceneData = std::make_unique<StaticSceneData>(m_BufferPool);
+
+	const char* objsToLoad[] = { "torus.obj" };
+	// use graphics present queue to avoid ownership transfer
+	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
+
 }
 
 void GraphicsBackend::Render(const Camera& camera)
@@ -727,15 +615,18 @@ void GraphicsBackend::Render(const Camera& camera)
 			vk::SubpassContents::eInline);
 
 		drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
-		drawBuffer.bindIndexBuffer(m_modelBuffer.buffer, m_modelBuffer.indexOffset, m_modelBuffer.indexType);
-		drawBuffer.bindVertexBuffers(0, m_modelBuffer.buffer, m_modelBuffer.vertexOffset);
-		std::array<vk::DescriptorSet,2> descriptorSets = {
+
+		gsl::span<const StaticSceneMesh> meshes = m_staticSceneData->GetMeshes();
+		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[0].firstIndex, StaticSceneData::IndexBufferIndexType);
+		const vk::DeviceSize zeroOffset = 0;
+		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
+		std::array<vk::DescriptorSet, 2> descriptorSets = {
 			m_descriptorSet_texture,
-			m_descriptorSet_ubo[m_currentframe] 
+			m_descriptorSet_ubo[m_currentframe]
 		};
 
 		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
-		
+
 
 		glm::vec3 positions[] = {
 			glm::vec3(0),
@@ -748,26 +639,26 @@ void GraphicsBackend::Render(const Camera& camera)
 		for (const glm::vec3& pos : positions)
 		{
 
-		PushConstant_ModelMat pushConstant = {};
-		pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
+			PushConstant_ModelMat pushConstant = {};
+			pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
 
-		drawBuffer.pushConstants<PushConstant_ModelMat>(
-			m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+			drawBuffer.pushConstants<PushConstant_ModelMat>(
+				m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
-		drawBuffer.drawIndexed(m_modelBuffer.indexCount, 1, 0, 0, 0);
+			drawBuffer.drawIndexed(meshes[0].indexCount, 1, 0, 0, 0);
 		}
 		drawBuffer.endRenderPass();
 		drawBuffer.end();
 
 
 		vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-		m_graphicsPresentQueues[0].submit(vk::SubmitInfo{}
+		m_graphicsPresentQueues.submit(vk::SubmitInfo{}
 			.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
 			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
 			.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
 			, m_frameFence[m_currentframe].get());
 
-		m_graphicsPresentQueues[0].presentKHR(vk::PresentInfoKHR{}
+		m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
 			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
 			.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
 		);

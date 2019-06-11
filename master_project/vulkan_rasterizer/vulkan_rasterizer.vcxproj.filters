@@ -76,6 +76,12 @@
     <ClCompile Include="Key.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="StaticSceneData.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="UniqueVmaMemoryMap.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -133,6 +139,15 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="Key.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="StaticSceneData.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="UniqueVmaBuffer.h">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="UniqueVmaMemoryMap.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

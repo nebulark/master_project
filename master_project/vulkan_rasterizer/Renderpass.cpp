@@ -63,8 +63,8 @@ vk::UniqueRenderPass Renderpass::Initial_With_Portals(vk::Device logicalDevice)
 	
 	// 0. Render scene, with depth buffer
 	// 1. Render Portals, with depth buffer, write RenderedDepth, write Stencil
-	vk::Format colorFormat;
-	vk::Format depthFormat;
+	vk::Format colorFormat = {};
+	vk::Format depthFormat = {};
 	vk::Format renderedDepthFormat = vk::Format::eD32Sfloat;
 
 	vk::ImageLayout finalColorLayout = vk::ImageLayout::eColorAttachmentOptimal;
@@ -76,10 +76,10 @@ vk::UniqueRenderPass Renderpass::Initial_With_Portals(vk::Device logicalDevice)
 		colorAttachmentIdx_renderPortals,
 		depthStencilAttachmentIdx_renderPortals,
 		renderDepthAttachmentIdx_renderPortals,
-		enum_size
+		enum_size_attachmentIdx
 	};
 
-	std::array<vk::AttachmentDescription, AttachmentIdx::enum_size> attachments;
+	std::array<vk::AttachmentDescription, AttachmentIdx::enum_size_attachmentIdx> attachments;
 	attachments[colorAttachmentIdx_renderScene] = vk::AttachmentDescription()
 		.setFormat(colorFormat)
 		.setSamples(vk::SampleCountFlagBits::e1)
@@ -147,10 +147,10 @@ vk::UniqueRenderPass Renderpass::Initial_With_Portals(vk::Device logicalDevice)
 	{
 		subpassIdx_renderScene = 0,
 		subpassIdx_renderPortal,
-		enum_size
+		enum_size_subpassDescription
 	};
 
-	std::array<vk::SubpassDescription, SubpassDescriptionIndex::enum_size> subpassDescriptions;
+	std::array<vk::SubpassDescription, SubpassDescriptionIndex::enum_size_subpassDescription> subpassDescriptions;
 
 	subpassDescriptions[subpassIdx_renderScene] = vk::SubpassDescription()
 		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
@@ -203,8 +203,8 @@ vk::UniqueRenderPass Renderpass::Recursion_With_Portals(vk::Device logicalDevice
 	// 0. Render Scene, using depth buffer, stencil buffer and RenderedDepth,	
 	// 1. Render Portals, using depth buffer, stencil buffer and renderedDepth, set stencil buffer to portal Id + Recursion IDX
 
-	vk::Format colorFormat;
-	vk::Format depthFormat;
+	vk::Format colorFormat = {};
+	vk::Format depthFormat = {};
 	vk::Format renderedDepthFormat = vk::Format::eD32Sfloat;
 
 	vk::ImageLayout finalColorLayout = vk::ImageLayout::eColorAttachmentOptimal;
@@ -217,10 +217,10 @@ vk::UniqueRenderPass Renderpass::Recursion_With_Portals(vk::Device logicalDevice
 		colorAttachmentIdx_renderPortals,
 		depthStencilAttachmentIdx_renderPortals,
 		renderDepthAttachmentIdx_renderPortals,
-		enum_size
+		enum_size_attachmentIdx
 	};
 
-	std::array<vk::AttachmentDescription, AttachmentIdx::enum_size> attachments;
+	std::array<vk::AttachmentDescription, AttachmentIdx::enum_size_attachmentIdx> attachments;
 	attachments[colorAttachmentIdx_renderScene] = vk::AttachmentDescription()
 		.setFormat(colorFormat)
 		.setSamples(vk::SampleCountFlagBits::e1)
@@ -293,10 +293,10 @@ vk::UniqueRenderPass Renderpass::Recursion_With_Portals(vk::Device logicalDevice
 	{
 		subpassIdx_renderScene = 0,
 		subpassIdx_renderPortal,
-		enum_size
+		enum_size_subpassDescription
 	};
 
-	std::array<vk::SubpassDescription, SubpassDescriptionIndex::enum_size> subpassDescriptions;
+	std::array<vk::SubpassDescription, SubpassDescriptionIndex::enum_size_subpassDescription> subpassDescriptions;
 
 	vk::AttachmentReference colorattachments_renderScene[] = { colorAttachmentRef_renderScene, depthAttachmentRef_renderScene };
 	subpassDescriptions[subpassIdx_renderScene] = vk::SubpassDescription()

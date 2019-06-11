@@ -41,9 +41,20 @@ const vk::PipelineVertexInputStateCreateInfo Vertex::pipelineVertexState_simple 
 		;
 
 
-std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices(const char* fileName)
+std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices(const char* fileName, int firstIndex /*= 0*/)
 {
-		tinyobj::attrib_t attrib;
+	std::pair<std::vector<Vertex>, std::vector<uint32_t>> result;
+	LoadObjWithIndices_append(fileName, result.first, result.second, firstIndex);
+	return result;	
+}
+
+void Vertex::LoadObjWithIndices_append(const char* fileName, std::vector<Vertex>& inOutVertices, std::vector<uint32_t>& inOutIndices, int firstIndex /*= 0*/)
+{
+
+	// technically negative indices could be useful, but in most cases we don't want this
+	assert(inOutVertices.size() + firstIndex >= 0);
+
+	tinyobj::attrib_t attrib;
 		std::vector<tinyobj::shape_t> shapes;
 		std::vector<tinyobj::material_t> materials;
 		std::string warn, err;
@@ -53,16 +64,13 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices
 			throw std::runtime_error(warn + err);
 		}
 
-		std::vector<uint32_t> indices;
-		std::vector<Vertex> vertices;
-
 		std::unordered_map<Vertex, uint32_t> uniqueVertices;
 		for (const tinyobj::shape_t& shape : shapes)
 		{
-			indices.reserve(shape.mesh.indices.size());
+			inOutIndices.reserve(shape.mesh.indices.size() + inOutIndices.size());
 
 			// we can reuse a vertex approximately 6 times
-			vertices.reserve(shape.mesh.indices.size() / 6);
+			inOutVertices.reserve(shape.mesh.indices.size() / 6 + inOutVertices.size());
 
 			for (const tinyobj::index_t& index : shape.mesh.indices)
 			{
@@ -92,20 +100,24 @@ std::pair<std::vector<Vertex>, std::vector<uint32_t>> Vertex::LoadObjWithIndices
 					};
 
 				}
-				const uint32_t uniqueIndex = gsl::narrow<uint32_t>(vertices.size());
+
+				const int32_t signedUniqueIndex = gsl::narrow<int>(inOutVertices.size()) + firstIndex;
+
+				// technically negative indices could be useful, but in most cases we don't want this
+				assert(signedUniqueIndex >= 0);
+				const uint32_t uniqueIndex = static_cast<uint32_t>(signedUniqueIndex);
 				const auto [iter, isUnique] = uniqueVertices.try_emplace(vertex, uniqueIndex);
 				if (isUnique)
 				{
-					indices.push_back(uniqueIndex);
-					vertices.push_back(vertex);
+					inOutIndices.push_back(uniqueIndex);
+					inOutVertices.push_back(vertex);
 				}
 				else
 				{
 					assert(uniqueIndex != iter->second);
-					indices.push_back(iter->second);
+					inOutIndices.push_back(iter->second);
 				}
 			}
 		}
-		return std::pair{ std::move(vertices), std::move(indices) };
 }
 

@@ -6,20 +6,10 @@
 #include "common/VulkanDevice.hpp"
 
 #include "VmaAllocationsPool.hpp"
+#include "StaticSceneData.hpp"
 
 class Camera;
 
-struct ModelBuffer
-{
-	static const vk::BufferUsageFlags usage;
-
-	vk::Buffer buffer;
-	uint32_t indexOffset;
-	uint32_t indexCount;
-	uint32_t totalBufferSize;
-	vk::IndexType indexType;
-	uint32_t vertexOffset;
-};
 class GraphicsBackend
 {
 public:
@@ -40,10 +30,8 @@ private:
 	vk::UniqueSurfaceKHR m_surface;
 
 	VulkanDevice::QueueResult m_graphicsPresentQueueInfo;
-	std::array<vk::Queue, 1> m_graphicsPresentQueues;
+	vk::Queue m_graphicsPresentQueues;
 
-	VulkanDevice::QueueResult m_transferQueueInfo;
-	std::array<vk::Queue, 1> m_transferQueues;
 	vk::UniqueShaderModule m_vertShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule;
 
@@ -68,7 +56,6 @@ private:
 	std::array<vk::UniqueCommandPool, MaxInFlightFrames> m_graphicsPresentCommandPools;
 	std::array<vk::UniqueCommandBuffer, MaxInFlightFrames> m_graphicsPresentBuffer;
 
-	vk::UniqueCommandPool m_transferQueuePool;
 	std::array<vk::UniqueFence, MaxInFlightFrames> m_frameFence;
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_imageAvailableSem;
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_renderFinishedSem;
@@ -76,8 +63,9 @@ private:
 
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline;
 	vk::UniqueSampler m_textureSampler;
-	ModelBuffer m_modelBuffer;
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
+	
+	std::unique_ptr<StaticSceneData> m_staticSceneData;
 };
