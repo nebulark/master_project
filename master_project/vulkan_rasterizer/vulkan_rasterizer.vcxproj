@@ -210,6 +210,7 @@
     </ClCompile>
     <ClCompile Include="Renderpass.cpp" />
     <ClCompile Include="MeshDataManager.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="stb_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -250,6 +251,7 @@
     <ClInclude Include="PushConstants.hpp" />
     <ClInclude Include="Renderpass.hpp" />
     <ClInclude Include="MeshDataManager.hpp" />
+    <ClInclude Include="Scene.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="UniformBufferObjects.hpp" />
     <ClInclude Include="Vertex.hpp" />
@@ -287,6 +289,11 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
     <CopyFileToFolders Include="models\torus.obj">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="models\plane.obj">
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>

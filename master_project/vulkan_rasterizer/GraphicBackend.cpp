@@ -77,7 +77,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 	};
 
 	std::vector<const char*> enabledExtensions = GetSdlExtensions(window);
-	enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	const char* additonalExtensions[] = {
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+	
+	};
+
+	enabledExtensions.insert(enabledExtensions.end(), std::begin(additonalExtensions), std::end(additonalExtensions));
 
 
 	assert(VulkanUtils::SupportsValidationLayers(enabledValidationLayers));
@@ -88,7 +93,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_debugUtilsMessenger = DebugUtils::CreateDebugUtilsMessenger(m_vkInstance.get());
 	m_surface = CreateSurface(m_vkInstance.get(), window);
 
-	const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	const char* deviceExtensions[] = { 
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME,
+	};
 
 	VulkanDevice::QueueRequirement queueRequirement[1];
 	queueRequirement[0].canPresent = true;
@@ -567,7 +575,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_staticSceneData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" };
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" , "plane.obj"};
 	// use graphics present queue to avoid ownership transfer
 	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 
@@ -640,13 +648,13 @@ void GraphicsBackend::Render(const Camera& camera)
 			PushConstant_ModelMat pushConstant = {};
 			pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
 
-		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % 2].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
+		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % meshes.size()].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
 		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
 
 			drawBuffer.pushConstants<PushConstant_ModelMat>(
 				m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
-			drawBuffer.drawIndexed(meshes[i % 2].indexCount, 1, 0, 0, 0);
+			drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, 0, 0, 0);
 		}
 		drawBuffer.endRenderPass();
 		drawBuffer.end();

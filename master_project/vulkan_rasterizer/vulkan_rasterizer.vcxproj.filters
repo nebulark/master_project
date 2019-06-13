@@ -82,6 +82,9 @@
     <ClCompile Include="MeshDataManager.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -153,6 +156,9 @@
     <ClInclude Include="MeshDataManager.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="Scene.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -175,5 +181,8 @@
     <CopyFileToFolders Include="models\cube.obj" />
     <CopyFileToFolders Include="models\sphere.obj" />
     <CopyFileToFolders Include="models\torus.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="models\plane.obj" />
   </ItemGroup>
 </Project>
