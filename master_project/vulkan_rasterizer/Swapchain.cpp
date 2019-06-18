@@ -55,7 +55,7 @@ Swapchain Swapchain::Create(vk::PhysicalDevice physicalDevice, vk::Device device
 
 	swapchain.swapchain = device.createSwapchainKHRUnique(swapchainCreateInfo);
 
-	std::vector<vk::Image> swapchainImages = device.getSwapchainImagesKHR(swapchain.swapchain.get());
+	swapchain.images = device.getSwapchainImagesKHR(swapchain.swapchain.get());
 	const vk::ImageViewCreateInfo imageViewCreateInfoPrototype = vk::ImageViewCreateInfo()
 		.setViewType(vk::ImageViewType::e2D)
 		.setFormat(swapchain.surfaceFormat.format)
@@ -72,8 +72,8 @@ Swapchain Swapchain::Create(vk::PhysicalDevice physicalDevice, vk::Device device
 			.setLayerCount(1))
 		;
 
-	swapchain.imageViews.reserve(swapchainImages.size());
-	for (vk::Image image : swapchainImages)
+	swapchain.imageViews.reserve(swapchain.images.size());
+	for (vk::Image image : swapchain.images)
 	{
 		const vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo(imageViewCreateInfoPrototype)
 			.setImage(image);

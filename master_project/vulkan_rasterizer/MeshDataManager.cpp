@@ -1,7 +1,7 @@
 #include "pch.hpp"
 #include "MeshDataManager.hpp"
 #include "GetSizeUint32.hpp"
-#include "UniqueVmaBuffer.hpp"
+#include "UniqueVmaObject.hpp"
 #include "UniqueVmaMemoryMap.hpp"
 #include "CommandBufferUtils.hpp"
 
@@ -56,7 +56,7 @@ void MeshDataManager::LoadObjs(gsl::span<const char* const> objFileNames,
 	{
 
 		// we could also use the member variable, but we would need to keep it up to date
-		const int currentIndexBufferElementCount = initialIndexElementCount + indices.size();
+		const int currentIndexBufferElementCount = initialIndexElementCount + gsl::narrow<int>(indices.size());
 		MeshDataRef staticSceneMesh;
 		staticSceneMesh.meshName = filename;
 		staticSceneMesh.indexBufferOffset = currentIndexBufferElementCount * sizeof(IndexType);

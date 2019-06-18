@@ -63,6 +63,11 @@ namespace
 		);
 	}
 
+	void RenderScene(vk::CommandBuffer commandBuffer, gsl::span<const MeshDataRef> Meshes, MeshDataManager& mdm)
+	{
+
+	}
+
 
 }
 
@@ -352,6 +357,37 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setLayerCount(1)));
 		}
 	}
+	// create rendered Depth buffer
+//#error // use storage image!
+	{
+		vk::Format depthFormat = vk::Format::eD32Sfloat;
+		vk::DeviceSize texelSize = sizeof(float);
+
+
+		VmaAllocationCreateInfo vmaInfo = {};
+		vmaInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
+
+		vk::DeviceSize storageTexelbufferSize = texelSize * m_swapchain.extent.height * m_swapchain.extent.width;//?
+		vk::BufferCreateInfo renderedDepthBufferInfo = vk::BufferCreateInfo{}
+			.setSize(storageTexelbufferSize)
+			.setUsage(vk::BufferUsageFlagBits::eStorageTexelBuffer)
+			;
+		m_buffer_renderedDepth = UniqueVmaBuffer(m_allocator.get(), renderedDepthBufferInfo, vmaInfo);
+
+		vk::BufferViewCreateInfo bufferview_renderedDepth_createInfo = vk::BufferViewCreateInfo{}
+			.setBuffer(m_buffer_renderedDepth.Get())
+			.setFormat(depthFormat)
+			.setOffset(0)
+			.setRange(0 + storageTexelbufferSize);
+		;
+		m_bufferView_renderedDepth = m_device->createBufferViewUnique(bufferview_renderedDepth_createInfo);
+
+
+		//auto cb = CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
+		//cb->begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+		
+	
+	}
 	m_colorDepthRenderPass = Renderpass::Create_withDepth(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 	{
 
@@ -412,6 +448,25 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_ubo);
 		}
+		// rendered Depth storage texel buffer
+{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_renderedDepth[] = {
+		vk::DescriptorSetLayoutBinding{}
+			.setBinding(0)
+			.setDescriptorCount(1)
+			.setDescriptorType(vk::DescriptorType::eStorageTexelBuffer)
+			.setStageFlags(vk::ShaderStageFlagBits::eFragment),
+
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_renderedDepth))
+				.setPBindings(descriptorSetBinding_renderedDepth)
+				;
+
+			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_texture);
+		}
+
 		vk::DescriptorPoolSize descritproPoolSizes[] =
 		{
 
@@ -424,12 +479,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setDescriptorCount(2),
 
 
+			vk::DescriptorPoolSize{}
+			.setType(vk::DescriptorType::eStorageTexelBuffer)
+			.setDescriptorCount(1),
 
 		};
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo_sampler = vk::DescriptorPoolCreateInfo()
 			.setPoolSizeCount(GetSizeUint32(descritproPoolSizes)).setPPoolSizes(descritproPoolSizes)
-			.setMaxSets(3);
+			.setMaxSets(4);
 
 
 		m_descriptorPool = m_device->createDescriptorPoolUnique(descriptorPoolCreateInfo_sampler);
@@ -438,7 +496,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::DescriptorSetLayout layouts[] = {
 				m_descriptorSetLayout_texture.get(),
 				m_descriptorSetLayout_ubo.get(),
-				m_descriptorSetLayout_ubo.get() // we need two as we write it each frame, so we can leave one alone until its finished		
+				m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
+				m_descriptorSetLayout_renderedDepth.get(),
 			};
 
 			vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
@@ -451,7 +510,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSet_texture = std::move(descriptorSets[0]);
 			m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
 			m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
+			m_descriptorSet_renderedDepth = std::move(descriptorSets[3]);
 		}
+
+		// write texture descriptor set
 		{
 			vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
 				.setMagFilter(vk::Filter::eLinear)
@@ -487,6 +549,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_device->updateDescriptorSets(writeDescriptorSet, {});
 		}
+		// write ubo descriptorSet
 		{
 
 			vk::DeviceSize uniformBufferSize = sizeof(Ubo_GlobalRenderData);
@@ -528,6 +591,19 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_device->updateDescriptorSets(writeDescriptorSets, {});
 
+
+		}
+		// writed rendered Depth descriptor Set
+		{
+
+			vk::WriteDescriptorSet writeRenderedDepth = vk::WriteDescriptorSet{}
+				.setDescriptorCount(1)
+				.setDescriptorType(vk::DescriptorType::eStorageTexelBuffer)
+				.setDstArrayElement(0)
+				.setDstBinding(0)
+				.setPTexelBufferView(&(m_bufferView_renderedDepth.get()));
+
+			m_device->updateDescriptorSets(writeRenderedDepth, {});
 
 		}
 	}
@@ -614,49 +690,82 @@ void GraphicsBackend::Render(const Camera& camera)
 		};
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-		drawBuffer.beginRenderPass(
-			vk::RenderPassBeginInfo{}
-			.setRenderPass(m_colorDepthRenderPass.get())
-			.setFramebuffer(m_framebuffer[m_currentframe].get())
-			.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent))
-			.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
-			vk::SubpassContents::eInline);
 
-		drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
-
-		gsl::span<const MeshDataRef> meshes = m_staticSceneData->GetMeshes();
-		const vk::DeviceSize zeroOffset = 0;
-		std::array<vk::DescriptorSet, 2> descriptorSets = {
-			m_descriptorSet_texture,
-			m_descriptorSet_ubo[m_currentframe]
-		};
-
-		drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
-
-
-		glm::vec3 positions[] = {
-			glm::vec3(0),
-			glm::vec3(0.f,1.f,0.f),
-			glm::vec3(0.f,-1.f, 0.f),
-			glm::vec3(-1.f,0.f,0.f),
-			glm::vec3(-2.f,0.f,0.f),
-			glm::vec3(0.f,0.f, 1.f)
-		};
-		for (int i = 0; i< std::size(positions); ++i)
+		// render pass
 		{
-			const glm::vec3& pos = positions[i];
-			PushConstant_ModelMat pushConstant = {};
-			pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
+		// render Scene Subpass
+			{
+				const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
+					.setOldLayout(vk::ImageLayout::eUndefined)
+					.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+					.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+					.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+					.setImage(m_swapchain.images[imageIndex])
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1))
+				.setSrcAccessMask(vk::AccessFlags())
+				.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
 
-		drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % meshes.size()].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
-		drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
+				;
 
-			drawBuffer.pushConstants<PushConstant_ModelMat>(
-				m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+				drawBuffer.pipelineBarrier(
+					vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
+					{}, {},	{}, setRenderedImageAsColorAttachment);
 
-			drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, 0, 0, 0);
+				drawBuffer.beginRenderPass(
+					vk::RenderPassBeginInfo{}
+					.setRenderPass(m_colorDepthRenderPass.get())
+					.setFramebuffer(m_framebuffer[m_currentframe].get())
+					.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent))
+					.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
+					vk::SubpassContents::eInline);
+
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
+
+				gsl::span<const MeshDataRef> meshes = m_staticSceneData->GetMeshes();
+				const vk::DeviceSize zeroOffset = 0;
+				std::array<vk::DescriptorSet, 2> descriptorSets = {
+					m_descriptorSet_texture,
+					m_descriptorSet_ubo[m_currentframe]
+				};
+
+				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+
+
+				glm::vec3 positions[] = {
+					glm::vec3(0),
+					glm::vec3(0.f,1.f,0.f),
+					glm::vec3(0.f,-1.f, 0.f),
+					glm::vec3(-1.f,0.f,0.f),
+					glm::vec3(-2.f,0.f,0.f),
+					glm::vec3(0.f,0.f, 1.f)
+				};
+				for (int i = 0; i < std::size(positions); ++i)
+				{
+					const glm::vec3& pos = positions[i];
+					PushConstant_ModelMat pushConstant = {};
+					pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
+
+					drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % meshes.size()].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
+					drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
+
+					drawBuffer.pushConstants<PushConstant_ModelMat>(
+						m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+
+					drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, 0, 0, 0);
+				}
+			}
+			// Portal Render SubPass
+			{
+
+			}
+			drawBuffer.endRenderPass();
 		}
-		drawBuffer.endRenderPass();
+
 		drawBuffer.end();
 
 

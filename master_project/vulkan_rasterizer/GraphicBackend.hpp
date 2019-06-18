@@ -51,6 +51,10 @@ private:
 	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_ubo;
 	std::array<vk::Buffer, MaxInFlightFrames> m_ubo_buffer;
 
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_renderedDepth;
+	UniqueVmaBuffer m_buffer_renderedDepth;
+	vk::DescriptorSet m_descriptorSet_renderedDepth;
+
 	vk::UniquePipelineLayout m_pipelineLayout;
 
 	std::array<vk::UniqueCommandPool, MaxInFlightFrames> m_graphicsPresentCommandPools;
@@ -66,6 +70,6 @@ private:
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
-	
+	vk::UniqueBufferView m_bufferView_renderedDepth;
 	std::unique_ptr<MeshDataManager> m_staticSceneData;
 };

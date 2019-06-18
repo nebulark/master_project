@@ -4,7 +4,7 @@
 #include <string>
 #include "Vertex.hpp"
 #include "common/VulkanUtils.hpp"
-#include "UniqueVmaBuffer.hpp"
+#include "UniqueVmaObject.hpp"
 #include "MeshDataRef.hpp"
 
 class Scene

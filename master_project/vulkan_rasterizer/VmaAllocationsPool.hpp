@@ -2,80 +2,19 @@
 #include <vulkan/vulkan.hpp>
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
 #include <map>
-
-template<typename Type>
-struct VmaAllocationElement
-{
-	Type resource;
-	VmaAllocation allocation;
-};
-
-template<typename Type>
-struct VmaAllocationPoolTrait;
-
-template<>
-struct VmaAllocationPoolTrait<vk::Buffer>
-{
-	using Type = vk::Buffer;
-	using CType = VkBuffer;
-
-	using CreateInfo = vk::BufferCreateInfo;
-	using CCreateInfo = VkBufferCreateInfo;
-
-	static VkResult Create(VmaAllocator allocator,
-		const VkBufferCreateInfo* pBufferCreateInfo,
-		const VmaAllocationCreateInfo* pAllocationCreateInfo,
-		VkBuffer* pBuffer,
-		VmaAllocation* pAllocation,
-		VmaAllocationInfo* pAllocationInfo)
-	{
-		return vmaCreateBuffer(allocator, pBufferCreateInfo, pAllocationCreateInfo, pBuffer, pAllocation, pAllocationInfo);
-	}
-
-	static void Destroy(VmaAllocator allocator, VkBuffer buffer, VmaAllocation allocation)
-	{
-		vmaDestroyBuffer(allocator, buffer, allocation);
-	}
-};
-
-template<>
-struct VmaAllocationPoolTrait<vk::Image>
-{
-	using Type = vk::Image;
-	using CType = VkImage;
-
-	using CreateInfo = vk::ImageCreateInfo;
-	using CCreateInfo = VkImageCreateInfo;
-
-	static VkResult Create(VmaAllocator allocator,
-		const CCreateInfo* imageCreateInfo,
-		const VmaAllocationCreateInfo* pAllocationCreateInfo,
-		CType* pImage,
-		VmaAllocation* pAllocation,
-		VmaAllocationInfo* pAllocationInfo)
-	{
-		return vmaCreateImage(allocator, imageCreateInfo, pAllocationCreateInfo, pImage, pAllocation, pAllocationInfo);
-	}
-
-	static void Destroy(VmaAllocator allocator, CType image, VmaAllocation allocation)
-	{
-		vmaDestroyImage(allocator, image, allocation);
-	}
-};
-
+#include "VmaTraits.hpp"
 
 template<typename Type>
 class VmaAllocationsPool
 {
 public:
 
-	using Trait = VmaAllocationPoolTrait<Type>;
-	using Element = VmaAllocationElement<Type>;
+	using Traits = VmaTraits<Type>;
 	
 	void Init(VmaAllocator allocator);
 
 
-	Type Alloc(const typename Trait::CreateInfo& createInfo, const VmaAllocationCreateInfo& vmaAllocInfo);
+	Type Alloc(const typename Traits::CreateInfo& createInfo, const VmaAllocationCreateInfo& vmaAllocInfo);
 
 	void Destroy(Type resource);
 
@@ -111,33 +50,25 @@ void VmaAllocationsPool<Type>::Init(VmaAllocator allocator)
 
 template<typename Type>
 Type VmaAllocationsPool<Type>::Alloc(
-	const typename Trait::CreateInfo& createInfo,
+	const typename Traits::CreateInfo& createInfo,
 	const VmaAllocationCreateInfo& vmaAllocInfo)
 {
 	assert(m_allocator);
 
-	typename Trait::CType cresource;
-	VmaAllocation allocation;
+	Type outResource;
+	VmaAllocation outallocation;
+	vk::Result result = Traits::Create(m_allocator, createInfo, vmaAllocInfo, outResource, outallocation, nullptr);
 
-	VkResult result = Trait::Create(
-		m_allocator,
-		reinterpret_cast<const Trait::CCreateInfo*>(&createInfo),
-		&vmaAllocInfo,
-		&cresource,
-		&allocation,
-		nullptr);
-
-	if (result != VkResult::VK_SUCCESS)
+	if (result != vk::Result::eSuccess)
 	{
-		throw std::runtime_error(vk::to_string(vk::Result(result)));
+		throw std::runtime_error(vk::to_string(result));
 	}
 
-	Type resource(cresource);
 	const int index = m_counter;
 	++m_counter;
-	m_storage.insert(std::make_pair(resource, allocation));
+	m_storage.insert(std::make_pair(outResource, outallocation));
 
-	return resource;
+	return outResource;
 }
 
 template<typename Type>
@@ -150,7 +81,7 @@ void VmaAllocationsPool<Type>::Destroy(Type resource)
 	}
 	else
 	{
-		Trait::Destroy(m_allocator, it->first, it->second);
+		Traits::Destroy(m_allocator, it->first, it->second);
 		m_storage.erase(it);
 	}
 }
@@ -189,7 +120,7 @@ VmaAllocationsPool<Type>::~VmaAllocationsPool()
 {
 	for (std::pair<const Type, VmaAllocation>& e : m_storage)
 	{
-		Trait::Destroy(m_allocator, e.first, e.second);
+		Traits::Destroy(m_allocator, e.first, e.second);
 	}
 }
 

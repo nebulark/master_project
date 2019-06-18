@@ -7,12 +7,12 @@ template<typename Type>
 class UniqueVmaObject
 {
 public:
-	using CreateInfo = VmaTraits<Type>;
+	using Traits = VmaTraits<Type>;
 
 	UniqueVmaObject() : m_object(nullptr), m_allocator(nullptr), m_allocation(nullptr){}
 
 	UniqueVmaObject(
-		VmaAllocator allocator, const vk::BufferCreateInfo& bufferCreateInfo,
+		VmaAllocator allocator, const typename Traits::CreateInfo& createInfo,
 		const VmaAllocationCreateInfo& vmaAllocationCreateInfo);
 
 	UniqueVmaObject(const UniqueVmaObject&) = delete;
@@ -33,23 +33,18 @@ private:
 	VmaAllocation m_allocation;
 };
 
-
 template<typename Type>
-inline UniqueVmaObject<Type>::UniqueVmaObject(VmaAllocator allocator, const vk::BufferCreateInfo& bufferCreateInfo, const VmaAllocationCreateInfo& vmaAllocationCreateInfo)
+inline UniqueVmaObject<Type>::UniqueVmaObject(VmaAllocator allocator, const typename Traits::CreateInfo& createInfo, const VmaAllocationCreateInfo& vmaAllocationCreateInfo)
 	: m_object(nullptr)
 	, m_allocator(allocator)
 	, m_allocation(nullptr)
 {
-	VmaTraits<Type>::Create()
-	const VkBufferCreateInfo& cBufferCreateInfoRef = bufferCreateInfo;
-	VkBuffer cBuffer = {};
-	vmaCreateBuffer(m_allocator, &cBufferCreateInfoRef, &vmaAllocationCreateInfo, &cBuffer, &m_allocation, nullptr);
-	m_object = cBuffer;
+	vk::Result result =	Traits::Create(allocator, createInfo, vmaAllocationCreateInfo, m_object, m_allocation, nullptr);
 }
 
 template<typename Type>
-inline UniqueVmaObject<Type>::UniqueVmaObject(UniqueVmaObject&& rhs) noexcept
-	: m_buffer(rhs.m_object)
+inline UniqueVmaObject<Type>::UniqueVmaObject(UniqueVmaObject<Type>&& rhs) noexcept
+	: m_object(rhs.m_object)
 	, m_allocator(rhs.m_allocator)
 	, m_allocation(rhs.m_allocation)
 {
@@ -57,7 +52,7 @@ inline UniqueVmaObject<Type>::UniqueVmaObject(UniqueVmaObject&& rhs) noexcept
 }
 
 template<typename Type>
-inline UniqueVmaObject<Type>& UniqueVmaObject<Type>::operator=(UniqueVmaObject&& rhs) noexcept
+inline UniqueVmaObject<Type>& UniqueVmaObject<Type>::operator=(UniqueVmaObject<Type>&& rhs) noexcept
 {
 	std::swap(m_object, rhs.m_object);
 	std::swap(m_allocator, rhs.m_allocator);
@@ -70,8 +65,11 @@ inline UniqueVmaObject<Type>::~UniqueVmaObject()
 {
 	if (m_object)
 	{
-		vmaDestroyBuffer(m_allocator, m_object, m_allocation);
+		Traits::Destroy(m_allocator, m_object, m_allocation);
 	}
 }
+
+using UniqueVmaBuffer = UniqueVmaObject<vk::Buffer>;
+using UniqueVmaImage = UniqueVmaObject<vk::Image>;
 
 

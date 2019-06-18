@@ -227,6 +227,7 @@
     <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="VmaAllocationsPool.cpp" />
     <ClCompile Include="UniqueVmaMemoryMap.cpp" />
+    <ClCompile Include="VmaTraits.cpp" />
     <ClCompile Include="VmaRAII.cpp" />
     <ClCompile Include="vma_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -257,8 +258,9 @@
     <ClInclude Include="Vertex.hpp" />
     <ClInclude Include="VmaAllocationsPool.hpp" />
     <ClInclude Include="UniqueVmaMemoryMap.hpp" />
+    <ClInclude Include="VmaTraits.hpp" />
     <ClInclude Include="VmaRAII.hpp" />
-    <ClInclude Include="UniqueVmaBuffer.hpp" />
+    <ClInclude Include="UniqueVmaObject.hpp" />
     <ClInclude Include="VmaUtils.hpp" />
   </ItemGroup>
   <ItemGroup>
