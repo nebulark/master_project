@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <optional>
 #include <unordered_set>
+#include <array>
 
 #include <gsl/gsl>
 #include "SDL.h"

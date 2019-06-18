@@ -344,3 +344,172 @@ vk::UniqueRenderPass Renderpass::Recursion_With_Portals(vk::Device logicalDevice
 	return logicalDevice.createRenderPassUnique(renderPassCreateInfo);
 
 }
+
+vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat)
+{
+	// TODO: Make these parameters?
+	constexpr int Max_Visible_Portals = 1;
+	constexpr int Max_Recursion = 2;
+
+	vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
+
+	enum AttachmentDescriptionIdx
+	{
+		color,
+		depthStencil,
+		renderedDepth_0,
+		renderedDepth_1,
+		enum_size_AttachmentDescriptionIdx
+	};
+
+	static_assert(renderedDepth_0 + 1 == renderedDepth_1);
+
+	const vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
+
+	std::array<vk::AttachmentDescription, AttachmentDescriptionIdx::enum_size_AttachmentDescriptionIdx> attachmentsDescritpions;
+
+	attachmentsDescritpions[color] = vk::AttachmentDescription()
+		.setFormat(colorFormat)
+		.setSamples(samples)
+		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setStoreOp(vk::AttachmentStoreOp::eStore)
+		.setInitialLayout(vk::ImageLayout::eUndefined)
+		.setFinalLayout(vk::ImageLayout::ePresentSrcKHR)
+		;
+
+	attachmentsDescritpions[depthStencil] = vk::AttachmentDescription()
+		.setFormat(depthStencilFormat)
+		.setSamples(samples)
+		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+		.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
+		.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+		.setInitialLayout(vk::ImageLayout::eUndefined)
+		.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		;
+
+	attachmentsDescritpions[renderedDepth_0] = vk::AttachmentDescription()
+		.setFormat(renderedDepthFormat)
+		.setSamples(samples)
+		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+		.setInitialLayout(vk::ImageLayout::eUndefined)
+		.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
+		;
+
+	attachmentsDescritpions[renderedDepth_1] = attachmentsDescritpions[renderedDepth_0];
+
+
+
+	// intial scene subpass
+	const vk::AttachmentReference initialSceneSubpassReferences_color[] = {
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal),
+	};
+	const vk::AttachmentReference initialSceneSubpassReferences_depthStencil(
+		depthStencil, vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	const vk::SubpassDescription initialSceneSubpassDescription = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(initialSceneSubpassReferences_color)).setPColorAttachments(initialSceneSubpassReferences_color)
+		.setPDepthStencilAttachment(&initialSceneSubpassReferences_depthStencil)
+		;
+
+	// first Portal sub pass
+	const vk::AttachmentReference firstPortalSubpassReferences_color[] = {
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
+		vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eColorAttachmentOptimal),
+	};
+	const vk::AttachmentReference firstPortalSubpassReferences_depthStencil(
+		depthStencil, vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	const vk::SubpassDescription firstPortalSubpass = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(firstPortalSubpassReferences_color)).setPColorAttachments(firstPortalSubpassReferences_color)
+		.setPDepthStencilAttachment(&firstPortalSubpassReferences_depthStencil)
+		;
+
+
+	// subsequent scene Subpass
+	const vk::AttachmentReference subsequentSceneSubpassReferences_color[] = {
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal),
+	};
+
+	const vk::AttachmentReference subsequentSceneSubpassReferences_input[] = {
+		vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eShaderReadOnlyOptimal),
+	};
+
+	const vk::AttachmentReference subsequentSceneSubpassReferences_depthStencil(
+		depthStencil, vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimal
+	);
+
+	const vk::SubpassDescription subsequentSceneSubpassDescription = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(subsequentSceneSubpassReferences_color)).setPColorAttachments(subsequentSceneSubpassReferences_color)
+		.setInputAttachmentCount(GetSizeUint32(subsequentSceneSubpassReferences_input)).setPInputAttachments(subsequentSceneSubpassReferences_input)
+		.setPDepthStencilAttachment(&subsequentSceneSubpassReferences_depthStencil)
+		;
+
+	// subsequent portal Subpass
+
+	const vk::AttachmentReference subsequentPortalSubpassReferences_color[] = {
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal),
+		vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eColorAttachmentOptimal)
+	};
+
+	const vk::AttachmentReference subsequentPortalSubpassReferences_input[] = {
+		vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eShaderReadOnlyOptimal),
+	};
+
+	const vk::AttachmentReference subsequentPortalSubpassReferences_depthStencil(
+		depthStencil, vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimal
+	);
+
+	const vk::SubpassDescription subsequentPortalSubpassDescription = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(subsequentPortalSubpassReferences_color)).setPColorAttachments(subsequentPortalSubpassReferences_color)
+		.setInputAttachmentCount(GetSizeUint32(subsequentPortalSubpassReferences_input)).setPInputAttachments(subsequentPortalSubpassReferences_input)
+		.setPDepthStencilAttachment(&subsequentPortalSubpassReferences_depthStencil)
+		;
+
+	const vk::SubpassDescription subPasses[] =
+	{ initialSceneSubpassDescription, firstPortalSubpass, subsequentSceneSubpassDescription, subsequentPortalSubpassDescription };
+
+	const auto createSubpassDependency = [](uint32_t a, uint32_t b)
+	{
+		vk::SubpassDependency subpassDependency = vk::SubpassDependency{}
+		.setSrcSubpass(a)
+		.setDstSubpass(b)
+		.setSrcStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setSrcAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eColorAttachmentWrite)
+		.setDstStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eInputAttachmentRead )
+			
+		//	.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		//.setSrcAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite)
+		//.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		//.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
+			;
+
+		return subpassDependency;
+	};
+
+	constexpr uint32_t dependencyCount = GetSizeUint32(subPasses);
+	std::array<vk::SubpassDependency, dependencyCount> dependencies;
+	dependencies[0] = createSubpassDependency(VK_SUBPASS_EXTERNAL, 0);
+
+	for(uint32_t i = 1; i < dependencyCount; ++i)
+	{
+		dependencies[i] = createSubpassDependency(i - 1, i);
+	}
+
+	vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
+		.setAttachmentCount(GetSizeUint32(attachmentsDescritpions)).setPAttachments(std::data(attachmentsDescritpions))
+		.setSubpassCount(GetSizeUint32(subPasses)).setPSubpasses(std::data(subPasses))
+		.setDependencyCount(GetSizeUint32(dependencies)).setPDependencies(std::data(dependencies))
+		;
+
+	return logicalDevice.createRenderPassUnique(renderPassCreateInfo);
+
+}

@@ -69,6 +69,8 @@ namespace
 	}
 
 
+
+	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 }
 
 
@@ -84,7 +86,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	std::vector<const char*> enabledExtensions = GetSdlExtensions(window);
 	const char* additonalExtensions[] = {
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-	
+
 	};
 
 	enabledExtensions.insert(enabledExtensions.end(), std::begin(additonalExtensions), std::end(additonalExtensions));
@@ -98,7 +100,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_debugUtilsMessenger = DebugUtils::CreateDebugUtilsMessenger(m_vkInstance.get());
 	m_surface = CreateSurface(m_vkInstance.get(), window);
 
-	const char* deviceExtensions[] = { 
+	const char* deviceExtensions[] = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME,
 	};
@@ -252,7 +254,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			loadBuffer->pipelineBarrier(
 				vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, imageMemoryBarier1);
 
-			}
+		}
 
 		loadBuffer->end();
 
@@ -286,7 +288,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_swapchain = Swapchain::Create(m_physicalDevice, m_device.get(), m_surface.get(), vk::Extent2D(windowWidth, windowHeight));
 
-	vk::Format preferedDepthFormats[] = { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint };
+	vk::Format preferedDepthFormats[] = { vk::Format::eD24UnormS8Uint, vk::Format::eD32SfloatS8Uint };
 	m_depthFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
@@ -360,7 +362,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	// create rendered Depth buffer
 //#error // use storage image!
 	{
-		vk::Format depthFormat = vk::Format::eD32Sfloat;
+		vk::Format depthFormat = renderedDepthFormat;
 		vk::DeviceSize texelSize = sizeof(float);
 
 
@@ -368,27 +370,48 @@ void GraphicsBackend::Init(SDL_Window* window)
 		vmaInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
 
 		vk::DeviceSize storageTexelbufferSize = texelSize * m_swapchain.extent.height * m_swapchain.extent.width;//?
-		vk::BufferCreateInfo renderedDepthBufferInfo = vk::BufferCreateInfo{}
-			.setSize(storageTexelbufferSize)
-			.setUsage(vk::BufferUsageFlagBits::eStorageTexelBuffer)
-			;
-		m_buffer_renderedDepth = UniqueVmaBuffer(m_allocator.get(), renderedDepthBufferInfo, vmaInfo);
-
-		vk::BufferViewCreateInfo bufferview_renderedDepth_createInfo = vk::BufferViewCreateInfo{}
-			.setBuffer(m_buffer_renderedDepth.Get())
+		vk::ImageCreateInfo renderedDepthBufferInfo = vk::ImageCreateInfo{}
+			.setImageType(vk::ImageType::e2D)
+			.setArrayLayers(1)
+			.setExtent(vk::Extent3D(m_swapchain.extent.width, m_swapchain.extent.height, 1))
 			.setFormat(depthFormat)
-			.setOffset(0)
-			.setRange(0 + storageTexelbufferSize);
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setMipLevels(1)
+			.setTiling(vk::ImageTiling::eOptimal)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eInputAttachment);
 		;
-		m_bufferView_renderedDepth = m_device->createBufferViewUnique(bufferview_renderedDepth_createInfo);
+
+		for (UniqueVmaImage& renderedDepthImage : m_image_renderedDepth)
+		{
+			renderedDepthImage = UniqueVmaImage(m_allocator.get(), renderedDepthBufferInfo, vmaInfo);
+		}
 
 
-		//auto cb = CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
-		//cb->begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-		
-	
+
 	}
-	m_colorDepthRenderPass = Renderpass::Create_withDepth(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
+	
+
+	{
+		for (size_t i = 0; i < m_imageview_renderedDepth.size(); ++i)
+		{
+	vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
+					.setImage(m_image_renderedDepth[i].Get())
+.setViewType(vk::ImageViewType::e2D)
+					.setFormat(renderedDepthFormat)
+					.setSubresourceRange(vk::ImageSubresourceRange{}
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1)
+						.setBaseMipLevel(0)
+						.setLevelCount(1))
+					;
+				m_imageview_renderedDepth[i] = m_device->createImageViewUnique(imageViewCreateInfo);
+
+				
+		}
+	}
+	m_colorDepthRenderPass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
@@ -398,7 +421,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setLayers(1);
 		for (const vk::UniqueImageView& imageView : m_swapchain.imageViews)
 		{
-			vk::ImageView fbAttachments[] = { imageView.get(), m_depthBufferView.get() };
+			vk::ImageView fbAttachments[] = {
+				imageView.get(),
+				m_depthBufferView.get(),
+				m_imageview_renderedDepth[0].get(),
+				m_imageview_renderedDepth[1].get() 
+			};
 			m_framebuffer.push_back(m_device->createFramebufferUnique(
 				vk::FramebufferCreateInfo{ framebufferPrototype }
 				.setAttachmentCount(GetSizeUint32(fbAttachments))
@@ -449,22 +477,22 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_ubo);
 		}
 		// rendered Depth storage texel buffer
-{
+		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_renderedDepth[] = {
 		vk::DescriptorSetLayoutBinding{}
 			.setBinding(0)
 			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eStorageTexelBuffer)
+			.setDescriptorType(vk::DescriptorType::eInputAttachment)
 			.setStageFlags(vk::ShaderStageFlagBits::eFragment),
 
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
+			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_renderedDepth = vk::DescriptorSetLayoutCreateInfo()
 				.setBindingCount(GetSizeUint32(descriptorSetBinding_renderedDepth))
 				.setPBindings(descriptorSetBinding_renderedDepth)
 				;
 
-			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_texture);
+			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_renderedDepth);
 		}
 
 		vk::DescriptorPoolSize descritproPoolSizes[] =
@@ -476,18 +504,18 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		vk::DescriptorPoolSize{}
 			.setType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(2),
+			.setDescriptorCount(GetSizeUint32(m_descriptorSet_ubo)),
 
 
 			vk::DescriptorPoolSize{}
-			.setType(vk::DescriptorType::eStorageTexelBuffer)
-			.setDescriptorCount(1),
+			.setType(vk::DescriptorType::eInputAttachment)
+			.setDescriptorCount(GetSizeUint32(m_descriptorSet_renderedDepth)),
 
 		};
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo_sampler = vk::DescriptorPoolCreateInfo()
 			.setPoolSizeCount(GetSizeUint32(descritproPoolSizes)).setPPoolSizes(descritproPoolSizes)
-			.setMaxSets(4);
+			.setMaxSets(5);
 
 
 		m_descriptorPool = m_device->createDescriptorPoolUnique(descriptorPoolCreateInfo_sampler);
@@ -497,6 +525,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				m_descriptorSetLayout_texture.get(),
 				m_descriptorSetLayout_ubo.get(),
 				m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
+				m_descriptorSetLayout_renderedDepth.get(),
 				m_descriptorSetLayout_renderedDepth.get(),
 			};
 
@@ -510,7 +539,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSet_texture = std::move(descriptorSets[0]);
 			m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
 			m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
-			m_descriptorSet_renderedDepth = std::move(descriptorSets[3]);
+			m_descriptorSet_renderedDepth[0] = std::move(descriptorSets[3]);
+			m_descriptorSet_renderedDepth[1] = std::move(descriptorSets[4]);
 		}
 
 		// write texture descriptor set
@@ -595,15 +625,29 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 		// writed rendered Depth descriptor Set
 		{
+			std::array<vk::DescriptorImageInfo,2> imageInfos;
+			std::array<vk::WriteDescriptorSet,2> writeDescriptorSet_inputAttachment;
 
-			vk::WriteDescriptorSet writeRenderedDepth = vk::WriteDescriptorSet{}
+			for (size_t i = 0; i < std::size(imageInfos); ++i)
+			{
+
+			imageInfos[i] = vk::DescriptorImageInfo{}
+					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+					.setImageView(m_imageview_renderedDepth[i].get());
+
+			writeDescriptorSet_inputAttachment[i] = vk::WriteDescriptorSet{}
 				.setDescriptorCount(1)
-				.setDescriptorType(vk::DescriptorType::eStorageTexelBuffer)
+				.setPImageInfo(&imageInfos[i])
+				.setDescriptorType(vk::DescriptorType::eInputAttachment)
 				.setDstArrayElement(0)
 				.setDstBinding(0)
-				.setPTexelBufferView(&(m_bufferView_renderedDepth.get()));
+				.setDstSet(m_descriptorSet_renderedDepth[i])
+				;
 
-			m_device->updateDescriptorSets(writeRenderedDepth, {});
+			}
+
+			
+			m_device->updateDescriptorSets(writeDescriptorSet_inputAttachment, {});
 
 		}
 	}
@@ -651,7 +695,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_staticSceneData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" , "plane.obj"};
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" , "plane.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 
@@ -686,14 +730,16 @@ void GraphicsBackend::Render(const Camera& camera)
 	{
 		vk::ClearValue clearValues[] = {
 					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 1.f }),
-					vk::ClearDepthStencilValue(1.f, 0)
+					vk::ClearDepthStencilValue(1.f, 0),
+					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
 		};
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		// render pass
 		{
-		// render Scene Subpass
+			// render Scene Subpass
 			{
 				const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
 					.setOldLayout(vk::ImageLayout::eUndefined)
@@ -701,20 +747,20 @@ void GraphicsBackend::Render(const Camera& camera)
 					.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 					.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 					.setImage(m_swapchain.images[imageIndex])
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1))
-				.setSrcAccessMask(vk::AccessFlags())
-				.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
+					.setSubresourceRange(vk::ImageSubresourceRange()
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setBaseMipLevel(0)
+						.setLevelCount(1)
+						.setBaseArrayLayer(0)
+						.setLayerCount(1))
+					.setSrcAccessMask(vk::AccessFlags())
+					.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
 
 				;
 
 				drawBuffer.pipelineBarrier(
 					vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
-					{}, {},	{}, setRenderedImageAsColorAttachment);
+					{}, {}, {}, setRenderedImageAsColorAttachment);
 
 				drawBuffer.beginRenderPass(
 					vk::RenderPassBeginInfo{}
@@ -759,8 +805,15 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, 0, 0, 0);
 				}
 			}
-			// Portal Render SubPass
 			{
+				// First Portal Pass
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+
+				// Subsequent Scene Pass
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+
+				// Subsequent Portal Pass
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
 			}
 			drawBuffer.endRenderPass();

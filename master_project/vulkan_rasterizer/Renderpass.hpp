@@ -15,4 +15,7 @@ static vk::UniqueRenderPass Initial_With_Portals(vk::Device logicalDevice);
 // writes RenderedDepth for later Renderpasses
 static vk::UniqueRenderPass Recursion_With_Portals(vk::Device logicalDevice);
 
+// supports currently one iteration with one portal
+static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat);
+
 };

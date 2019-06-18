@@ -88,11 +88,13 @@ vk::Format VulkanUtils::ChooseFormat(vk::PhysicalDevice physicalDevice, gsl::spa
 			{
 				return format;
 			}
+			break;
 		case vk::ImageTiling::eLinear:
 			if (formatProperties.linearTilingFeatures & featureFlags)
 			{
 				return format;
 			}
+			break;
 		default:
 			assert(false);
 			return format;
