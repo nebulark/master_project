@@ -189,4 +189,12 @@
     <CopyFileToFolders Include="models\torus.obj" />
     <CopyFileToFolders Include="models\plane.obj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\portal.frag">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shaders\portal.vert">
+      <Filter>Shader</Filter>
+    </None>
+  </ItemGroup>
 </Project>
