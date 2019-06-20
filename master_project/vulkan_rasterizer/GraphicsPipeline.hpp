@@ -24,4 +24,14 @@ namespace GraphicsPipeline
 			vk::PipelineLayout pipelineLayout,
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos
 		);
+
+		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_drawScene_subsequent(
+			vk::Device logicalDevice,
+			vk::Extent2D swapchainExtent,
+			vk::RenderPass renderpass,
+			vk::PipelineLayout pipelineLayout,
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos,
+			int subpassIndex
+		);
+
 }

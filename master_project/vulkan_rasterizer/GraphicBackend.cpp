@@ -13,6 +13,7 @@
 #include "Vertex.hpp"
 #include "Camera.hpp"
 #include "UniformBufferObjects.hpp"
+#include "ShaderSpecialisation.hpp"
 
 namespace
 {
@@ -692,6 +693,38 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_pipelineLayout.get(),
 			pipelineShaderStageCreationInfos);
 	}
+	{
+		ShaderSpecialisation::MultiBytes<1> multibytes_1{};
+		multibytes_1.data[0] = true;
+
+		vk::SpecializationInfo enableConstant_1 = ShaderSpecialisation::ReferenceMultibytes(multibytes_1);
+
+		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
+		{
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eVertex,
+				m_vertShaderModule.get(),
+				"main",
+				&enableConstant_1),
+
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eFragment,
+				m_fragShaderModule.get(),
+				"main",
+				&enableConstant_1),
+		};
+
+
+		m_graphicsPipeline_scene_subsequent = GraphicsPipeline::CreateGraphicsPipeline_drawScene_subsequent(
+			m_device.get(),
+			m_swapchain.extent,
+			m_colorDepthRenderPass.get(),
+			m_pipelineLayout.get(),
+			pipelineShaderStageCreationInfos,
+			2);
+	}
 
 
 	{
@@ -890,7 +923,31 @@ void GraphicsBackend::Render(const Camera& camera)
 
 
 				// Subsequent Scene Pass
+				{
+					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
+						.setColorAttachment(1)
+						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
+						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
+
+					vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
+
+					drawBuffer.clearAttachments(clearDepthOnly, wholeScreen);
+					
+					
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
+
+				std::array<vk::DescriptorSet, 2> descriptorSets = {
+					m_descriptorSet_texture,
+					m_descriptorSet_ubo[m_currentframe]
+				};
+
+				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+
+
+				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
+
+				}
 
 				// Subsequent Portal Pass
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);

@@ -255,6 +255,7 @@
     <ClInclude Include="Renderpass.hpp" />
     <ClInclude Include="MeshDataManager.hpp" />
     <ClInclude Include="Scene.hpp" />
+    <ClInclude Include="ShaderSpecialisation.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="UniformBufferObjects.hpp" />
     <ClInclude Include="Vertex.hpp" />

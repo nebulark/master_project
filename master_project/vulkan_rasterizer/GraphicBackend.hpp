@@ -72,7 +72,9 @@ private:
 	int m_currentframe = 0;
 
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_initial;
+	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_subsequent;
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_initial;
+	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_subesquent;
 	vk::UniqueSampler m_textureSampler;
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;

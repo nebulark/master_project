@@ -171,6 +171,9 @@
     <ClInclude Include="Portal.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="ShaderSpecialisation.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
