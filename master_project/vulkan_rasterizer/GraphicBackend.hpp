@@ -7,6 +7,7 @@
 
 #include "VmaAllocationsPool.hpp"
 #include "MeshDataManager.hpp"
+#include "Scene.hpp"
 
 class Camera;
 
@@ -71,5 +72,6 @@ private:
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
-	std::unique_ptr<MeshDataManager> m_staticSceneData;
+	std::unique_ptr<MeshDataManager> m_meshData;
+	std::unique_ptr<Scene> m_scene;
 };

@@ -658,7 +658,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		.setSize(sizeof(PushConstant_ModelMat));
 
 
-	vk::DescriptorSetLayout layouts[] = { m_descriptorSetLayout_texture.get(), m_descriptorSetLayout_ubo.get() };
+	vk::DescriptorSetLayout layouts[] = { m_descriptorSetLayout_texture.get(), m_descriptorSetLayout_ubo.get(), m_descriptorSetLayout_renderedDepth.get() };
 	vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
 		.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
 		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange_modelViewProjection);
@@ -693,11 +693,37 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-	m_staticSceneData = std::make_unique<MeshDataManager>(m_allocator.get());
+	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
 	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj" };
 	// use graphics present queue to avoid ownership transfer
-	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
+	m_meshData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
+	enum ObjIdx
+	{
+		torusIdx = 0,
+		sphereIdx,
+		cubeIdx,
+		planeIdx
+	};
+
+	// Init Scene
+	{
+
+		m_scene = std::make_unique<Scene>(m_allocator.get());
+		const glm::vec3 torusPositions[] = {
+			glm::vec3(0),
+			glm::vec3(0.f,1.f,0.f),
+			glm::vec3(0.f,-1.f, 0.f),
+		};
+
+		for (const glm::vec3& torusPos : torusPositions)
+		{
+			m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPos));
+		}
+
+		const glm::mat4 floorModelMat = glm::translate(glm::scale(glm::mat4(1), glm::vec3(100.f, 1.f, 100.f)), glm::vec3(0.f, -5.f, 0.f));
+		m_scene->Add(cubeIdx, floorModelMat);
+	}
 
 }
 
@@ -772,8 +798,6 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
 
-				gsl::span<const MeshDataRef> meshes = m_staticSceneData->GetMeshes();
-				const vk::DeviceSize zeroOffset = 0;
 				std::array<vk::DescriptorSet, 2> descriptorSets = {
 					m_descriptorSet_texture,
 					m_descriptorSet_ubo[m_currentframe]
@@ -781,31 +805,8 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
-
-				glm::vec3 positions[] = {
-					glm::vec3(0),
-					glm::vec3(0.f,1.f,0.f),
-					glm::vec3(0.f,-1.f, 0.f),
-					glm::vec3(-1.f,0.f,0.f),
-					glm::vec3(-2.f,0.f,0.f),
-					glm::vec3(0.f,0.f, 1.f)
-				};
-
-				drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
-				drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
-
-				for (int i = 0; i < std::size(positions); ++i)
-				{
-					const glm::vec3& pos = positions[i];
-					PushConstant_ModelMat pushConstant = {};
-					pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
-
-				
-					drawBuffer.pushConstants<PushConstant_ModelMat>(
-						m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
-
-					drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, meshes[i % meshes.size()].firstIndex, 0, 0);
-				}
+			
+				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
 			}
 			{
 				// First Portal Pass

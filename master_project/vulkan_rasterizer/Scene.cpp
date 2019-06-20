@@ -1,5 +1,7 @@
 #include "pch.hpp"
 #include "Scene.hpp"
+#include "MeshDataManager.hpp"
+#include "PushConstants.hpp"
 
 Scene::Scene(VmaAllocator allocator)
 	: m_drawIndexedIndirectBuffer()
@@ -24,4 +26,29 @@ Scene::Scene(VmaAllocator allocator)
 	}
 
 
+}
+
+void Scene::Add(int MeshIdx, const glm::mat4& modelmat)
+{
+	m_objects.push_back(SceneObject{ modelmat, MeshIdx });
+}
+
+void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer) const
+{
+	drawCommandBuffer.bindIndexBuffer(meshdataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+	vk::DeviceSize vertexBufferOffset = 0;
+	drawCommandBuffer.bindVertexBuffers(0, meshdataManager.GetVertexBuffer(), vertexBufferOffset);
+
+	gsl::span<const MeshDataRef> meshDataRefs = meshdataManager.GetMeshes();
+
+	for (const SceneObject& object : m_objects)
+	{
+
+		PushConstant_ModelMat pushConstant = {};
+		pushConstant.model = object.modelMat;
+
+		drawCommandBuffer.pushConstants<PushConstant_ModelMat>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+		const MeshDataRef& ref = meshDataRefs[object.meshIdx];
+		drawCommandBuffer.drawIndexed(ref.indexCount, 1, ref.firstIndex, 0, 1);
+	}
 }
