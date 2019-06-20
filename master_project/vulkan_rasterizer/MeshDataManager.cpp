@@ -59,7 +59,7 @@ void MeshDataManager::LoadObjs(gsl::span<const char* const> objFileNames,
 		const int currentIndexBufferElementCount = initialIndexElementCount + gsl::narrow<int>(indices.size());
 		MeshDataRef staticSceneMesh;
 		staticSceneMesh.meshName = filename;
-		staticSceneMesh.indexBufferOffset = currentIndexBufferElementCount * sizeof(IndexType);
+		staticSceneMesh.firstIndex = currentIndexBufferElementCount;
 
 		Vertex::LoadObjWithIndices_append(filename, vertices, indices);
 		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(indices.size() - currentIndexBufferElementCount);

@@ -6,7 +6,7 @@
 struct MeshDataRef
 {
 	std::string meshName;
-	vk::DeviceSize indexBufferOffset;
+	uint32_t firstIndex;
 	uint32_t indexCount;
 };
 

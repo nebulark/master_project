@@ -3,8 +3,12 @@
 #include <gsl/gsl>
 
 namespace GraphicsPipeline
-{
-		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_static_simple(
+{	
+		extern const vk::PipelineColorBlendStateCreateInfo colorblendstate_override;
+		extern const vk::PipelineMultisampleStateCreateInfo multisampleState_noMultisampling;
+		extern const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_triangleList;
+
+		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_drawScene_initial(
 			vk::Device logicalDevice,
 			vk::Extent2D swapchainExtent,
 			vk::RenderPass renderpass,
@@ -12,7 +16,12 @@ namespace GraphicsPipeline
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos
 		);
 
-		extern const vk::PipelineColorBlendStateCreateInfo colorblendstate_override;
-		extern const vk::PipelineMultisampleStateCreateInfo multisampleState_noMultisampling;
-		extern const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_triangleList;
+			
+		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_PortalRender_Initial(
+			vk::Device logicalDevice,
+			vk::Extent2D swapchainExtent,
+			vk::RenderPass renderpass,
+			vk::PipelineLayout pipelineLayout,
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos
+		);
 }

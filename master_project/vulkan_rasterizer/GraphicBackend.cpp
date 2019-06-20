@@ -679,7 +679,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			"main"),
 	};
 
-	m_graphicsPipeline = GraphicsPipeline::CreateGraphicsPipeline_static_simple(
+	m_graphicsPipeline = GraphicsPipeline::CreateGraphicsPipeline_drawScene_initial(
 		m_device.get(),
 		m_swapchain.extent,
 		m_colorDepthRenderPass.get(),
@@ -695,7 +695,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_staticSceneData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" , "plane.obj" };
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_staticSceneData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 
@@ -790,19 +790,21 @@ void GraphicsBackend::Render(const Camera& camera)
 					glm::vec3(-2.f,0.f,0.f),
 					glm::vec3(0.f,0.f, 1.f)
 				};
+
+				drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+				drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
+
 				for (int i = 0; i < std::size(positions); ++i)
 				{
 					const glm::vec3& pos = positions[i];
 					PushConstant_ModelMat pushConstant = {};
 					pushConstant.model = glm::translate(glm::mat4(1), pos * 10.f);
 
-					drawBuffer.bindIndexBuffer(m_staticSceneData->GetIndexBuffer(), meshes[i % meshes.size()].indexBufferOffset, MeshDataManager::IndexBufferIndexType);
-					drawBuffer.bindVertexBuffers(0, m_staticSceneData->GetVertexBuffer(), zeroOffset);
-
+				
 					drawBuffer.pushConstants<PushConstant_ModelMat>(
 						m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 
-					drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, 0, 0, 0);
+					drawBuffer.drawIndexed(meshes[i % meshes.size()].indexCount, 1, meshes[i % meshes.size()].firstIndex, 0, 0);
 				}
 			}
 			{

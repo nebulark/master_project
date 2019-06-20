@@ -44,7 +44,7 @@ const vk::PipelineInputAssemblyStateCreateInfo GraphicsPipeline::inputAssembly_t
 
 
 
-vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::CreateGraphicsPipeline_static_simple(
+vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::CreateGraphicsPipeline_drawScene_initial(
 	vk::Device logicalDevice,
 	vk::Extent2D swapchainExtent,
 	vk::RenderPass renderpass,
@@ -110,3 +110,76 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		-1);
 	return logicalDevice.createGraphicsPipelineUnique(vk::PipelineCache(), graphicsPipelineCreateInfo);
 }
+
+vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::CreateGraphicsPipeline_PortalRender_Initial(vk::Device logicalDevice, vk::Extent2D swapchainExtent, vk::RenderPass renderpass, vk::PipelineLayout pipelineLayout, gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos)
+{
+	const vk::Viewport viewport = vk::Viewport()
+		.setX(0.f)
+		.setY(0.f)
+		.setWidth(static_cast<float>(swapchainExtent.width))
+		.setHeight(static_cast<float>(swapchainExtent.height))
+		.setMinDepth(0.f)
+		.setMaxDepth(1.f);
+
+	const vk::Rect2D scissor(vk::Offset2D(0, 0), swapchainExtent);
+
+	const vk::PipelineViewportStateCreateInfo viewportStateCreateInfo(
+		vk::PipelineViewportStateCreateFlags(),
+		1, &viewport,
+		1, &scissor);
+
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vk::PipelineRasterizationStateCreateInfo{}
+		.setDepthClampEnable(false)
+		.setRasterizerDiscardEnable(false)
+		.setPolygonMode(vk::PolygonMode::eFill)
+		.setLineWidth(1.f)
+		.setCullMode(vk::CullModeFlagBits::eBack)
+		.setFrontFace(vk::FrontFace::eCounterClockwise)
+		.setDepthBiasEnable(false)
+		.setDepthBiasConstantFactor(0.f)
+		.setDepthBiasClamp(0.f)
+		.setDepthBiasSlopeFactor(0.f);
+
+
+	vk::StencilOpState stencilOpState_writeReference = vk::StencilOpState{}
+		.setCompareOp(vk::CompareOp::eAlways)
+		.setPassOp(vk::StencilOp::eReplace)
+		.setFailOp(vk::StencilOp::eReplace)
+		.setDepthFailOp(vk::StencilOp::eKeep)
+		.setCompareMask(0b1111'1111)
+		.setWriteMask(0b1111'1111)
+		;
+
+	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = vk::PipelineDepthStencilStateCreateInfo()
+		.setDepthTestEnable(true)
+		.setDepthWriteEnable(true)
+		.setDepthCompareOp(vk::CompareOp::eLess)
+		.setStencilTestEnable(true)
+.setFront(stencilOpState_writeReference)
+		;
+
+
+
+
+	vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
+		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
+		gsl::narrow<uint32_t>(std::size(pipelineShaderStageCreationInfos)), std::data(pipelineShaderStageCreationInfos),
+		&Vertex::pipelineVertexState_simple,
+		&inputAssembly_triangleList,
+		nullptr, // tesselationstate
+		&viewportStateCreateInfo,
+		&rasterizationStateCreateInfo,
+		&multisampleState_noMultisampling,
+		&depthStencilStateCreateInfo,
+		&colorblendstate_override,
+		nullptr, // dynamic device state
+		pipelineLayout,
+		renderpass,
+		0,
+		vk::Pipeline(),
+		-1);
+	return logicalDevice.createGraphicsPipelineUnique(vk::PipelineCache(), graphicsPipelineCreateInfo);
+
+}
+
+
