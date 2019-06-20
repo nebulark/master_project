@@ -8,6 +8,7 @@
 #include "VmaAllocationsPool.hpp"
 #include "MeshDataManager.hpp"
 #include "Scene.hpp"
+#include "Portal.hpp"
 
 class Camera;
 
@@ -35,6 +36,9 @@ private:
 
 	vk::UniqueShaderModule m_vertShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule;
+
+	vk::UniqueShaderModule m_vertShaderModule_portal;
+	vk::UniqueShaderModule m_fragShaderModule_portal;
 
 	Swapchain m_swapchain;
 	vk::Format m_depthFormat;
@@ -67,11 +71,13 @@ private:
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_renderFinishedSem;
 	int m_currentframe = 0;
 
-	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline;
+	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_initial;
+	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_initial;
 	vk::UniqueSampler m_textureSampler;
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::unique_ptr<Scene> m_scene;
+	Portal m_portal;
 };

@@ -485,11 +485,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 		.setSrcAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eColorAttachmentWrite)
 		.setDstStageMask(vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eFragmentShader | vk::PipelineStageFlagBits::eColorAttachmentOutput)
 		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eInputAttachmentRead )
-			
-		//	.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		//.setSrcAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite)
-		//.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		//.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
 			;
 
 		return subpassDependency;

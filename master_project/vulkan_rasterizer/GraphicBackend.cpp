@@ -438,6 +438,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_vertShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.vert.spv", m_device.get());
 	m_fragShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.frag.spv", m_device.get());
 
+	m_vertShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.vert.spv", m_device.get());
+	m_fragShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.frag.spv", m_device.get());
 
 
 	// Descriptor Sets - Combined Image Sampler
@@ -664,27 +666,60 @@ void GraphicsBackend::Init(SDL_Window* window)
 		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange_modelViewProjection);
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
-	vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
 	{
-		vk::PipelineShaderStageCreateInfo(
-			vk::PipelineShaderStageCreateFlags(),
-			vk::ShaderStageFlagBits::eVertex,
-			m_vertShaderModule.get(),
-			"main"),
 
-		vk::PipelineShaderStageCreateInfo(
-			vk::PipelineShaderStageCreateFlags(),
-			vk::ShaderStageFlagBits::eFragment,
-			m_fragShaderModule.get(),
-			"main"),
-	};
 
-	m_graphicsPipeline = GraphicsPipeline::CreateGraphicsPipeline_drawScene_initial(
-		m_device.get(),
-		m_swapchain.extent,
-		m_colorDepthRenderPass.get(),
-		m_pipelineLayout.get(),
-		pipelineShaderStageCreationInfos);
+		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
+		{
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eVertex,
+				m_vertShaderModule.get(),
+				"main"),
+
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eFragment,
+				m_fragShaderModule.get(),
+				"main"),
+		};
+
+
+		m_graphicsPipeline_scene_initial = GraphicsPipeline::CreateGraphicsPipeline_drawScene_initial(
+			m_device.get(),
+			m_swapchain.extent,
+			m_colorDepthRenderPass.get(),
+			m_pipelineLayout.get(),
+			pipelineShaderStageCreationInfos);
+	}
+
+
+	{
+		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos_portal[] =
+		{
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eVertex,
+				m_vertShaderModule_portal.get(),
+				"main"),
+
+			vk::PipelineShaderStageCreateInfo(
+				vk::PipelineShaderStageCreateFlags(),
+				vk::ShaderStageFlagBits::eFragment,
+				m_fragShaderModule_portal.get(),
+				"main"),
+		};
+
+		m_graphicsPipeline_portals_initial = GraphicsPipeline::CreateGraphicsPipeline_PortalRender_Initial(
+			m_device.get(),
+			m_swapchain.extent,
+			m_colorDepthRenderPass.get(),
+			m_pipelineLayout.get(),
+			pipelineShaderStageCreationInfos_portal);
+
+
+	}
+
 	for (int i = 0; i < MaxInFlightFrames; ++i)
 	{
 
@@ -721,8 +756,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPos));
 		}
 
-		const glm::mat4 floorModelMat = glm::translate(glm::scale(glm::mat4(1), glm::vec3(100.f, 1.f, 100.f)), glm::vec3(0.f, -5.f, 0.f));
+		const glm::mat4 floorModelMat = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(100.f, 1.f, 100.f)), glm::vec3(0.f, -5.f, 0.f));
 		m_scene->Add(cubeIdx, floorModelMat);
+	}
+
+	{
+		glm::mat4 portal_a_modelMap = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(10.f, 10.f, 1.f)), glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f));
+		glm::mat4 portal_a_to_b = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 30.f));
+
+		m_portal = Portal::CreateWithModelMatAndTranslation(planeIdx, portal_a_modelMap, portal_a_to_b);
 	}
 
 }
@@ -765,29 +807,30 @@ void GraphicsBackend::Render(const Camera& camera)
 
 		// render pass
 		{
+			const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
+				.setOldLayout(vk::ImageLayout::eUndefined)
+				.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setImage(m_swapchain.images[imageIndex])
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1))
+				.setSrcAccessMask(vk::AccessFlags())
+				.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
+
+			;
+
+			drawBuffer.pipelineBarrier(
+				vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
+				{}, {}, {}, setRenderedImageAsColorAttachment);
+
+
 			// render Scene Subpass
 			{
-				const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
-					.setOldLayout(vk::ImageLayout::eUndefined)
-					.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
-					.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-					.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-					.setImage(m_swapchain.images[imageIndex])
-					.setSubresourceRange(vk::ImageSubresourceRange()
-						.setAspectMask(vk::ImageAspectFlagBits::eColor)
-						.setBaseMipLevel(0)
-						.setLevelCount(1)
-						.setBaseArrayLayer(0)
-						.setLayerCount(1))
-					.setSrcAccessMask(vk::AccessFlags())
-					.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
-
-				;
-
-				drawBuffer.pipelineBarrier(
-					vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
-					{}, {}, {}, setRenderedImageAsColorAttachment);
-
 				drawBuffer.beginRenderPass(
 					vk::RenderPassBeginInfo{}
 					.setRenderPass(m_colorDepthRenderPass.get())
@@ -796,7 +839,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
 					vk::SubpassContents::eInline);
 
-				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline.get());
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_initial.get());
 
 				std::array<vk::DescriptorSet, 2> descriptorSets = {
 					m_descriptorSet_texture,
@@ -805,12 +848,46 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
-			
+
 				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
 			}
 			{
 				// First Portal Pass
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_portals_initial.get());
+
+				// for now just bind it, we can use a different pipeline layout later
+				{
+					std::array<vk::DescriptorSet, 2> descriptorSets = {
+						m_descriptorSet_texture,
+						m_descriptorSet_ubo[m_currentframe]
+					};
+
+					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+
+
+				}
+
+				// draw Portals
+				{
+					drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+					vk::DeviceSize vertexBufferOffset = 0;
+					drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+
+					const MeshDataRef& portalMeshRef = m_meshData->GetMeshes()[m_portal.meshIndex];
+
+					PushConstant_ModelMat pushConstant = {};
+					pushConstant.model = m_portal.a_modelmat;
+
+					drawBuffer.pushConstants<PushConstant_ModelMat>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+
+					pushConstant.model = m_portal.b_modelmat;
+					drawBuffer.pushConstants<PushConstant_ModelMat>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+
+				}
+
 
 				// Subsequent Scene Pass
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);

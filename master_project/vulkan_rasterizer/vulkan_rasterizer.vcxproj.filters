@@ -88,6 +88,9 @@
     <ClCompile Include="VmaTraits.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Portal.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -163,6 +166,9 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="VmaTraits.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Portal.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

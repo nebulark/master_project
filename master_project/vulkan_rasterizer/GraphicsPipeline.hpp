@@ -4,7 +4,7 @@
 
 namespace GraphicsPipeline
 {	
-		extern const vk::PipelineColorBlendStateCreateInfo colorblendstate_override;
+		extern const vk::PipelineColorBlendStateCreateInfo colorblendstate_override_1;
 		extern const vk::PipelineMultisampleStateCreateInfo multisampleState_noMultisampling;
 		extern const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_triangleList;
 

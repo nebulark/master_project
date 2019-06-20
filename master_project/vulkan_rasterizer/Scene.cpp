@@ -48,7 +48,7 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 		pushConstant.model = object.modelMat;
 
 		drawCommandBuffer.pushConstants<PushConstant_ModelMat>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
-		const MeshDataRef& ref = meshDataRefs[object.meshIdx];
-		drawCommandBuffer.drawIndexed(ref.indexCount, 1, ref.firstIndex, 0, 1);
+		const MeshDataRef& portalMeshRef = meshDataRefs[object.meshIdx];
+		drawCommandBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 	}
 }

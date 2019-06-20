@@ -1,9 +1,13 @@
 #include "pch.hpp"
 #include "GraphicsPipeline.hpp"
 #include "Vertex.hpp"
+#include "GetSizeUint32.hpp"
 
 namespace
 {
+
+	std::array<vk::PipelineColorBlendAttachmentState, 4>  colorblend_override_arr4 = []()
+	{
 	vk::PipelineColorBlendAttachmentState colorblend_override = vk::PipelineColorBlendAttachmentState()
 		.setColorWriteMask(vk::ColorComponentFlags()
 			| vk::ColorComponentFlagBits::eR
@@ -18,15 +22,31 @@ namespace
 		.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
 		.setAlphaBlendOp(vk::BlendOp::eAdd);
 
+
+	std::array<vk::PipelineColorBlendAttachmentState, 4>  colorblend_override_arr4;
+	colorblend_override_arr4.fill(colorblend_override);
+	return colorblend_override_arr4;
+
+	}();
+
 }
 
-const vk::PipelineColorBlendStateCreateInfo GraphicsPipeline::colorblendstate_override = vk::PipelineColorBlendStateCreateInfo()
+const vk::PipelineColorBlendStateCreateInfo GraphicsPipeline::colorblendstate_override_1 = vk::PipelineColorBlendStateCreateInfo()
 	.setLogicOpEnable(false)
 		.setLogicOp(vk::LogicOp::eCopy)
 		.setAttachmentCount(1)
-		.setPAttachments(&colorblend_override)
+		.setPAttachments(colorblend_override_arr4.data())
 		.setBlendConstants({ 0.f,0.f,0.f,0.f })
 		;
+
+const vk::PipelineColorBlendStateCreateInfo colorblendstate_override_2 = vk::PipelineColorBlendStateCreateInfo()
+	.setLogicOpEnable(false)
+		.setLogicOp(vk::LogicOp::eCopy)
+		.setAttachmentCount(2)
+		.setPAttachments(colorblend_override_arr4.data())
+		.setBlendConstants({ 0.f,0.f,0.f,0.f })
+		;
+
 
 const vk::PipelineMultisampleStateCreateInfo GraphicsPipeline::multisampleState_noMultisampling = vk::PipelineMultisampleStateCreateInfo()
 		.setSampleShadingEnable(false)
@@ -101,7 +121,7 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		&rasterizationStateCreateInfo,
 		&multisampleState_noMultisampling,
 		&depthStencilStateCreateInfo,
-		&colorblendstate_override,
+		&colorblendstate_override_1,
 		nullptr, // dynamic device state
 		pipelineLayout,
 		renderpass,
@@ -158,8 +178,7 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 .setFront(stencilOpState_writeReference)
 		;
 
-
-
+	constexpr int subPassIdx = 1;
 
 	vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
 		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
@@ -171,11 +190,11 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		&rasterizationStateCreateInfo,
 		&multisampleState_noMultisampling,
 		&depthStencilStateCreateInfo,
-		&colorblendstate_override,
+		&colorblendstate_override_2,
 		nullptr, // dynamic device state
 		pipelineLayout,
 		renderpass,
-		0,
+		subPassIdx,
 		vk::Pipeline(),
 		-1);
 	return logicalDevice.createGraphicsPipelineUnique(vk::PipelineCache(), graphicsPipelineCreateInfo);
