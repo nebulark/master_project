@@ -6,9 +6,9 @@
 
 
 // exponation by squaring
-constexpr int ipow(uint32_t base, uint32_t exp)
+constexpr uint32_t ipow(uint32_t base, uint32_t exp)
 {
-	int result = 1;
+	uint32_t result = 1;
 	while (true)
 	{
 		if (exp & 1)
@@ -31,16 +31,16 @@ class NTree
 
 public:
 
-	static constexpr int CalcFirstLayerIndex(uint32_t n, int layerNum) { return ipow(n, layerNum) - 1; }
-	static constexpr int CalcTotalElements(uint32_t n, int treeHight) { return CalcFirstLayerIndex(n, treeHight); }
+	static constexpr uint32_t CalcFirstLayerIndex(uint32_t n, uint32_t layerNum) { return ipow(n, layerNum) - 1; }
+	static constexpr uint32_t CalcTotalElements(uint32_t n, uint32_t treeHight) { return CalcFirstLayerIndex(n, treeHight + 1); }
 
-	static constexpr int GetChildElementIdx(uint32_t n, int parentIdx, int childnum)
+	static constexpr uint32_t GetChildElementIdx(uint32_t n, uint32_t parentIdx, uint32_t childnum)
 	{
 		assert(childnum < n);
 		return parentIdx * n + 1 + childnum;
 	}
 
-	static constexpr int GetParentIdx(uint32_t n, int childIdx)
+	static constexpr uint32_t GetParentIdx(uint32_t n, uint32_t childIdx)
 	{
 		return (childIdx - 1) / n;
 	}

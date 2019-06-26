@@ -14,7 +14,7 @@ out int gl_FragStencilRefARB;
 layout(constant_id = 0) const int useInputDepth = 0;
 
 #if useInputDepth
-layout (input_attachment_index = 0, set = 2, binding = 0) uniform subpassInput inputDepth;
+layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
 #endif
 
 void main() {

@@ -2,6 +2,7 @@
 
 #include "glm.hpp"
 #include "NTree.hpp"
+#include "GetSizeUint32.hpp"
 
 
 
@@ -56,7 +57,7 @@ inline void Portal::CreateCameraMatrices(
 
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
-	const uint32_t portalCount = portals.size() * 2;
+	const uint32_t portalCount = GetSizeUint32(portals.size()) * 2;
 	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, recursions);
 	assert(outBuffer.size() >= matrixCount);
 
@@ -71,8 +72,8 @@ inline void Portal::CreateCameraMatrices(
 			// we are iterating over 2 elements at once, so the actual portals are 2*i and 2*i +1!
 			for (uint32_t i = 0; i < portals.size(); ++i)
 			{
-				const int childIdx0 = NTree::GetChildElementIdx(portalCount, parentIdx, 2 * i);
-				const int childIdx1 = childIdx0 + 1;
+				const uint32_t childIdx0 = NTree::GetChildElementIdx(portalCount, parentIdx, 2 * i);
+				const uint32_t childIdx1 = childIdx0 + 1;
 
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);

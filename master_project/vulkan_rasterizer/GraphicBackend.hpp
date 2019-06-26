@@ -9,6 +9,7 @@
 #include "MeshDataManager.hpp"
 #include "Scene.hpp"
 #include "Portal.hpp"
+#include "UniqueVmaObject.hpp"
 
 class Camera;
 
@@ -53,8 +54,11 @@ private:
 	vk::DescriptorSet m_descriptorSet_texture;
 
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_ubo;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraMat;
 	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_ubo;
-	std::array<vk::Buffer, MaxInFlightFrames> m_ubo_buffer;
+	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_cameratMat;
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_ubo_buffer;
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameratMat_buffer;
 
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_renderedDepth;
 	std::array<UniqueVmaImage,2> m_image_renderedDepth;

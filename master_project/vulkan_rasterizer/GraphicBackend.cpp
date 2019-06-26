@@ -14,6 +14,7 @@
 #include "Camera.hpp"
 #include "UniformBufferObjects.hpp"
 #include "ShaderSpecialisation.hpp"
+#include "UniqueVmaMemoryMap.hpp"
 
 namespace
 {
@@ -72,6 +73,10 @@ namespace
 
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
+	constexpr int numPortals = 2;
+	constexpr int numRecursions = 2;
+
+	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions);
 }
 
 
@@ -479,6 +484,23 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_ubo);
 		}
+		{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_cameraMat[] =
+			{
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0) // matches Shader code
+					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDescriptorCount(1)
+					.setStageFlags(vk::ShaderStageFlagBits::eVertex),
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_cameraMat = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_cameraMat))
+				.setPBindings(descriptorSetBinding_cameraMat)
+				;
+
+			m_descriptorSetLayout_cameraMat = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_cameraMat);
+		}
 		// rendered Depth storage texel buffer
 		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_renderedDepth[] = {
@@ -507,7 +529,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		vk::DescriptorPoolSize{}
 			.setType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(GetSizeUint32(m_descriptorSet_ubo)),
+			.setDescriptorCount(GetSizeUint32(m_descriptorSet_ubo) + GetSizeUint32(m_descriptorSet_cameratMat)),
 
 
 			vk::DescriptorPoolSize{}
@@ -518,7 +540,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo_sampler = vk::DescriptorPoolCreateInfo()
 			.setPoolSizeCount(GetSizeUint32(descritproPoolSizes)).setPPoolSizes(descritproPoolSizes)
-			.setMaxSets(5);
+			.setMaxSets(7);
 
 
 		m_descriptorPool = m_device->createDescriptorPoolUnique(descriptorPoolCreateInfo_sampler);
@@ -530,6 +552,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 				m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
 				m_descriptorSetLayout_renderedDepth.get(),
 				m_descriptorSetLayout_renderedDepth.get(),
+				m_descriptorSetLayout_cameraMat.get(),
+				m_descriptorSetLayout_cameraMat.get(),
 			};
 
 			vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
@@ -544,6 +568,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
 			m_descriptorSet_renderedDepth[0] = std::move(descriptorSets[3]);
 			m_descriptorSet_renderedDepth[1] = std::move(descriptorSets[4]);
+			m_descriptorSet_cameratMat[0] = std::move(descriptorSets[5]);
+				m_descriptorSet_cameratMat[1] = std::move(descriptorSets[6]);
 		}
 
 		// write texture descriptor set
@@ -596,7 +622,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				VmaAllocationCreateInfo allocCreateInfo = {};
 				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-				m_ubo_buffer[i] = m_BufferPool.Alloc(bufferCreateInfo, allocCreateInfo);
+				m_ubo_buffer[i] = UniqueVmaBuffer(m_allocator.get(), bufferCreateInfo, allocCreateInfo);
 			}
 
 
@@ -607,7 +633,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			{
 
 				descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
-					.setBuffer(m_ubo_buffer[i])
+					.setBuffer(m_ubo_buffer[i].Get())
 					.setOffset(0)
 					.setRange(sizeof(Ubo_GlobalRenderData));
 
@@ -626,6 +652,50 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 
 		}
+// write cameraMat descriptorSet
+		{
+			constexpr vk::DeviceSize uniformBufferSize = sizeof(glm::mat4) * cameraMatCount;
+			for (size_t i = 0; i < m_cameratMat_buffer.size(); ++i)
+			{
+				const vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
+					.setSize(uniformBufferSize)
+					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo allocCreateInfo = {};
+				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+				m_cameratMat_buffer[i] = UniqueVmaBuffer(m_allocator.get(), bufferCreateInfo, allocCreateInfo);
+			}
+
+
+			std::array<vk::DescriptorBufferInfo, std::tuple_size_v<decltype(m_cameratMat_buffer)>> descriptorBufferInfos;
+			std::array<vk::WriteDescriptorSet, std::tuple_size_v<decltype(m_cameratMat_buffer)>> writeDescriptorSets;
+
+			for (size_t i = 0; i < descriptorBufferInfos.size(); ++i)
+			{
+
+				descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
+					.setBuffer(m_cameratMat_buffer[i].Get())
+					.setOffset(0)
+					.setRange(uniformBufferSize);
+
+
+				writeDescriptorSets[i] = vk::WriteDescriptorSet{}
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDstArrayElement(0)
+					.setDstBinding(0) // matches shader code
+					.setDstSet(m_descriptorSet_cameratMat[i])
+					.setPBufferInfo(&descriptorBufferInfos[i])
+					;
+			}
+
+			m_device->updateDescriptorSets(writeDescriptorSets, {});
+
+
+		}
+
 		// writed rendered Depth descriptor Set
 		{
 			std::array<vk::DescriptorImageInfo,2> imageInfos;
@@ -661,28 +731,54 @@ void GraphicsBackend::Init(SDL_Window* window)
 		.setSize(sizeof(PushConstant_ModelMat));
 
 
-	vk::DescriptorSetLayout layouts[] = { m_descriptorSetLayout_texture.get(), m_descriptorSetLayout_ubo.get(), m_descriptorSetLayout_renderedDepth.get() };
+	vk::DescriptorSetLayout layouts[] = {
+		m_descriptorSetLayout_texture.get(),
+		m_descriptorSetLayout_ubo.get(),
+		m_descriptorSetLayout_cameraMat.get(),
+		m_descriptorSetLayout_renderedDepth.get(),
+	};
+
 	vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
 		.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
 		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange_modelViewProjection);
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
+
+	const ShaderSpecialisation::MultiBytes<2> multibytes_disableRenderedDepth = []() {
+		ShaderSpecialisation::MultiBytes<2> multibytes{};
+		multibytes.data[0] = false; // disable rendered depth input a these are the initial shaders
+		multibytes.data[1] = gsl::narrow<uint8_t>(cameraMatCount);
+		return multibytes;
+	}();
+
+	const vk::SpecializationInfo disableRenderedDepth = ShaderSpecialisation::ReferenceMultibytes(multibytes_disableRenderedDepth);
+
+
+	const ShaderSpecialisation::MultiBytes<2> multibytes_enableRenderedDepth = []() {
+		ShaderSpecialisation::MultiBytes<2> multibytes{};
+		multibytes.data[0] = false; // disable rendered depth input a these are the initial shaders
+		multibytes.data[1] = gsl::narrow<uint8_t>(cameraMatCount);
+		return multibytes;
+	}();
+
+	const vk::SpecializationInfo enableRenderedDepth = ShaderSpecialisation::ReferenceMultibytes(multibytes_enableRenderedDepth);
+
 	{
-
-
 		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
 		{
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule.get(),
-				"main"),
+				"main",
+				&disableRenderedDepth),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule.get(),
-				"main"),
+				"main",
+				&disableRenderedDepth),
 		};
 
 
@@ -694,10 +790,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 			pipelineShaderStageCreationInfos);
 	}
 	{
-		ShaderSpecialisation::MultiBytes<1> multibytes_1{};
-		multibytes_1.data[0] = true;
-
-		vk::SpecializationInfo enableConstant_1 = ShaderSpecialisation::ReferenceMultibytes(multibytes_1);
 
 		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
 		{
@@ -706,14 +798,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule.get(),
 				"main",
-				&enableConstant_1),
+				&disableRenderedDepth),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule.get(),
 				"main",
-				&enableConstant_1),
+				&disableRenderedDepth),
 		};
 
 
@@ -734,13 +826,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule_portal.get(),
-				"main"),
+				"main",
+				&enableRenderedDepth),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule_portal.get(),
-				"main"),
+				"main",
+				&enableRenderedDepth),
 		};
 
 		m_graphicsPipeline_portals_initial = GraphicsPipeline::CreateGraphicsPipeline_PortalRender_Initial(
@@ -808,16 +902,25 @@ void GraphicsBackend::Render(const Camera& camera)
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
 
-	VmaAllocation* ubo_Allocation = m_BufferPool.GetAllocation(m_ubo_buffer[m_currentframe]);
 	{
-		void* bufferMemory;
-		vmaMapMemory(m_allocator.get(), *ubo_Allocation, &bufferMemory);
+		VmaAllocation ubo_Allocation = m_ubo_buffer[m_currentframe].GetAllocation();
+		UniqueVmaMemoryMap memoryMap(m_allocator.get(), ubo_Allocation);
 		Ubo_GlobalRenderData renderData;
 		renderData.proj = camera.GetProjectionMatrix();
 		renderData.view = camera.CalcViewMatrix();
 
-		std::memcpy(bufferMemory, &renderData, sizeof(renderData));
-		vmaUnmapMemory(m_allocator.get(), *ubo_Allocation);
+		std::memcpy(memoryMap.GetMappedMemoryPtr(), &renderData, sizeof(renderData));
+	}
+
+	{
+		glm::mat4 cameraMats[cameraMatCount];
+		Portal::CreateCameraMatrices(gsl::make_span(&m_portal, 1), camera.CalcViewMatrix(), numRecursions, cameraMats);
+
+
+		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
+		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
+
+		std::memcpy(memoryMap.GetMappedMemoryPtr(), &cameraMats, sizeof(cameraMats[0]) * std::size(cameraMats));
 	}
 
 
@@ -874,9 +977,11 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_initial.get());
 
-				std::array<vk::DescriptorSet, 2> descriptorSets = {
+				std::array<vk::DescriptorSet, 4> descriptorSets = {
 					m_descriptorSet_texture,
-					m_descriptorSet_ubo[m_currentframe]
+					m_descriptorSet_ubo[m_currentframe],
+					m_descriptorSet_cameratMat[m_currentframe],
+					m_descriptorSet_renderedDepth[1],
 				};
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
@@ -891,9 +996,11 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				// for now just bind it, we can use a different pipeline layout later
 				{
-					std::array<vk::DescriptorSet, 2> descriptorSets = {
+					std::array<vk::DescriptorSet, 4> descriptorSets = {
 						m_descriptorSet_texture,
-						m_descriptorSet_ubo[m_currentframe]
+						m_descriptorSet_ubo[m_currentframe],
+						m_descriptorSet_cameratMat[m_currentframe],
+						m_descriptorSet_renderedDepth[1],
 					};
 
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
@@ -932,20 +1039,22 @@ void GraphicsBackend::Render(const Camera& camera)
 					vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
 
 					drawBuffer.clearAttachments(clearDepthOnly, wholeScreen);
-					
-					
-				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
-
-				std::array<vk::DescriptorSet, 2> descriptorSets = {
-					m_descriptorSet_texture,
-					m_descriptorSet_ubo[m_currentframe]
-				};
-
-				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 
-				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
+
+					std::array<vk::DescriptorSet, 4> descriptorSets = {
+										m_descriptorSet_texture,
+										m_descriptorSet_ubo[m_currentframe],
+										m_descriptorSet_cameratMat[m_currentframe],
+										m_descriptorSet_renderedDepth[0],
+					};
+
+					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+
+
+					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
 
 				}
 
