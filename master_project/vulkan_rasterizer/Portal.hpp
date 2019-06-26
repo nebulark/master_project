@@ -61,6 +61,7 @@ inline void Portal::CreateCameraMatrices(
 	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, recursions);
 	assert(outBuffer.size() >= matrixCount);
 
+	outBuffer[0] = CameraMatrix;
 	for (uint32_t layer = 1; layer <= recursions; ++layer)
 	{
 		const uint32_t previousLayerStartIndex = NTree::CalcFirstLayerIndex(portalCount, layer - 1);
