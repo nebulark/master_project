@@ -233,11 +233,23 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		.setDepthBiasClamp(0.f)
 		.setDepthBiasSlopeFactor(0.f);
 
+	vk::StencilOpState stencilOpState_renderifEqual = vk::StencilOpState{}
+		.setCompareOp(vk::CompareOp::eEqual)
+		.setPassOp(vk::StencilOp::eKeep)
+		.setFailOp(vk::StencilOp::eKeep)
+		.setDepthFailOp(vk::StencilOp::eKeep)
+		.setCompareMask(0b1111'1111)
+		.setWriteMask(0b1111'1111)
+.setReference(1)
+		;
+
 	
 	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = vk::PipelineDepthStencilStateCreateInfo()
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
+.setStencilTestEnable(true)
+.setFront(stencilOpState_renderifEqual)
 		;
 
 

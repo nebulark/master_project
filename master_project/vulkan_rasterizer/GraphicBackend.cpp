@@ -872,28 +872,61 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	// Init Scene
 	{
-
+		
 		m_scene = std::make_unique<Scene>(m_allocator.get());
-		const glm::vec3 torusPositions[] = {
-			glm::vec3(0),
-			glm::vec3(0.f,1.f,0.f),
-			glm::vec3(0.f,-1.f, 0.f),
-		};
-
-		for (const glm::vec3& torusPos : torusPositions)
 		{
-			m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPos));
+			const glm::vec3 torusPositions[] = {
+				glm::vec3(0),
+				glm::vec3(0.f,1.f,0.f),
+				glm::vec3(0.f,-1.f, 0.f),
+				glm::vec3(-6.f,10.f, -15.f),
+				glm::vec3(6.f, 10.f , 15.f),
+			};
+
+			for (const glm::vec3& torusPos : torusPositions)
+			{
+				m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPos));
+			}
+		}
+		{
+			const glm::mat4 floorModelMat = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(100.f, 1.f, 100.f)), glm::vec3(0.f, -5.f, 0.f));
+			m_scene->Add(cubeIdx, floorModelMat);
+		}
+		{
+		const glm::vec3 spherePos[] = {
+				glm::vec3(-3.f,10.f, -5.f),
+				glm::vec3(3.f, 10.f , 5.f),
+			};
+
+			for (const glm::vec3& p : spherePos)
+			{
+				m_scene->Add(sphereIdx, glm::translate(glm::mat4(1), p));
+			}
+
+		}
+		{
+			const glm::vec3 cubePos[] = {
+							glm::vec3(-7.f,13.f, -9.f),
+							glm::vec3(1.f, 10.f , -9.f),
+			};
+
+			for (const glm::vec3& p : cubePos)
+			{
+				m_scene->Add(cubeIdx, glm::translate(glm::mat4(1), p));
+			}
 		}
 
-		const glm::mat4 floorModelMat = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(100.f, 1.f, 100.f)), glm::vec3(0.f, -5.f, 0.f));
-		m_scene->Add(cubeIdx, floorModelMat);
 	}
 
 	{
-		glm::mat4 portal_a_modelMap = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(10.f, 10.f, 1.f)), glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f));
+		glm::mat4 portal_a_modelMat_scale = glm::scale(glm::mat4(1.f), glm::vec3(10.f, 1.f, 10.f));
+		glm::mat4 portal_a_modelMat_rotation = glm::rotate(glm::mat4(1.f), glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f));
+		glm::mat4 portal_a_modelMat_translation = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f));
+		glm::mat4 portal_a_modelMat = portal_a_modelMat_translation * portal_a_modelMat_rotation * portal_a_modelMat_scale;
+
 		glm::mat4 portal_a_to_b = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 30.f));
 
-		m_portal = Portal::CreateWithModelMatAndTranslation(planeIdx, portal_a_modelMap, portal_a_to_b);
+		m_portal = Portal::CreateWithModelMatAndTranslation(planeIdx, portal_a_modelMat, portal_a_to_b);
 	}
 
 }
@@ -934,7 +967,7 @@ void GraphicsBackend::Render(const Camera& camera)
 	vk::CommandBuffer drawBuffer = m_graphicsPresentBuffer[m_currentframe].get();
 	{
 		vk::ClearValue clearValues[] = {
-					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 1.f }),
+					vk::ClearColorValue(std::array<float, 4>{ 100.f / 255.f, 149.f / 255.f, 237.f / 255.f, 1.f }),
 					vk::ClearDepthStencilValue(1.f, 0),
 					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
 					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
@@ -1029,11 +1062,11 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 				}
-				
-			
+
+
 				// Subsequent Scene Pass
 				{
-					
+
 					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
 						.setColorAttachment(1)
 						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
@@ -1044,18 +1077,19 @@ void GraphicsBackend::Render(const Camera& camera)
 						.setAspectMask(vk::ImageAspectFlagBits::eColor)
 						.setClearValue(vk::ClearColorValue(std::array<float, 4>{ 1.f, 1.f, 1.f, 1.f}));
 
-				
+
 
 					vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
 
-					 std::array<vk::ClearAttachment,2> clearAttachments = { clearDepthOnly,setRenderedDepthTo1, };
+					std::array<vk::ClearAttachment, 2> clearAttachments = { clearDepthOnly,setRenderedDepthTo1, };
+					std::array<vk::ClearAttachment, 1> clearAttachments1 = { clearDepthOnly, };
 
-					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
-drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.clearAttachments(clearAttachments1, wholeScreen);
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
 
 
-					
+
 					std::array<vk::DescriptorSet, 4> descriptorSets = {
 										m_descriptorSet_texture,
 										m_descriptorSet_ubo[m_currentframe],
