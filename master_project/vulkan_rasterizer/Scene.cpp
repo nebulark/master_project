@@ -33,7 +33,7 @@ void Scene::Add(int MeshIdx, const glm::mat4& modelmat)
 	m_objects.push_back(SceneObject{ modelmat, MeshIdx });
 }
 
-void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer) const
+void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx) const
 {
 	drawCommandBuffer.bindIndexBuffer(meshdataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 	vk::DeviceSize vertexBufferOffset = 0;
@@ -46,6 +46,7 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 
 		PushConstant_ModelMat pushConstant = {};
 		pushConstant.model = object.modelMat;
+		pushConstant.cameraIdx = cameraMatIdx;
 
 		drawCommandBuffer.pushConstants<PushConstant_ModelMat>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 		const MeshDataRef& portalMeshRef = meshDataRefs[object.meshIdx];

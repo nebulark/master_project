@@ -11,8 +11,16 @@ layout(location = 1) out float outRenderedDepth;
 
 out int gl_FragStencilRefARB;
 
+layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+
 void main() 
 {
+
+	if(gl_FragCoord.z < subpassLoad(inputDepth).r)
+	{
+		discard;
+	}
+
     outColor = vec4(1.0, 0.0, 0.0, 1.0);
 	gl_FragStencilRefARB = 1;
 	outRenderedDepth = gl_FragCoord.z;

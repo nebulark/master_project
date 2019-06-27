@@ -443,9 +443,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_vertShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.vert.spv", m_device.get());
 	m_fragShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.frag.spv", m_device.get());
+	m_fragShaderModule_subsequent = VulkanUtils::CreateShaderModuleFromFile("shader_subsequent.frag.spv", m_device.get());
 
 	m_vertShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.vert.spv", m_device.get());
 	m_fragShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.frag.spv", m_device.get());
+	m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 
 
 	// Descriptor Sets - Combined Image Sampler
@@ -705,7 +707,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			{
 
 			imageInfos[i] = vk::DescriptorImageInfo{}
-					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+					.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 					.setImageView(m_imageview_renderedDepth[i].get());
 
 			writeDescriptorSet_inputAttachment[i] = vk::WriteDescriptorSet{}
@@ -803,7 +805,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
-				m_fragShaderModule.get(),
+				m_fragShaderModule_subsequent.get(),
 				"main",
 				&disableRenderedDepth),
 		};
@@ -916,7 +918,6 @@ void GraphicsBackend::Render(const Camera& camera)
 		glm::mat4 cameraMats[cameraMatCount];
 		Portal::CreateCameraMatrices(gsl::make_span(&m_portal, 1), camera.CalcViewMatrix(), numRecursions, cameraMats);
 
-
 		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
 
@@ -987,7 +988,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 
-				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
+				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
 			}
 			{
 				// First Portal Pass
@@ -1018,6 +1019,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					PushConstant_ModelMat pushConstant = {};
 					pushConstant.model = m_portal.a_modelmat;
+					pushConstant.cameraIdx = 0;
 
 					drawBuffer.pushConstants<PushConstant_ModelMat>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
@@ -1027,23 +1029,33 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 				}
-
-
+				
+			
 				// Subsequent Scene Pass
 				{
+					
 					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
 						.setColorAttachment(1)
 						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
 						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
 
+					vk::ClearAttachment setRenderedDepthTo1 = vk::ClearAttachment{}
+						.setColorAttachment(1)
+						.setAspectMask(vk::ImageAspectFlagBits::eColor)
+						.setClearValue(vk::ClearColorValue(std::array<float, 4>{ 1.f, 1.f, 1.f, 1.f}));
+
+				
+
 					vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
 
-					drawBuffer.clearAttachments(clearDepthOnly, wholeScreen);
+					 std::array<vk::ClearAttachment,2> clearAttachments = { clearDepthOnly,setRenderedDepthTo1, };
 
-
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
+drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
 
+
+					
 					std::array<vk::DescriptorSet, 4> descriptorSets = {
 										m_descriptorSet_texture,
 										m_descriptorSet_ubo[m_currentframe],
@@ -1054,12 +1066,12 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 
-					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer);
+					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 1);
 
 				}
 
 				// Subsequent Portal Pass
-				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+				//drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
 			}
 			drawBuffer.endRenderPass();

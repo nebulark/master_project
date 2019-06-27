@@ -37,9 +37,11 @@ private:
 
 	vk::UniqueShaderModule m_vertShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule;
+	vk::UniqueShaderModule m_fragShaderModule_subsequent;
 
 	vk::UniqueShaderModule m_vertShaderModule_portal;
 	vk::UniqueShaderModule m_fragShaderModule_portal;
+	vk::UniqueShaderModule m_fragShaderModule_portal_subsequent;
 
 	Swapchain m_swapchain;
 	vk::Format m_depthFormat;

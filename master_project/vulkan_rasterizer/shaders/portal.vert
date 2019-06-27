@@ -5,6 +5,7 @@ layout(constant_id = 1) const int cameraMatCount = 3;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
+	uint cameraIdx;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
@@ -25,9 +26,11 @@ layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
+	mat4 viewMat = u_cMats.mats[pc.cameraIdx];
+
     gl_Position = 
 	u_grd.proj *
-	u_grd.view *
+	viewMat * //u_grd.view *
 	pc.model *
 	vec4(inPosition, 1.0);
 

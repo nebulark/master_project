@@ -21,7 +21,7 @@ public:
 	Scene(VmaAllocator allocator);
 
 	void Add(int MeshIdx, const glm::mat4& modelmat);
-	void Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer) const;
+	void Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx) const;
 
 
 private:
