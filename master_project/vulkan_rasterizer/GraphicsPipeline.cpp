@@ -28,7 +28,6 @@ namespace
 	return colorblend_override_arr4;
 
 	}();
-
 }
 
 const vk::PipelineColorBlendStateCreateInfo GraphicsPipeline::colorblendstate_override_1 = vk::PipelineColorBlendStateCreateInfo()
@@ -148,12 +147,12 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		1, &viewport,
 		1, &scissor);
 
-	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vk::PipelineRasterizationStateCreateInfo{}
+	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vk::PipelineRasterizationStateCreateInfo{}
 		.setDepthClampEnable(false)
 		.setRasterizerDiscardEnable(false)
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setLineWidth(1.f)
-		.setCullMode(vk::CullModeFlagBits::eBack)
+		.setCullMode(vk::CullModeFlagBits::eNone)
 		.setFrontFace(vk::FrontFace::eCounterClockwise)
 		.setDepthBiasEnable(false)
 		.setDepthBiasConstantFactor(0.f)
@@ -161,7 +160,7 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		.setDepthBiasSlopeFactor(0.f);
 
 
-	vk::StencilOpState stencilOpState_writeReference = vk::StencilOpState{}
+	const vk::StencilOpState stencilOpState_writeReference = vk::StencilOpState{}
 		.setCompareOp(vk::CompareOp::eAlways)
 		.setPassOp(vk::StencilOp::eReplace)
 		.setFailOp(vk::StencilOp::eReplace)
@@ -176,6 +175,7 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 		.setDepthCompareOp(vk::CompareOp::eLess)
 		.setStencilTestEnable(true)
 .setFront(stencilOpState_writeReference)
+.setBack(stencilOpState_writeReference)
 		;
 
 	constexpr int subPassIdx = 1;
