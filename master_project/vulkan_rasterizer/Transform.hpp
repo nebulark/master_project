@@ -70,7 +70,7 @@ inline Transform Transform::CalcAtToB(const Transform& a, const Transform& b)
 {
 	const glm::vec3 aToB_trans = b.translation - a.translation;
 	const glm::vec3 aToB_scale = b.scale / a.scale;
-	const glm::quat aToB_rot = b.rotation * glm::inverse(a.rotation);
+	const glm::quat aToB_rot = glm::normalize(b.rotation * glm::inverse(a.rotation));
 	return Transform(aToB_trans, aToB_scale, aToB_rot);
 }
 
@@ -79,7 +79,7 @@ inline Transform Transform::CalcInversion() const
 	return Transform(
 		-translation,
 		1.f / scale,
-		glm::inverse(rotation)
+		glm::normalize(glm::inverse(rotation))
 	);
 }
 
