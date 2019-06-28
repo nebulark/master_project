@@ -1,12 +1,13 @@
 #pragma once
 #include "glm.hpp"
 
-struct PushConstant_ModelMat
+struct PushConstant
 {
 	alignas(16) glm::mat4 model;
 	uint32_t cameraIdx;
+	uint32_t portalStencilVal;
 };
 
-constexpr size_t PushConstant_ModelViewProjection_Size = sizeof(PushConstant_ModelMat);
+constexpr size_t PushConstant_Size = sizeof(PushConstant);
 
-static_assert(sizeof(PushConstant_ModelMat) <= 128, "Push Constant must be small or equal to 128 Byte");
+static_assert(PushConstant_Size <= 128, "Push Constant must be small or equal to 128 Byte");

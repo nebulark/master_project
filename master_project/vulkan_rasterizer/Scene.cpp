@@ -44,11 +44,11 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 	for (const SceneObject& object : m_objects)
 	{
 
-		PushConstant_ModelMat pushConstant = {};
+		PushConstant pushConstant = {};
 		pushConstant.model = object.modelMat;
 		pushConstant.cameraIdx = cameraMatIdx;
 
-		drawCommandBuffer.pushConstants<PushConstant_ModelMat>(pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+		drawCommandBuffer.pushConstants<PushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		const MeshDataRef& portalMeshRef = meshDataRefs[object.meshIdx];
 		drawCommandBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 	}

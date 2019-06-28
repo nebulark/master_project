@@ -5,8 +5,8 @@ layout(constant_id = 1) const int cameraMatCount = 3;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
-uint cameraIdx;
-
+	uint cameraIdx;
+	uint portalStencilVal;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {

@@ -156,7 +156,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	// Load Textures 
 	{
 		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load("chalet.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load("testTexture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		assert(pixels);
 		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texHeight * 4;
 
@@ -727,10 +727,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 	}
 
-	vk::PushConstantRange pushConstantRange_modelViewProjection = vk::PushConstantRange{}
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+	vk::PushConstantRange pushConstantRange = vk::PushConstantRange{}
+		.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
 		.setOffset(0)
-		.setSize(sizeof(PushConstant_ModelMat));
+		.setSize(sizeof(PushConstant));
 
 
 	vk::DescriptorSetLayout layouts[] = {
@@ -742,7 +742,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
 		.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
-		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange_modelViewProjection);
+		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange);
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
 
@@ -1050,16 +1050,20 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					const MeshDataRef& portalMeshRef = m_meshData->GetMeshes()[m_portal.meshIndex];
 
-					PushConstant_ModelMat pushConstant = {};
+					PushConstant pushConstant = {};
 					pushConstant.model = m_portal.a_modelmat;
 					pushConstant.cameraIdx = 0;
+					pushConstant.portalStencilVal = 1;
 
-					drawBuffer.pushConstants<PushConstant_ModelMat>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex  | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 					pushConstant.model = m_portal.b_modelmat;
-					drawBuffer.pushConstants<PushConstant_ModelMat>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConstant);
+					pushConstant.portalStencilVal = 2;
+
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex  | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+
 
 				}
 

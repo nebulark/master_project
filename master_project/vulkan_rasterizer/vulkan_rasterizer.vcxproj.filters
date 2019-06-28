@@ -199,20 +199,33 @@
     <CustomBuild Include="shaders\portal.vert">
       <Filter>Shader</Filter>
     </CustomBuild>
+    <CustomBuild Include="shaders\portal_subsequent.frag">
+      <Filter>Shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="shaders\shader_subsequent.frag">
+      <Filter>Shader</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="models\cone.obj" />
-    <CopyFileToFolders Include="models\cube.obj" />
-    <CopyFileToFolders Include="models\sphere.obj" />
-    <CopyFileToFolders Include="models\torus.obj" />
-    <CopyFileToFolders Include="models\plane.obj" />
+    <CopyFileToFolders Include="models\cone.obj">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="models\cube.obj">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="models\plane.obj">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="models\sphere.obj">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="models\torus.obj">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\portal_subsequent.frag">
-      <Filter>Shader</Filter>
-    </None>
-    <None Include="shaders\shader_subsequent.frag">
-      <Filter>Shader</Filter>
-    </None>
+    <Image Include="images\testTexture.png">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
