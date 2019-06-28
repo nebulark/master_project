@@ -4,6 +4,7 @@
 struct PushConstant
 {
 	alignas(16) glm::mat4 model;
+	glm::vec4 debugColor;
 	uint32_t cameraIdx;
 	uint32_t portalStencilVal;
 };

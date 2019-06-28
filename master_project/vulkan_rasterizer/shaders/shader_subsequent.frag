@@ -17,7 +17,7 @@ void main() {
 		discard;
 	}
 
-    outColor = texture(texSampler,fragTexCoord);
+    outColor = texture(texSampler,fragTexCoord) - vec4(vec3(0.1),1.0);
 
 #if 0
 	float renderedDepth = subpassLoad(inputDepth).r / 2.f;

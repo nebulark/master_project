@@ -942,14 +942,14 @@ void GraphicsBackend::Render(const Camera& camera)
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), ubo_Allocation);
 		Ubo_GlobalRenderData renderData;
 		renderData.proj = camera.GetProjectionMatrix();
-		renderData.view = camera.CalcViewMatrix();
+		renderData.view = camera.m_transform.ToViewMat();
 
 		std::memcpy(memoryMap.GetMappedMemoryPtr(), &renderData, sizeof(renderData));
 	}
 
 	{
 		glm::mat4 cameraMats[cameraMatCount];
-		Portal::CreateCameraMatrices(gsl::make_span(&m_portal, 1), camera.CalcViewMatrix(), numRecursions, cameraMats);
+		Portal::CreateCameraMatrices(gsl::make_span(&m_portal, 1), camera.m_transform.ToViewMat(), numRecursions, cameraMats);
 
 		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
@@ -1022,6 +1022,34 @@ void GraphicsBackend::Render(const Camera& camera)
 
 
 				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
+
+				// draw Camera
+				{
+					drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+					vk::DeviceSize vertexBufferOffset = 0;
+					drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+
+					const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
+					const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+
+					PushConstant pushConstant = {};
+					Transform cameraTransform = camera.m_transform;
+					pushConstant.model = cameraTransform.ToMat();
+					pushConstant.cameraIdx = 0;
+					pushConstant.portalStencilVal = 0;
+
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+					drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
+
+					
+
+					cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
+					pushConstant.model =cameraTransform.ToMat();
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+					drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
+
+				}
+
 			}
 			{
 				// First Portal Pass
@@ -1054,12 +1082,14 @@ void GraphicsBackend::Render(const Camera& camera)
 					pushConstant.model = m_portal.a_modelmat;
 					pushConstant.cameraIdx = 0;
 					pushConstant.portalStencilVal = 1;
+					pushConstant.debugColor = glm::vec4(0.5f, 0.f, 0.f, 1.f);
 
 					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex  | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 					pushConstant.model = m_portal.b_modelmat;
 					pushConstant.portalStencilVal = 2;
+					pushConstant.debugColor = glm::vec4(0.0f, 0.f, 0.5f, 1.f);
 
 					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex  | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
@@ -1105,6 +1135,36 @@ void GraphicsBackend::Render(const Camera& camera)
 
 
 					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 1);
+
+
+
+				// draw Camera
+					{
+					
+					drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+					vk::DeviceSize vertexBufferOffset = 0;
+					drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+
+					const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
+					const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+
+					PushConstant pushConstant = {};
+					Transform cameraTransform = camera.m_transform;
+					pushConstant.model = cameraTransform.ToMat();
+					pushConstant.cameraIdx = 0;
+					pushConstant.portalStencilVal = 0;
+
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+					drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
+
+					
+
+					cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
+					pushConstant.model =cameraTransform.ToMat();
+					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+					drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
+
+					}
 
 				}
 

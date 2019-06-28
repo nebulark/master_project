@@ -91,6 +91,9 @@
     <ClCompile Include="Portal.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Transform.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -175,6 +178,9 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="NTree.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Transform.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

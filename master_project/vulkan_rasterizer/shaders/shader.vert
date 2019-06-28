@@ -5,6 +5,7 @@ layout(constant_id = 1) const int cameraMatCount = 3;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
+	vec4 debugColor;
 	uint cameraIdx;
 	uint portalStencilVal;
 } pc;

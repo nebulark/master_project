@@ -13,6 +13,7 @@ out int gl_FragStencilRefARB;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
+	vec4 debugColor;
 	uint cameraIdx;
 	uint portalStencilVal;
 } pc;
@@ -23,4 +24,6 @@ void main()
 	int stencilVal = int( pc.portalStencilVal);
 	gl_FragStencilRefARB =stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
+
+	outColor =pc.debugColor;
 }
