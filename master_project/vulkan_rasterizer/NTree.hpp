@@ -26,6 +26,18 @@ constexpr uint32_t ipow(uint32_t base, uint32_t exp)
 	return result;
 }
 
+constexpr uint32_t GetNumBitsToStoreValue(uint32_t maxValue)
+{
+	uint32_t result = 0;
+	while (maxValue != 0)
+	{
+		maxValue /= 2;
+		++result;
+	}
+	return result;
+}
+
+
 class NTree
 {
 
@@ -42,7 +54,38 @@ public:
 
 	static constexpr uint32_t GetParentIdx(uint32_t n, uint32_t childIdx)
 	{
+		assert(childIdx != 0);
 		return (childIdx - 1) / n;
 	}
 
+	struct ParentIdxAndChildNum
+	{
+		uint32_t parentIdx;
+		uint32_t childNum;
+	};
+
+	static constexpr ParentIdxAndChildNum GetParentIdxAndChildNum(uint32_t n, uint32_t childIdx)
+	{
+		assert(childIdx != 0);
+		const uint32_t c = childIdx - 1;
+	
+		ParentIdxAndChildNum result{
+			c / n,
+			c % n,
+		};
+
+		return result;
+	}
+
 };
+
+class NTreeIterator
+{
+public:
+private:
+	int currentElement;
+	int currentLayer;
+	int parentIndex;
+	int elementCount;
+};
+

@@ -34,4 +34,21 @@ namespace GraphicsPipeline
 			int subpassIndex
 		);
 
+
+		struct PipelinesCreateInfo
+		{
+			vk::Device logicalDevice;
+			vk::Extent2D swapchainExtent;
+			vk::RenderPass renderpass;
+			vk::PipelineLayout pipelineLayout;
+
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_sceneInitial;
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_portalInitial;
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_sceneSubsequent;
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_portalSubsequent;
+
+		};
+
+		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals);
+
 }
