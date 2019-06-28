@@ -49,7 +49,7 @@ inline Transform& Transform::operator*=(const Transform& rhs)
 {
 	translation += rhs.translation;
 	scale *= rhs.scale;
-	rotation *= rhs.rotation;
+	rotation = glm::normalize(rotation * rhs.rotation);
 }
 
 inline Transform operator*(const Transform& lhs, const Transform& rhs)
