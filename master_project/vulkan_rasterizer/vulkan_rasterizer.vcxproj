@@ -324,6 +324,11 @@
   <ItemGroup>
     <CopyFileToFolders Include="images\testTexture.png" />
   </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="models\halfSphere.obj">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

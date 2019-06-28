@@ -859,7 +859,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj" };
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_meshData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 	enum ObjIdx
@@ -867,7 +867,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		torusIdx = 0,
 		sphereIdx,
 		cubeIdx,
-		planeIdx
+		planeIdx,
+		halfSphereIdx
 	};
 
 	// Init Scene
@@ -920,11 +921,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 	{
-		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f,0.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
+		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f,10.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 	
 		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(0.f, 0.f, 30.f));
 
-		m_portal = Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b);
+		m_portal = Portal::CreateWithTransformAndAtoB(halfSphereIdx, portal_a, portal_a_to_b);
 	}
 
 }
