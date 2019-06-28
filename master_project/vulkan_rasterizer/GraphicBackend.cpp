@@ -919,14 +919,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 	{
-		glm::mat4 portal_a_modelMat_scale = glm::scale(glm::mat4(1.f), glm::vec3(10.f, 1.f, 10.f));
-		glm::mat4 portal_a_modelMat_rotation = glm::rotate(glm::mat4(1.f), glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f));
-		glm::mat4 portal_a_modelMat_translation = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f));
-		glm::mat4 portal_a_modelMat = portal_a_modelMat_translation * portal_a_modelMat_rotation * portal_a_modelMat_scale;
+		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f,0.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
+	
+		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(0.f, 0.f, 30.f));
 
-		glm::mat4 portal_a_to_b = glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 30.f));
-
-		m_portal = Portal::CreateWithModelMatAndTranslation(planeIdx, portal_a_modelMat, portal_a_to_b);
+		m_portal = Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b);
 	}
 
 }
@@ -948,13 +945,20 @@ void GraphicsBackend::Render(const Camera& camera)
 	}
 
 	{
-		glm::mat4 cameraMats[cameraMatCount];
-		Portal::CreateCameraMatrices(gsl::make_span(&m_portal, 1), camera.m_transform.ToViewMat(), numRecursions, cameraMats);
+		Transform cameraTransforms[cameraMatCount];
+		Portal::CreateCameraTransforms(gsl::make_span(&m_portal, 1), camera.m_transform, numRecursions, cameraTransforms);
+
+		glm::mat4 cameraViewMats[cameraMatCount];
+
+		std::transform(std::begin(cameraTransforms), std::end(cameraTransforms), cameraViewMats, [](const Transform& e)
+			{
+				return e.ToViewMat();
+			});
 
 		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
 
-		std::memcpy(memoryMap.GetMappedMemoryPtr(), &cameraMats, sizeof(cameraMats[0]) * std::size(cameraMats));
+		std::memcpy(memoryMap.GetMappedMemoryPtr(), &cameraViewMats, sizeof(cameraViewMats[0]) * std::size(cameraViewMats));
 	}
 
 
@@ -1079,7 +1083,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					const MeshDataRef& portalMeshRef = m_meshData->GetMeshes()[m_portal.meshIndex];
 
 					PushConstant pushConstant = {};
-					pushConstant.model = m_portal.a_modelmat;
+					pushConstant.model = m_portal.a_transform.ToMat();
 					pushConstant.cameraIdx = 0;
 					pushConstant.portalStencilVal = 1;
 					pushConstant.debugColor = glm::vec4(0.5f, 0.f, 0.f, 1.f);
@@ -1087,7 +1091,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex  | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
-					pushConstant.model = m_portal.b_modelmat;
+					pushConstant.model = m_portal.b_transform.ToMat();
 					pushConstant.portalStencilVal = 2;
 					pushConstant.debugColor = glm::vec4(0.0f, 0.f, 0.5f, 1.f);
 

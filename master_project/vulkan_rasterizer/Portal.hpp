@@ -3,54 +3,54 @@
 #include "glm.hpp"
 #include "NTree.hpp"
 #include "GetSizeUint32.hpp"
+#include "Transform.hpp"
 
 
 
 struct Portal
 {
 	int meshIndex;
-	glm::mat4 a_modelmat;
-	glm::mat4 b_modelmat;
+	Transform a_transform;
+	Transform b_transform;
 
-	glm::mat4 a_to_b;
-	glm::mat4 b_to_a;
+	Transform a_to_b;
+	Transform b_to_a;
 
-	static Portal CreateWithModelMats(int meshIndex, const glm::mat4& a_modelmat, const glm::mat4& b_modelmat);
-	static Portal CreateWithModelMatAndTranslation(int meshIndex, const glm::mat4& a_modelmat, const glm::mat4& a_to_b);
+	static Portal CreateWithPortalTransforms(int meshIndex, const Transform& a_transform, const Transform& b_transform);
+	static Portal CreateWithTransformAndAtoB(int meshIndex, const Transform& a_transform, const Transform& a_to_b);
 
-	static void CreateCameraMatrices(
+	static void CreateCameraTransforms(
 		gsl::span<const Portal> portals,
-		glm::mat4 CameraMatrix,
+		Transform cameraTransform,
 		int recursions,
-		gsl::span<glm::mat4> outBuffer
-	);
+		gsl::span<Transform> outTransforms);
 };
 
-inline Portal Portal::CreateWithModelMats(int meshIndex, const glm::mat4& a_modelmat, const glm::mat4& b_modelmat)
+inline Portal Portal::CreateWithPortalTransforms(int meshIndex, const Transform& a_transform, const Transform& b_transform)
 {
-	Portal result = { meshIndex, a_modelmat, b_modelmat };
-	result.a_to_b = b_modelmat * glm::inverse(a_modelmat);
-	result.b_to_a = glm::inverse(result.a_to_b);
+	Portal result = { meshIndex, a_transform, b_transform };
+	result.a_to_b = Transform::CalcAtToB(a_transform, b_transform);
+	result.b_to_a = result.a_to_b.CalcInversion();
 	return result;
 }
 
-inline Portal Portal::CreateWithModelMatAndTranslation(int meshIndex, const glm::mat4& a_modelmat, const glm::mat4& a_to_b)
+inline Portal Portal::CreateWithTransformAndAtoB(int meshIndex, const Transform& a_modelmat, const Transform& a_to_b)
 {
 	Portal result;
 	result.meshIndex = meshIndex;
-	result.a_modelmat = a_modelmat;
+	result.a_transform = a_modelmat;
 	result.a_to_b = a_to_b;
-	result.b_modelmat = a_to_b * a_modelmat;
-	result.b_to_a = glm::inverse(a_to_b);
+	result.b_transform = a_to_b * a_modelmat;
+	result.b_to_a = a_to_b.CalcInversion();
 	return result;
 }
 
 
-inline void Portal::CreateCameraMatrices(
+inline void Portal::CreateCameraTransforms(
 	gsl::span<const Portal> portals,
-	glm::mat4 CameraMatrix,
+	Transform cameraTransform,
 	int recursions,
-	gsl::span<glm::mat4> outBuffer)
+	gsl::span<Transform> outTransforms)
 {
 	// we build an NTree, with a child for each portal connections (portals are two sided so we have to connection per element in portals)
 	// each children corresponds to the product between the parent matrix and the portals translation matrix (a_to_b / b_to_a)
@@ -59,10 +59,10 @@ inline void Portal::CreateCameraMatrices(
 	// this value will we uses a N for the NTree
 	const uint32_t portalCount = GetSizeUint32(portals.size()) * 2;
 	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, recursions);
-	assert(outBuffer.size() >= matrixCount);
+	assert(outTransforms.size() >= matrixCount);
 
-	outBuffer[0] = CameraMatrix;
-	for (uint32_t layer = 1; layer <= recursions; ++layer)
+	outTransforms[0] = cameraTransform;
+	for (uint32_t layer = 1; layer <= static_cast<uint32_t>(recursions); ++layer)
 	{
 		const uint32_t previousLayerStartIndex = NTree::CalcFirstLayerIndex(portalCount, layer - 1);
 		const uint32_t layerStartIndex = NTree::CalcFirstLayerIndex(portalCount, layer);
@@ -79,11 +79,11 @@ inline void Portal::CreateCameraMatrices(
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);
 
-				outBuffer[childIdx0] = portals[i].a_to_b * outBuffer[parentIdx];
-				outBuffer[childIdx1] = portals[i].b_to_a * outBuffer[parentIdx];
+				outTransforms[childIdx0] = portals[i].a_to_b * outTransforms[parentIdx];
+				outTransforms[childIdx1] = portals[i].b_to_a * outTransforms[parentIdx];
 			}
 		}
-	}	
+	}
 
 	// TODO: could be improved by keeping a parent and a child index and incrementing those as needed instead of recalculating all the time?
 }
