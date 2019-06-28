@@ -417,7 +417,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 				
 		}
 	}
-	m_colorDepthRenderPass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
+	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
+
+	auto test = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}

@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "Renderpass.hpp"
 #include "GetSizeUint32.hpp"
+#include "NTree.hpp"
 
 
 
@@ -59,7 +60,7 @@ vk::UniqueRenderPass Renderpass::Create_withDepth(vk::Device logicalDevice, vk::
 }
 
 
-vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat)
+vk::UniqueRenderPass Renderpass::Portals_One_Pass_old(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat)
 {
 	// TODO: Make these parameters?
 	constexpr int Max_Visible_Portals = 1;
@@ -259,6 +260,291 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 
 
 
+vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterationCount)
+{
+
+	vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
+
+	enum AttachmentDescriptionIdx
+	{
+		color,
+		depthStencil,
+		renderedDepth_0,
+		renderedDepth_1,
+		enum_size_AttachmentDescriptionIdx
+	};
+
+	static_assert(renderedDepth_0 + 1 == renderedDepth_1);
+
+	constexpr vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
+
+	const std::array<vk::AttachmentDescription, AttachmentDescriptionIdx::enum_size_AttachmentDescriptionIdx> attachmentsDescritpions = 
+	[samples, colorFormat, depthStencilFormat, renderedDepthFormat]()
+	{
+		std::array<vk::AttachmentDescription, AttachmentDescriptionIdx::enum_size_AttachmentDescriptionIdx> attachmentsDescritpions;
+
+		attachmentsDescritpions[color] = vk::AttachmentDescription()
+			.setFormat(colorFormat)
+			.setSamples(samples)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR)
+			;
+
+		attachmentsDescritpions[depthStencil] = vk::AttachmentDescription()
+			.setFormat(depthStencilFormat)
+			.setSamples(samples)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setStencilLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+			;
+
+		attachmentsDescritpions[renderedDepth_0] = vk::AttachmentDescription()
+			.setFormat(renderedDepthFormat)
+			.setSamples(samples)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
+			;
+
+		attachmentsDescritpions[renderedDepth_1] = attachmentsDescritpions[renderedDepth_0];
+
+		return attachmentsDescritpions;
+	}();
+
+
+	//////////////////////////////////////////////////////////////////////////
+	// Subpass Description
+
+	// *2 because scene + portalSubpass
+	const uint32_t subpassCount = NTree::CalcTotalElements(maxPortals, iterationCount) * 2;
+	std::unique_ptr<vk::SubpassDescription[]> subpassStorage = std::make_unique<vk::SubpassDescription[]>(subpassCount);
+	gsl::span<vk::SubpassDescription> subpasses = gsl::make_span(subpassStorage.get(), subpassCount);
+
+
+
+
+	// for render scene we will  always have this output
+	const vk::AttachmentReference renderSceneOutput[] = {
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal),
+	};
+
+	// we will always use the same depth stencil attachment
+	const vk::AttachmentReference depthStencilAttachment = vk::AttachmentReference(
+		depthStencil, vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	// used to switch between rendered Depth 0 and rendered Depth 1, we switch after each iteration
+	// withing the same iteration no two draws will touch the same pixel, so its save
+	enum IterationParity
+	{
+		even = 0,
+		odd,
+		enum_size_IterationParity
+	};
+
+	const std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity>  renderPortalOutput = []()
+	{
+		std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity> renderPortalOutput;
+		renderPortalOutput[even] = 
+		{
+			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
+			vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eColorAttachmentOptimal),
+		};
+	
+		renderPortalOutput[odd] = 
+		{
+			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
+			vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eColorAttachmentOptimal),
+		};
+
+
+		return renderPortalOutput;
+	}();
+
+	// input attachments all subsequent passes will use (scene AND portal), take care that renderedDepth is the opposite of renderPortalOutput attachments!
+	const std::array<std::array<vk::AttachmentReference,1>, enum_size_IterationParity> subsequentPassInput = []()
+	{
+		std::array<std::array<vk::AttachmentReference,1>, enum_size_IterationParity> subsequentPassInput;
+
+		subsequentPassInput[even] = {
+			vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eShaderReadOnlyOptimal),
+		};
+
+		subsequentPassInput[odd] = {
+			vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eShaderReadOnlyOptimal),
+		};
+
+		return subsequentPassInput;
+	}();
+
+	// don't know how many there are, maybe test it?
+	std::vector<vk::SubpassDependency> dependencies;
+
+
+	// initial subpasses
+	// intial scene subpass
+	// iteration 0, this means use even where neccessary
+
+	constexpr int initialSceneSubpassIdx = 0;
+	subpasses[initialSceneSubpassIdx] = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
+		.setPDepthStencilAttachment(&depthStencilAttachment)
+		;
+
+	dependencies.push_back(vk::SubpassDependency{}
+		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
+		.setDstSubpass(initialSceneSubpassIdx)
+		.setSrcStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)
+		.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
+		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
+	);
+
+
+	// first Portal sub pass
+
+	constexpr int initialPortalSubpassIdx = initialSceneSubpassIdx + 1;
+	subpasses[initialPortalSubpassIdx] = vk::SubpassDescription{}
+		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+		.setColorAttachmentCount(GetSizeUint32(renderPortalOutput[even])).setPColorAttachments(std::data(renderPortalOutput[even]))
+		.setPDepthStencilAttachment(&depthStencilAttachment)
+		;
+
+	// we need to wait for the depth buffer write (and maybe color) before rendering portal
+	dependencies.push_back(vk::SubpassDependency{}
+		.setSrcSubpass(initialSceneSubpassIdx)
+		.setDstSubpass(initialPortalSubpassIdx)
+		.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+		.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+		.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+	);
+
+
+	int clearAttachmentSubpasses = 0;
+
+	// subsequent subpasses
+	for (int iteration = 1; iteration <= iterationCount; ++iteration)
+	{
+
+		const IterationParity iterationParity = iteration % 2 == 0 ? even : odd;
+		const int firstLayerIdx = NTree::CalcFirstLayerIndex(maxPortals, iteration) * 2;
+		const int onePastLastLayerIdx = NTree::CalcFirstLayerIndex(maxPortals, iteration) * 2;
+
+		// this one is responsible for clearing depth buffer
+		// it depends on all other portal subpasses in that layer
+		// all scene passes of the next layer depend on it
+		const int lastPortalSubpassIdx = onePastLastLayerIdx - 1;
+
+		const int previousLastPortalSubpassIdx = firstLayerIdx - 1;
+		
+		// i+=2 as we are doing scene and portal subpass in one loop
+		for (int subpassdx = firstLayerIdx; subpassdx < onePastLastLayerIdx; subpassdx += 2)
+		{
+			const int sceneSubpassIdx = subpassdx;
+			const int portalSubpassIdx = subpassdx + 1;
+			assert(portalSubpassIdx >= onePastLastLayerIdx);
+
+			subpasses[sceneSubpassIdx] = vk::SubpassDescription{}
+				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+				.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
+				.setInputAttachmentCount(GetSizeUint32(subsequentPassInput[iterationParity]))
+				.setPInputAttachments(std::data(subsequentPassInput[iterationParity]))
+				.setPDepthStencilAttachment(&depthStencilAttachment)
+				; 
+		
+			// we depend on the last portal pass from the previous layer, which is responsible for clearing depth
+			dependencies.push_back(vk::SubpassDependency{}
+				.setSrcSubpass(previousLastPortalSubpassIdx)
+				.setDstSubpass(sceneSubpassIdx)
+				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+				.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			);
+
+			subpasses[portalSubpassIdx] = vk::SubpassDescription{}
+				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+				.setColorAttachmentCount(GetSizeUint32(renderPortalOutput[iterationParity]))
+				.setPColorAttachments(std::data(renderPortalOutput[iterationParity]))
+				.setInputAttachmentCount(GetSizeUint32(subsequentPassInput[iterationParity]))
+				.setPInputAttachments(std::data(subsequentPassInput[iterationParity]))
+				.setPDepthStencilAttachment(&depthStencilAttachment)
+				;
+
+			// we need to wait for the depth buffer write (and maybe color) before rendering portal
+			dependencies.push_back(vk::SubpassDependency{}
+				.setSrcSubpass(sceneSubpassIdx)
+				.setDstSubpass(portalSubpassIdx)
+				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+				.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			);
+
+			// the last portal subpass depends on us
+			if (portalSubpassIdx != lastPortalSubpassIdx)
+			{
+			dependencies.push_back(vk::SubpassDependency{}
+				.setSrcSubpass(portalSubpassIdx)
+				.setDstSubpass(lastPortalSubpassIdx)
+				.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+				.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+				.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+				.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			);
+
+			}
+		}
+	}
+
+
+	vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
+		.setAttachmentCount(GetSizeUint32(attachmentsDescritpions)).setPAttachments(std::data(attachmentsDescritpions))
+		.setSubpassCount(GetSizeUint32(subpasses)).setPSubpasses(std::data(subpasses))
+		.setDependencyCount(GetSizeUint32(dependencies)).setPDependencies(std::data(dependencies))
+		;
+
+	return logicalDevice.createRenderPassUnique(renderPassCreateInfo);
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -269,7 +555,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 
 vk::UniqueRenderPass Renderpass::Initial_With_Portals(vk::Device logicalDevice)
 {
-	
+
 	// 0. Render scene, with depth buffer
 	// 1. Render Portals, with depth buffer, write RenderedDepth, write Stencil
 	vk::Format colorFormat = {};
@@ -487,7 +773,7 @@ vk::UniqueRenderPass Renderpass::Recursion_With_Portals(vk::Device logicalDevice
 	attachments[renderDepthAttachmentIdx_renderPortals] = vk::AttachmentDescription{}
 		.setFormat(renderedDepthFormat)
 		.setSamples(vk::SampleCountFlagBits::e1)
-		.setLoadOp(vk::AttachmentLoadOp::eLoad) 
+		.setLoadOp(vk::AttachmentLoadOp::eLoad)
 		.setStoreOp(vk::AttachmentStoreOp::eStore) // We want to keep this until rendering is completely finished
 		.setInitialLayout(vk::ImageLayout::eColorAttachmentOptimal)
 		.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)

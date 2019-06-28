@@ -16,6 +16,8 @@ static vk::UniqueRenderPass Initial_With_Portals(vk::Device logicalDevice);
 static vk::UniqueRenderPass Recursion_With_Portals(vk::Device logicalDevice);
 
 // supports currently one iteration with one portal
-static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat);
+static vk::UniqueRenderPass Portals_One_Pass_old(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat);
 
+
+static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterations);
 };
