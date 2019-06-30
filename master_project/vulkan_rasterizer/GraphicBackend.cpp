@@ -419,7 +419,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 
-	auto test = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2);
+	std::vector<std::string> debugRenderpass;
+	auto testRenderpass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2, &debugRenderpass);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
@@ -911,7 +912,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		GraphicsPipeline::PipelinesCreateInfo createInfo;
 		createInfo.logicalDevice = m_device.get();
 		createInfo.pipelineLayout = m_pipelineLayout.get();
-		createInfo.renderpass = test.get();
+		createInfo.renderpass = testRenderpass.get();
 		createInfo.swapchainExtent = m_swapchain.extent;
 
 		createInfo.pipelineShaderStageCreationInfos_sceneInitial = shaderStage_scene_initial;
@@ -919,7 +920,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
-		auto test = GraphicsPipeline::CreateGraphicPipelines(createInfo, 2, 2);
+		std::vector<std::string> debugPipelines;
+		auto testPipelines = GraphicsPipeline::CreateGraphicPipelines(createInfo, 2, 2, &debugPipelines);
 
 	}
 

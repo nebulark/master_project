@@ -3,6 +3,7 @@
 #include "Vertex.hpp"
 #include "GetSizeUint32.hpp"
 #include "NTree.hpp"
+#include <charconv>
 
 namespace
 {
@@ -281,7 +282,7 @@ vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> GraphicsPipeline::Creat
 
 }
 
-std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPipeline::CreateGraphicPipelines(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals)
+std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPipeline::CreateGraphicPipelines(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals, std::vector<std::string>* optionalDebugCreateInfo /*= nullptr*/)
 {
 	const vk::Viewport viewport = vk::Viewport()
 		.setX(0.f)
@@ -386,80 +387,57 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setBack(stencilOpState_writeReferenceIfEqual_prototype)
 		;
 
-
-
-	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_sceneInitial(
+	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_prototype(
 		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
-		GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneInitial), std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial),
+		0, nullptr, // shaderstages, needs to be set!
 		&Vertex::pipelineVertexState_simple,
 		&inputAssembly_triangleList,
 		nullptr, // tesselationstate
 		&viewportStateCreateInfo,
-		&rasterizationStateCreateInfo_scene,
+		nullptr, // rasterization state create info nees to be set!
 		&multisampleState_noMultisampling,
-		&depthStencilStateCreateInfo_onlyDepthTest,
-		&colorblendstate_override_1,
+		nullptr, // depthStencilState info nees to be set!
+		nullptr, // color blend state needs to be set!
 		nullptr, // dynamic device state
 		createInfo.pipelineLayout,
 		createInfo.renderpass,
-		0,
-		vk::Pipeline(),
-		-1);
-
-	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalInitial(
-		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
-		GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneInitial), std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial),
-		&Vertex::pipelineVertexState_simple,
-		&inputAssembly_triangleList,
-		nullptr, // tesselationstate
-		&viewportStateCreateInfo,
-		&rasterizationStateCreateInfo_portal,
-		&multisampleState_noMultisampling,
-		&depthStencilStateCreateInfo_portalInitial,
-		&colorblendstate_override_2,
-		nullptr, // dynamic device state
-		createInfo.pipelineLayout,
-		createInfo.renderpass,
-		1,
+		-1, // subpass needs to be set!
 		vk::Pipeline(),
 		-1);
 
 
-	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_sceneSubsequent_prototype(
-		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
-		GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneInitial), std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial),
-		&Vertex::pipelineVertexState_simple,
-		&inputAssembly_triangleList,
-		nullptr, // tesselationstate
-		&viewportStateCreateInfo,
-		&rasterizationStateCreateInfo_scene,
-		&multisampleState_noMultisampling,
-		nullptr, // we will fill this later with the help of depthStencilStateCreateInfo_sceneSubsequent_prototype,
-		&colorblendstate_override_1,
-		nullptr, // dynamic device state
-		createInfo.pipelineLayout,
-		createInfo.renderpass,
-		-1, // will be set later
-		vk::Pipeline(),
-		-1);
+	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_sceneInitial = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
+		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneInitial))
+		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial))
+		.setPRasterizationState(&rasterizationStateCreateInfo_scene)
+		.setPDepthStencilState(&depthStencilStateCreateInfo_onlyDepthTest)
+		.setPColorBlendState(&colorblendstate_override_1)
+		.setSubpass(0)
+		;
 
-	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalSubsequent_prototype(
-		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
-		GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneInitial), std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial),
-		&Vertex::pipelineVertexState_simple,
-		&inputAssembly_triangleList,
-		nullptr, // tesselationstate
-		&viewportStateCreateInfo,
-		&rasterizationStateCreateInfo_portal,
-		&multisampleState_noMultisampling,
-		nullptr, // we will fill this later with the help of  depthStencilStateCreateInfo_portalSubsequent_prototype,
-		&colorblendstate_override_2,
-		nullptr, // dynamic device state
-		createInfo.pipelineLayout,
-		createInfo.renderpass,
-		-1, // will be set later
-		vk::Pipeline(),
-		-1);
+
+const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalInitial = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
+		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalInitial))
+		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalInitial))
+		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
+		.setPDepthStencilState(&depthStencilStateCreateInfo_portalInitial)
+		.setPColorBlendState(&colorblendstate_override_2)
+		.setSubpass(1)
+		;
+
+const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_sceneSubsequent_prototype = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
+		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
+		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
+		.setPRasterizationState(&rasterizationStateCreateInfo_scene)
+		.setPColorBlendState(&colorblendstate_override_1)
+		;
+
+const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalSubsequent_prototype = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
+		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
+		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
+		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
+		.setPColorBlendState(&colorblendstate_override_2)
+		;
 
 	const uint32_t portalCount = NTree::CalcTotalElements(maxPortals, iterationCount);
 	const uint32_t pipelineCount = portalCount * 2;
@@ -474,9 +452,17 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 	int writtenDepthStencilCiCount = 0;
 
 	
+
 	pipelineCreateInfo[0] = graphicsPipelineCreateInfo_sceneInitial;
 	pipelineCreateInfo[1] = graphicsPipelineCreateInfo_portalInitial;
 	int pipelineCreateInfoCount = 2;
+
+	if (optionalDebugCreateInfo)
+	{
+		optionalDebugCreateInfo->resize(pipelineCreateInfo.size());
+		(*optionalDebugCreateInfo)[0] = "sceneInitial";
+		(*optionalDebugCreateInfo)[1] = "portalInitial";
+	}
 
 	const uint32_t portalIdBits = GetNumBitsToStoreValue(maxPortals);
 	assert(portalIdBits * iterationCount < 8);
@@ -519,15 +505,15 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 				.setReference(stencilValue) // technically not needed, as we can set it in shader, if we optimize portal rendering we can't be sure which value is correct
 				;
 
-			vk::PipelineDepthStencilStateCreateInfo& depthStencilCreateInfo_scene = depthStencilCreateInfoStorage[writtenDepthStencilCiCount++];
-			vk::PipelineDepthStencilStateCreateInfo& depthStencilCreateInfo_portal = depthStencilCreateInfoStorage[writtenDepthStencilCiCount++];
+			vk::PipelineDepthStencilStateCreateInfo& depthStencilCreateInfo_scene_subsequent = depthStencilCreateInfoStorage[writtenDepthStencilCiCount++];
+			vk::PipelineDepthStencilStateCreateInfo& depthStencilCreateInfo_portal_subsequent = depthStencilCreateInfoStorage[writtenDepthStencilCiCount++];
 
-			depthStencilCreateInfo_scene =	vk::PipelineDepthStencilStateCreateInfo(depthStencilStateCreateInfo_sceneSubsequent_prototype)
+			depthStencilCreateInfo_scene_subsequent =	vk::PipelineDepthStencilStateCreateInfo(depthStencilStateCreateInfo_sceneSubsequent_prototype)
 				.setFront(stencilOpState_scene)
 				;
 
 
-			depthStencilCreateInfo_portal =	vk::PipelineDepthStencilStateCreateInfo(depthStencilStateCreateInfo_portalSubsequent_prototype)
+			depthStencilCreateInfo_portal_subsequent =	vk::PipelineDepthStencilStateCreateInfo(depthStencilStateCreateInfo_portalSubsequent_prototype)
 				.setFront(stencilOp_portal)
 				.setBack(stencilOp_portal)
 				;
@@ -537,15 +523,30 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 			const int renderPortalIdx = pipelineCreateInfoCount++;
 
 			pipelineCreateInfo[renderSceneIdx] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneSubsequent_prototype }
-				.setPDepthStencilState(&depthStencilCreateInfo_scene)
+				.setPDepthStencilState(&depthStencilCreateInfo_scene_subsequent)
 				.setSubpass(renderSceneIdx);
 
 			pipelineCreateInfo[renderPortalIdx] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalSubsequent_prototype }
-				.setPDepthStencilState(&depthStencilCreateInfo_portal)
+				.setPDepthStencilState(&depthStencilCreateInfo_portal_subsequent)
 				.setSubpass(renderPortalIdx);
+
+			if (optionalDebugCreateInfo)
+			{
+				char buff[128] = {};
+				int bytesWritten = 128;
+
+				bytesWritten = std::sprintf(buff, "scene l%i %x", layer, stencilValue);
+				assert(bytesWritten < std::size(buff));
+				(*optionalDebugCreateInfo)[renderSceneIdx] = buff;
+
+				bytesWritten = std::sprintf(buff, "portal l%i %x", layer, stencilValue);
+				assert(bytesWritten < std::size(buff));
+				(*optionalDebugCreateInfo)[renderPortalIdx] = buff;
+			}
 
 		}
 	}
+
 
 	return createInfo.logicalDevice.createGraphicsPipelinesUnique(
 		vk::PipelineCache{},

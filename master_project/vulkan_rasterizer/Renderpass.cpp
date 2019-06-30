@@ -146,8 +146,8 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_old(vk::Device logicalDevice, 
 
 	// first Portal sub pass
 	const vk::AttachmentReference firstPortalSubpassReferences_color[] = {
-		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 		vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eColorAttachmentOptimal),
+		vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 	};
 	const vk::AttachmentReference firstPortalSubpassReferences_depthStencil(
 		depthStencil, vk::ImageLayout::eDepthStencilAttachmentOptimal
@@ -260,7 +260,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_old(vk::Device logicalDevice, 
 
 
 
-vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterationCount)
+vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
 {
 
 	vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
@@ -353,14 +353,14 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 		std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity> renderPortalOutput;
 		renderPortalOutput[even] = 
 		{
-			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 			vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eColorAttachmentOptimal),
+			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 		};
 	
 		renderPortalOutput[odd] = 
 		{
-			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 			vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eColorAttachmentOptimal),
+			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
 		};
 
 
@@ -391,12 +391,23 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 	// intial scene subpass
 	// iteration 0, this means use even where neccessary
 
+	if (optionalDebug)
+	{
+		optionalDebug->clear();
+		optionalDebug->resize(std::size(subpasses));
+	}
+
 	constexpr int initialSceneSubpassIdx = 0;
 	subpasses[initialSceneSubpassIdx] = vk::SubpassDescription{}
 		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 		.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
 		.setPDepthStencilAttachment(&depthStencilAttachment)
 		;
+
+	if (optionalDebug)
+	{
+		(*optionalDebug)[initialSceneSubpassIdx] = "initialScene";
+	}
 
 	dependencies.push_back(vk::SubpassDependency{}
 		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
@@ -417,6 +428,11 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 		.setPDepthStencilAttachment(&depthStencilAttachment)
 		;
 
+	if (optionalDebug)
+	{
+		(*optionalDebug)[initialPortalSubpassIdx] = "initialPortal";
+	}
+
 	// we need to wait for the depth buffer write (and maybe color) before rendering portal
 	dependencies.push_back(vk::SubpassDependency{}
 		.setSrcSubpass(initialSceneSubpassIdx)
@@ -436,7 +452,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 
 		const IterationParity iterationParity = iteration % 2 == 0 ? even : odd;
 		const int firstLayerIdx = NTree::CalcFirstLayerIndex(maxPortals, iteration) * 2;
-		const int onePastLastLayerIdx = NTree::CalcFirstLayerIndex(maxPortals, iteration) * 2;
+		const int onePastLastLayerIdx = NTree::CalcFirstLayerIndex(maxPortals, iteration + 1) * 2;
 
 		// this one is responsible for clearing depth buffer
 		// it depends on all other portal subpasses in that layer
@@ -450,7 +466,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 		{
 			const int sceneSubpassIdx = subpassdx;
 			const int portalSubpassIdx = subpassdx + 1;
-			assert(portalSubpassIdx >= onePastLastLayerIdx);
+			assert(portalSubpassIdx < onePastLastLayerIdx);
 
 			subpasses[sceneSubpassIdx] = vk::SubpassDescription{}
 				.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
@@ -459,7 +475,18 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 				.setPInputAttachments(std::data(subsequentPassInput[iterationParity]))
 				.setPDepthStencilAttachment(&depthStencilAttachment)
 				; 
-		
+
+			if (optionalDebug)
+			{
+				char buff[128] = {};
+				int bytesWritten = 128;
+
+				bytesWritten = std::sprintf(buff, "scene l%i o c, %s", iteration , (iterationParity == even ? "i rd1": "i rd0"));
+				assert(bytesWritten < std::size(buff));
+
+				(*optionalDebug)[sceneSubpassIdx] = buff;
+			}
+
 			// we depend on the last portal pass from the previous layer, which is responsible for clearing depth
 			dependencies.push_back(vk::SubpassDependency{}
 				.setSrcSubpass(previousLastPortalSubpassIdx)
@@ -478,6 +505,17 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 				.setPInputAttachments(std::data(subsequentPassInput[iterationParity]))
 				.setPDepthStencilAttachment(&depthStencilAttachment)
 				;
+
+	if (optionalDebug)
+			{
+				char buff[128] = {};
+				int bytesWritten = 128;
+
+				bytesWritten = std::sprintf(buff, "portal l%i %s %s", iteration, (iterationParity == even ? "o rd0": "o rd1"), (iterationParity == even ? "i rd1": "i rd0"));
+				assert(bytesWritten < std::size(buff));
+
+				(*optionalDebug)[portalSubpassIdx] = buff;
+			}
 
 			// we need to wait for the depth buffer write (and maybe color) before rendering portal
 			dependencies.push_back(vk::SubpassDependency{}

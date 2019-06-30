@@ -19,5 +19,5 @@ static vk::UniqueRenderPass Recursion_With_Portals(vk::Device logicalDevice);
 static vk::UniqueRenderPass Portals_One_Pass_old(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat);
 
 
-static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterations);
+static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterations, std::vector<std::string>* optionalDebug = nullptr);
 };
