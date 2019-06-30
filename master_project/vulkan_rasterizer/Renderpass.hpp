@@ -20,4 +20,5 @@ static vk::UniqueRenderPass Portals_One_Pass_old(vk::Device logicalDevice, vk::F
 
 
 static vk::UniqueRenderPass Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterations, std::vector<std::string>* optionalDebug = nullptr);
+static vk::UniqueRenderPass Portals_One_Pass_dynamicState(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterationCount, std::vector<std::string>* optionalDebug = nullptr);
 };

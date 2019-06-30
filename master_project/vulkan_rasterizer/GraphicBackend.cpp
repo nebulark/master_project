@@ -15,6 +15,7 @@
 #include "UniformBufferObjects.hpp"
 #include "ShaderSpecialisation.hpp"
 #include "UniqueVmaMemoryMap.hpp"
+#include "RenderHelper.hpp"
 
 namespace
 {
@@ -76,7 +77,7 @@ namespace
 	constexpr int numPortals = 2;
 	constexpr int numRecursions = 2;
 
-	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions);
+	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
 
 
@@ -319,7 +320,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 		transitionLayoutCommandBuffer->begin(beginInfo);
 
 		//---------------
+
 		{
+#if 0
 			vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eDepth;
 			if (VulkanUtils::HasStencilComponent(m_depthFormat))
 			{
@@ -352,13 +355,13 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_graphicsPresentQueues.submit(submitInfo, vk::Fence());
 			m_graphicsPresentQueues.waitIdle();
-
+#endif
 			m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
 				.setViewType(vk::ImageViewType::e2D)
 				.setFormat(m_depthFormat)
 				.setImage(m_depthBuffer)
 				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eDepth)
+					.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
 					.setBaseMipLevel(0)
 					.setLevelCount(1)
 					.setBaseArrayLayer(0)
@@ -375,7 +378,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 		VmaAllocationCreateInfo vmaInfo = {};
 		vmaInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
 
-		vk::DeviceSize storageTexelbufferSize = texelSize * m_swapchain.extent.height * m_swapchain.extent.width;//?
 		vk::ImageCreateInfo renderedDepthBufferInfo = vk::ImageCreateInfo{}
 			.setImageType(vk::ImageType::e2D)
 			.setArrayLayers(1)
@@ -391,6 +393,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		for (UniqueVmaImage& renderedDepthImage : m_image_renderedDepth)
 		{
 			renderedDepthImage = UniqueVmaImage(m_allocator.get(), renderedDepthBufferInfo, vmaInfo);
+			std::string renderedDepthImageName = std::string("rendered depth") + std::to_string(std::distance(&m_image_renderedDepth[0], &renderedDepthImage));
+			VulkanDebug::SetObjectName(m_device.get(), renderedDepthImage.Get(), renderedDepthImageName.c_str());
 		}
 
 
@@ -403,7 +407,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		{
 	vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
 					.setImage(m_image_renderedDepth[i].Get())
-.setViewType(vk::ImageViewType::e2D)
+					.setViewType(vk::ImageViewType::e2D)
 					.setFormat(renderedDepthFormat)
 					.setSubresourceRange(vk::ImageSubresourceRange{}
 						.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -420,7 +424,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 
 	std::vector<std::string> debugRenderpass;
-	m_portalRenderPass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2, &debugRenderpass);
+	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, numPortals, numRecursions, &debugRenderpass);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
@@ -921,8 +925,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
 		std::vector<std::string> debugPipelines;
-		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines(createInfo, 2, 2, &debugPipelines);
+		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(createInfo, numRecursions, numPortals, &debugPipelines);
 
+		m_stencilRefs.resize(NTree::CalcTotalElements(numPortals, numRecursions + 1));
+		RenderHelper::CalcStencilReferences(numRecursions, numPortals, m_stencilRefs);
 	}
 
 	for (int i = 0; i < MaxInFlightFrames; ++i)
@@ -1001,7 +1007,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(0.f, 0.f, 30.f));
 
-		m_portal = Portal::CreateWithTransformAndAtoB(halfSphereIdx, portal_a, portal_a_to_b);
+		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(halfSphereIdx, portal_a, portal_a_to_b));
 	}
 
 }
@@ -1024,7 +1030,8 @@ void GraphicsBackend::Render(const Camera& camera)
 
 	{
 		Transform cameraTransforms[cameraMatCount];
-		Portal::CreateCameraTransforms(gsl::make_span(&m_portal, 1), camera.m_transform, numRecursions, cameraTransforms);
+		// TODO: probably put this in portal manager
+		Portal::CreateCameraTransforms(m_portalManager.GetPortals(), camera.m_transform, numRecursions, cameraTransforms);
 
 		glm::mat4 cameraViewMats[cameraMatCount];
 
@@ -1059,6 +1066,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 		// render pass
 		{
+#if 0
 			const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
 				.setOldLayout(vk::ImageLayout::eUndefined)
 				.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
@@ -1079,7 +1087,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			drawBuffer.pipelineBarrier(
 				vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
 				{}, {}, {}, setRenderedImageAsColorAttachment);
-
+#endif
 
 			// render Scene Subpass
 			{
@@ -1102,7 +1110,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				};
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
-
+			
 
 				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
 
@@ -1130,114 +1138,114 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				// draw Portals
 				{
-					drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
-					vk::DeviceSize vertexBufferOffset = 0;
-					drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
-
-					const MeshDataRef& portalMeshRef = m_meshData->GetMeshes()[m_portal.meshIndex];
-
-					PushConstant pushConstant = {};
-					pushConstant.model = m_portal.a_transform.ToMat();
-					pushConstant.cameraIdx = 0;
-					pushConstant.portalStencilVal = 1;
-					pushConstant.debugColor = glm::vec4(0.5f, 0.f, 0.f, 1.f);
-
-					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
-
-					pushConstant.model = m_portal.b_transform.ToMat();
-					pushConstant.portalStencilVal = 2;
-					pushConstant.debugColor = glm::vec4(0.0f, 0.f, 0.5f, 1.f);
-
-					drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-					drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
-
-
+					m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), 0, m_stencilRefs);
 				}
+			}
 
+			for (int iteration = 1; iteration < numRecursions; ++iteration)
+			{
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
-				// Subsequent Scene Pass
+				// clear depth attachment, to be able to render objects "behind" the portal
 				{
-
 					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
 						.setColorAttachment(1)
 						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
 						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
 
-					vk::ClearAttachment setRenderedDepthTo1 = vk::ClearAttachment{}
-						.setColorAttachment(1)
-						.setAspectMask(vk::ImageAspectFlagBits::eColor)
-						.setClearValue(vk::ClearColorValue(std::array<float, 4>{ 1.f, 1.f, 1.f, 1.f}));
 
+					const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
+					std::array<vk::ClearAttachment, 1> clearAttachments = { clearDepthOnly, };
+					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
+				}
 
+				const int drawScenePipelineIdx = iteration * 2;
+				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
 
-					vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
+				const int layerStartIndex = NTree::CalcFirstLayerIndex(numPortals, iteration);
+				const int layerEndIndex = NTree::CalcFirstLayerIndex(numPortals, iteration + 1);
 
-					std::array<vk::ClearAttachment, 2> clearAttachments = { clearDepthOnly,setRenderedDepthTo1, };
-					std::array<vk::ClearAttachment, 1> clearAttachments1 = { clearDepthOnly, };
+				const uint8_t layerComparMask = RenderHelper::CalcLayerCompareMask(numPortals, iteration);
 
-					drawBuffer.clearAttachments(clearAttachments1, wholeScreen);
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[2].get());
-					//drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
-
+				//draw Scene
+				{
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
+					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
 
 					std::array<vk::DescriptorSet, 4> descriptorSets = {
-										m_descriptorSet_texture,
-										m_descriptorSet_ubo[m_currentframe],
-										m_descriptorSet_cameratMat[m_currentframe],
-										m_descriptorSet_renderedDepth[0],
+						m_descriptorSet_texture,
+						m_descriptorSet_ubo[m_currentframe],
+						m_descriptorSet_cameratMat[m_currentframe],
+						m_descriptorSet_renderedDepth[1],
 					};
 
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
-
-					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 1);
-
-
-
-					// draw Camera
+					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
 					{
+						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);
+						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);	
+						// draw Camera
+						{
 
-						drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
-						vk::DeviceSize vertexBufferOffset = 0;
-						drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+							drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+							vk::DeviceSize vertexBufferOffset = 0;
+							drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
 
-						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
-						const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+							const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
+							const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
 
-						PushConstant pushConstant = {};
-						Transform cameraTransform = camera.m_transform;
-						pushConstant.model = cameraTransform.ToMat();
-						pushConstant.cameraIdx = 1;
-						pushConstant.portalStencilVal = 0;
+							PushConstant pushConstant = {};
+							Transform cameraTransform = camera.m_transform;
+							pushConstant.model = cameraTransform.ToMat();
+							pushConstant.cameraIdx = layerElementIdx;
+							pushConstant.portalStencilVal = 0;
 
-						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-						drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
+							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
 
+							cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
+							pushConstant.model = cameraTransform.ToMat();
+							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+							drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
 
-
-						cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
-						pushConstant.model = cameraTransform.ToMat();
-						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-						drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
+						}
 
 					}
-
-					// skip other passes for now
-					// start with i = 3 as we have used three passes so far
-					for (size_t i = 3; i < m_graphicPipelines.size(); ++i)
-					{				
-						drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					}
-
 				}
+				// Draw Portals
+				{
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
+					
+					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
-				// Subsequent Portal Pass
-				//drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
+					{
+						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);
+						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), 0, m_stencilRefs);
+					}
+				}
 			}
+
+
+
+
+		
+			// skip other passes for now
+			// start with i = 3 as we have used three passes so far
+		/*	for (size_t i = 3; i < m_graphicPipelines.size(); ++i)
+			{
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+			}*/
+
+			
+
+			// Subsequent Portal Pass
+			//drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+
+
 			drawBuffer.endRenderPass();
 		}
 

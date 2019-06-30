@@ -44,7 +44,7 @@ class NTree
 public:
 
 	static constexpr uint32_t CalcFirstLayerIndex(uint32_t n, uint32_t layerNum) { return ipow(n, layerNum) - 1; }
-	static constexpr uint32_t CalcTotalElements(uint32_t n, uint32_t treeHight) { return CalcFirstLayerIndex(n, treeHight + 1); }
+	static constexpr uint32_t CalcTotalElements(uint32_t n, uint32_t treeHight) { return CalcFirstLayerIndex(n, treeHight); }
 
 	static constexpr uint32_t GetChildElementIdx(uint32_t n, uint32_t parentIdx, uint32_t childnum)
 	{

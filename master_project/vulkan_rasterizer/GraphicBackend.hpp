@@ -10,6 +10,7 @@
 #include "Scene.hpp"
 #include "Portal.hpp"
 #include "UniqueVmaObject.hpp"
+#include "PortalManager.hpp"
 
 class Camera;
 
@@ -85,11 +86,13 @@ private:
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_subesquent;
 
 	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
+	std::vector<uint8_t> m_stencilRefs;
+
 	vk::UniqueSampler m_textureSampler;
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::unique_ptr<Scene> m_scene;
-	Portal m_portal;
+	PortalManager m_portalManager;
 };

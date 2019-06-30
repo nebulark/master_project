@@ -94,6 +94,12 @@
     <ClCompile Include="Transform.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="RenderHelper.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="PortalManager.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -183,6 +189,12 @@
     <ClInclude Include="Transform.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="RenderHelper.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="PortalManager.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -228,15 +240,9 @@
     <CopyFileToFolders Include="models\torus.obj">
       <Filter>Resource Files</Filter>
     </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="images\testTexture.png">
+    <CopyFileToFolders Include="images\testTexture.png">
       <Filter>Resource Files</Filter>
-    </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="models\halfSphere.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="models\halfSphere.obj" />
   </ItemGroup>
 </Project>
