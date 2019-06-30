@@ -75,7 +75,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 	constexpr int numPortals = 2;
-	constexpr int numRecursions = 0;
+	constexpr int numRecursions = 2;
 
 	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
@@ -1129,12 +1129,13 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
+					const int renderedDepthInputIdx = (iteration+1) % 2;
 
 					std::array<vk::DescriptorSet, 4> descriptorSets = {
 						m_descriptorSet_texture,
 						m_descriptorSet_ubo[m_currentframe],
 						m_descriptorSet_cameratMat[m_currentframe],
-						m_descriptorSet_renderedDepth[1],
+						m_descriptorSet_renderedDepth[renderedDepthInputIdx],
 					};
 
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
@@ -1174,7 +1175,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				// Draw Portals
 				{
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawPortalPipelineIdx].get());
 					
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
