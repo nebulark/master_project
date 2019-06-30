@@ -136,8 +136,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 	vmaAllocCreateInfo.device = m_device.get();
 	vmaAllocCreateInfo.physicalDevice = m_physicalDevice;
 	m_allocator = VmaRAII::CreateVmaAllocatorUnique(vmaAllocCreateInfo);
-	m_BufferPool.Init(m_allocator.get());
-	m_ImagePool.Init(m_allocator.get());
 
 	m_graphicsPresentQueueInfo = maybeDeviceResult->queueResult[0];
 	{
@@ -200,10 +198,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		VmaAllocationCreateInfo vmaAllocImage = {};
 		vmaAllocImage.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-		m_textureImage = m_ImagePool.Alloc(imageCreateInfo, vmaAllocImage);
+		m_textureImage = UniqueVmaImage(m_allocator.get(), imageCreateInfo, vmaAllocImage);
 
 
-		VulkanDebug::SetObjectName(m_device.get(), m_textureImage, "texture Image");
+		VulkanDebug::SetObjectName(m_device.get(), m_textureImage.Get(), "texture Image");
 
 		vk::UniqueCommandBuffer loadBuffer = CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
 		loadBuffer->begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
@@ -214,7 +212,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_textureImage)
+				.setImage(m_textureImage.Get())
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
 					.setBaseMipLevel(0)
@@ -240,7 +238,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				.setImageOffset(vk::Offset3D(0, 0, 0))
 				.setImageExtent(vk::Extent3D(texWidth, texHeight, 1));
 
-			loadBuffer->copyBufferToImage(stageBuffer, m_textureImage, vk::ImageLayout::eTransferDstOptimal, bufferImageCopy);
+			loadBuffer->copyBufferToImage(stageBuffer, m_textureImage.Get(), vk::ImageLayout::eTransferDstOptimal, bufferImageCopy);
 		}
 		{
 			vk::ImageMemoryBarrier imageMemoryBarier1 = vk::ImageMemoryBarrier{}
@@ -248,7 +246,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_textureImage)
+				.setImage(m_textureImage.Get())
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
 					.setBaseMipLevel(0)
@@ -277,7 +275,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		vmaDestroyBuffer(m_allocator.get(), stageBuffer, stageBufferAllocation);
 
 		vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
-			.setImage(m_textureImage)
+			.setImage(m_textureImage.Get())
 			.setViewType(vk::ImageViewType::e2D)
 			.setFormat(vk::Format::eR8G8B8A8Unorm)
 			.setSubresourceRange(vk::ImageSubresourceRange()
@@ -312,54 +310,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 		VmaAllocationCreateInfo vmaAllocImage = {};
 		vmaAllocImage.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-		m_depthBuffer = m_ImagePool.Alloc(imageCreateInfo, vmaAllocImage);
-		vk::UniqueCommandBuffer transitionLayoutCommandBuffer =
-			CbUtils::AllocateSingle(m_device.get(), m_graphicsPresentCommandPools[0].get());
-
-		vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-		transitionLayoutCommandBuffer->begin(beginInfo);
-
+		m_depthBuffer = UniqueVmaImage(m_allocator.get(), imageCreateInfo, vmaAllocImage);	
 		//---------------
 
 		{
-#if 0
-			vk::ImageAspectFlags aspectFlags = vk::ImageAspectFlagBits::eDepth;
-			if (VulkanUtils::HasStencilComponent(m_depthFormat))
-			{
-				aspectFlags |= vk::ImageAspectFlagBits::eStencil;
-			}
-
-			vk::ImageMemoryBarrier imageMemoryBarier = vk::ImageMemoryBarrier{}
-				.setOldLayout(vk::ImageLayout::eUndefined)
-				.setNewLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_depthBuffer)
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(aspectFlags)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1))
-				.setSrcAccessMask(vk::AccessFlags())
-				.setDstAccessMask(vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
-
-			transitionLayoutCommandBuffer->pipelineBarrier(
-				vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests,
-				vk::DependencyFlags(), {}, {}, imageMemoryBarier);
-			transitionLayoutCommandBuffer->end();
-
-			vk::SubmitInfo submitInfo = vk::SubmitInfo()
-				.setCommandBufferCount(1).setPCommandBuffers(&(transitionLayoutCommandBuffer.get()))
-				;
-
-			m_graphicsPresentQueues.submit(submitInfo, vk::Fence());
-			m_graphicsPresentQueues.waitIdle();
-#endif
 			m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
 				.setViewType(vk::ImageViewType::e2D)
 				.setFormat(m_depthFormat)
-				.setImage(m_depthBuffer)
+				.setImage(m_depthBuffer.Get())
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
 					.setBaseMipLevel(0)
@@ -369,7 +327,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 	}
 	// create rendered Depth buffer
-//#error // use storage image!
 	{
 		vk::Format depthFormat = renderedDepthFormat;
 		vk::DeviceSize texelSize = sizeof(float);

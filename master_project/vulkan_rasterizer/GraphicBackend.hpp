@@ -26,8 +26,6 @@ private:
 	vk::PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
 	VmaRAII::UniqueVmaAllocator m_allocator;
-	VmaBufferPool m_BufferPool;
-	VmaImagePool m_ImagePool;
 
 	vk::UniqueDebugUtilsMessengerEXT m_debugUtilsMessenger;
 
@@ -46,7 +44,7 @@ private:
 
 	Swapchain m_swapchain;
 	vk::Format m_depthFormat;
-	vk::Image m_depthBuffer;
+	UniqueVmaImage m_depthBuffer;
 	std::vector<vk::UniqueFramebuffer> m_framebuffer;
 
 	vk::UniqueRenderPass m_colorDepthRenderPass;
@@ -89,7 +87,7 @@ private:
 	std::vector<uint8_t> m_stencilRefs;
 
 	vk::UniqueSampler m_textureSampler;
-	vk::Image m_textureImage;
+	UniqueVmaImage m_textureImage;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueImageView m_depthBufferView;
 	std::unique_ptr<MeshDataManager> m_meshData;
