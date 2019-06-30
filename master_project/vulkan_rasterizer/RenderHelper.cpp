@@ -52,5 +52,5 @@ uint8_t RenderHelper::CalcLayerCompareMask(int maxPortals, int currentIteration)
 	// we need one extra "portal" which represents "no portal"
 	// real portals will start with id 1
 	uint32_t portalBits = GetNumBitsToStoreValue(maxPortals + 1);
-	return gsl::narrow<uint8_t>(ipow(2, portalBits * currentIteration));
+	return gsl::narrow<uint8_t>(ipow(2, portalBits * currentIteration) - 1);
 }
