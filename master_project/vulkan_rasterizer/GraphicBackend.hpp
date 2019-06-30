@@ -50,6 +50,8 @@ private:
 
 	vk::UniqueRenderPass m_colorDepthRenderPass;
 
+	vk::UniqueRenderPass m_portalRenderPass;
+
 	vk::UniqueDescriptorPool m_descriptorPool;
 
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_texture;
@@ -81,6 +83,8 @@ private:
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_subsequent;
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_initial;
 	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_subesquent;
+
+	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
 	vk::UniqueSampler m_textureSampler;
 	vk::Image m_textureImage;
 	vk::UniqueImageView m_textureImageView;

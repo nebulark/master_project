@@ -420,13 +420,13 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 
 	std::vector<std::string> debugRenderpass;
-	auto testRenderpass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2, &debugRenderpass);
+	m_portalRenderPass = Renderpass::Portals_One_Pass(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, 2, 2, &debugRenderpass);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
 			.setWidth(m_swapchain.extent.width)
 			.setHeight(m_swapchain.extent.height)
-			.setRenderPass(m_colorDepthRenderPass.get())
+			.setRenderPass(m_portalRenderPass.get())
 			.setLayers(1);
 		for (const vk::UniqueImageView& imageView : m_swapchain.imageViews)
 		{
@@ -912,7 +912,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		GraphicsPipeline::PipelinesCreateInfo createInfo;
 		createInfo.logicalDevice = m_device.get();
 		createInfo.pipelineLayout = m_pipelineLayout.get();
-		createInfo.renderpass = testRenderpass.get();
+		createInfo.renderpass = m_portalRenderPass.get();
 		createInfo.swapchainExtent = m_swapchain.extent;
 
 		createInfo.pipelineShaderStageCreationInfos_sceneInitial = shaderStage_scene_initial;
@@ -921,7 +921,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
 		std::vector<std::string> debugPipelines;
-		auto testPipelines = GraphicsPipeline::CreateGraphicPipelines(createInfo, 2, 2, &debugPipelines);
+		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines(createInfo, 2, 2, &debugPipelines);
 
 	}
 
@@ -1085,13 +1085,14 @@ void GraphicsBackend::Render(const Camera& camera)
 			{
 				drawBuffer.beginRenderPass(
 					vk::RenderPassBeginInfo{}
-					.setRenderPass(m_colorDepthRenderPass.get())
+					.setRenderPass(m_portalRenderPass.get())
 					.setFramebuffer(m_framebuffer[m_currentframe].get())
 					.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent))
 					.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
 					vk::SubpassContents::eInline);
 
-				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_initial.get());
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[0].get());
+				//drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_initial.get());
 
 				std::array<vk::DescriptorSet, 4> descriptorSets = {
 					m_descriptorSet_texture,
@@ -1110,7 +1111,8 @@ void GraphicsBackend::Render(const Camera& camera)
 			{
 				// First Portal Pass
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_portals_initial.get());
+				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[1].get());
+				//drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_portals_initial.get());
 
 				// for now just bind it, we can use a different pipeline layout later
 				{
@@ -1176,7 +1178,8 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					drawBuffer.clearAttachments(clearAttachments1, wholeScreen);
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[2].get());
+					//drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline_scene_subsequent.get());
 
 
 
@@ -1220,6 +1223,13 @@ void GraphicsBackend::Render(const Camera& camera)
 						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 						drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
 
+					}
+
+					// skip other passes for now
+					// start with i = 3 as we have used three passes so far
+					for (size_t i = 3; i < m_graphicPipelines.size(); ++i)
+					{				
+						drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					}
 
 				}
