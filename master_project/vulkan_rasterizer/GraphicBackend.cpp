@@ -75,7 +75,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 	constexpr int numPortals = 2;
-	constexpr int numRecursions = 2;
+	constexpr int numRecursions = 0;
 
 	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
@@ -885,7 +885,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(createInfo, numRecursions, numPortals, &debugPipelines);
 
 		m_stencilRefs.resize(NTree::CalcTotalElements(numPortals, numRecursions + 1));
-		RenderHelper::CalcStencilReferences(numRecursions, numPortals, m_stencilRefs);
+		RenderHelper::CalcStencilReferences(numPortals, numRecursions, m_stencilRefs);
 	}
 
 	for (int i = 0; i < MaxInFlightFrames; ++i)
@@ -1099,7 +1099,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				}
 			}
 
-			for (int iteration = 1; iteration < numRecursions; ++iteration)
+			for (int iteration = 1; iteration <= numRecursions; ++iteration)
 			{
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
@@ -1173,11 +1173,11 @@ void GraphicsBackend::Render(const Camera& camera)
 				}
 				// Draw Portals
 				{
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
 					
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
 					{
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);

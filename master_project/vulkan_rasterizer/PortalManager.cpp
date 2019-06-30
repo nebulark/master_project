@@ -29,14 +29,22 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		PushConstant pushConstant = {};
 		pushConstant.model = portal.a_transform.ToMat();
 		pushConstant.cameraIdx = 0;
-		pushConstant.portalStencilVal = stencilRefs[a_childIndex];
+		// if this is false this is the last portal rendering and we won't need to set stencil
+		if (a_childIndex < stencilRefs.size())
+		{
+			pushConstant.portalStencilVal = stencilRefs[a_childIndex];
+		}
 		pushConstant.debugColor = glm::vec4(0.5f, 0.f, 0.f, 1.f);
 
 		drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 		pushConstant.model = portal.b_transform.ToMat();
-		pushConstant.portalStencilVal = stencilRefs[b_childIndex];
+		// if this is false this is the last portal rendering and we won't need to set stencil
+		if (b_childIndex < stencilRefs.size())
+		{
+			pushConstant.portalStencilVal = stencilRefs[b_childIndex];
+		}
 
 		pushConstant.debugColor = glm::vec4(0.0f, 0.f, 0.5f, 1.f);
 
