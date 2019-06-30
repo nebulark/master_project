@@ -57,7 +57,7 @@ inline void Portal::CreateCameraTransforms(
 
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
-	const uint32_t portalCount = GetSizeUint32(portals.size()) * 2;
+	const uint32_t portalCount =GetSizeUint32(portals) * 2;
 	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, recursions + 1);
 	assert(outTransforms.size() >= matrixCount);
 

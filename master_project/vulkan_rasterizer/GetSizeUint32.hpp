@@ -16,18 +16,11 @@ template<typename T>
 constexpr bool HasStdSize_v = HasSizeMemberFunction<T>::value;
 
 template<typename T>
-std::enable_if_t<HasStdSize_v<T>, uint32_t>
-GetSizeUint32(const T& Container) noexcept
+uint32_t GetSizeUint32(const T& Container) noexcept
 {
 	return gsl::narrow_cast<uint32_t>(std::size(Container));
 }
 
-template<typename T>
-constexpr std::enable_if_t<!HasStdSize_v<T>, uint32_t>
-GetSizeUint32(const T& Container) noexcept
-{
-	return 1;
-}
 
 template<typename innerType, size_t Size>
 constexpr uint32_t GetSizeUint32(const std::array<innerType, Size>& Container) noexcept

@@ -720,7 +720,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
 		.setPColorBlendState(&colorblendstate_override_2)
 		.setPDynamicState(&dynamicStateCreateInfo) 
-		// does not really need dynamic state, as the reference value is changed in shader, but we have it for writemask convenience
+		// does not really need dynamic state, as the reference value is changed in shader, but we have it for comparemask convenience
 		// and the possibility to get it to work without stencil export
 		;
 

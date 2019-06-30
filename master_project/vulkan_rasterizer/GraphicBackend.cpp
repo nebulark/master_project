@@ -74,7 +74,7 @@ namespace
 
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
-	constexpr int numPortals = 2;
+	constexpr int numPortals = 4;
 	constexpr int numRecursions = 2;
 
 	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
@@ -929,9 +929,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 			}
 		}
 		{
-			const Transform floorTransform = Transform(glm::vec3(0.f, -5.f, 0.f), glm::vec3(100.f, 1.f, 100.f), glm::identity<glm::quat>());
-			const glm::mat4 floorModelMat = floorTransform.ToMat();
-			m_scene->Add(cubeIdx, floorModelMat);
+			Transform floorTransform = Transform(glm::vec3(0.f, -5.f, 0.f), glm::vec3(100.f, 1.f, 100.f), glm::identity<glm::quat>());
+			m_scene->Add(cubeIdx, floorTransform.ToMat());
+
+			floorTransform.translation.y += 40.f;
+			m_scene->Add(cubeIdx, floorTransform.ToMat());
 		}
 		{
 			const glm::vec3 spherePos[] = {
@@ -962,9 +964,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 	{
 		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(0.f, 0.f, 30.f));
+		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(5.f, 0.f, 30.f));
 
 		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(halfSphereIdx, portal_a, portal_a_to_b));
+	}
+	{
+		const Transform portal_a(glm::vec3(20.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
+
+		const Transform portal_a_to_b = Transform::FromTranslation(glm::vec3(5.f, 05.f, 20.f));
+
+		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
 	}
 
 }
@@ -1108,7 +1117,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
 						.setColorAttachment(1)
 						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
-						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
+						.setClearValue(vk::ClearDepthStencilValue(1.f, 255));
 
 
 					const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
@@ -1141,8 +1150,12 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
+					//for (int layerElementIdx = layerEndIndex - 1; layerElementIdx >= layerStartIndex; --layerElementIdx)
 					{
+						//if (layerElementIdx == 2) { continue; }
+
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);
+						//printf("draw scene element %i with stencil %i , mask %i\n", layerElementIdx, m_stencilRefs[layerElementIdx], layerComparMask);
 						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);	
 						// draw Camera
 						{
@@ -1182,7 +1195,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
 					{
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);
-						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), 0, m_stencilRefs);
+						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), layerElementIdx, m_stencilRefs);
 					}
 				}
 			}
