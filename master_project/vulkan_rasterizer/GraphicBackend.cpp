@@ -74,10 +74,7 @@ namespace
 
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
-	constexpr int numPortals = 4;
-	constexpr int numRecursions = 2;
 
-	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
 
 
@@ -384,7 +381,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 
 	std::vector<std::string> debugRenderpass;
-	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, numPortals, numRecursions, &debugRenderpass);
+	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, maxPortalCount, numRecursions, &debugRenderpass);
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
@@ -884,10 +881,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
 		std::vector<std::string> debugPipelines;
-		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(createInfo, numRecursions, numPortals, &debugPipelines);
+		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(createInfo, numRecursions, maxPortalCount, &debugPipelines);
 
-		m_stencilRefs.resize(NTree::CalcTotalElements(numPortals, numRecursions + 1));
-		RenderHelper::CalcStencilReferences(numPortals, numRecursions, m_stencilRefs);
+		m_stencilRefs.resize(NTree::CalcTotalElements(maxPortalCount, numRecursions + 1));
+		RenderHelper::CalcStencilReferences(maxPortalCount, numRecursions, m_stencilRefs);
 	}
 
 	for (int i = 0; i < MaxInFlightFrames; ++i)
@@ -1137,10 +1134,10 @@ void GraphicsBackend::Render(const Camera& camera)
 				const int drawScenePipelineIdx = iteration * 2;
 				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
 
-				const int layerStartIndex = NTree::CalcFirstLayerIndex(numPortals, iteration);
-				const int layerEndIndex = NTree::CalcFirstLayerIndex(numPortals, iteration + 1);
+				const int layerStartIndex = NTree::CalcFirstLayerIndex(maxPortalCount, iteration);
+				const int layerEndIndex = NTree::CalcFirstLayerIndex(maxPortalCount, iteration + 1);
 
-				const uint8_t layerComparMask = RenderHelper::CalcLayerCompareMask(numPortals, iteration);
+				const uint8_t layerComparMask = RenderHelper::CalcLayerCompareMask(maxPortalCount, iteration);
 
 				//draw Scene
 				{

@@ -11,6 +11,7 @@
 #include "Portal.hpp"
 #include "UniqueVmaObject.hpp"
 #include "PortalManager.hpp"
+#include "NTree.hpp"
 
 class Camera;
 
@@ -21,7 +22,16 @@ public:
 	void Render(const Camera& camera);
 	void WaitIdle() { m_device->waitIdle(); }
 private:
-	static constexpr int MaxInFlightFrames = 2;
+	static constexpr int MaxInFlightFrames = 2;	
+	static constexpr int maxPortalCount = 4;
+	static constexpr int maxVisiblePortalsForRecursion[] = {4,4};
+	static constexpr int numRecursions = std::size(maxVisiblePortalsForRecursion);
+	static constexpr int cameraMatCount = NTree::CalcTotalElements(maxPortalCount, numRecursions + 1);
+
+	// Technically incorrect, but fine as long as all recursion have the same maxVisiblePortalsCount
+	static constexpr int cameraMatIndexCount = NTree::CalcTotalElements(maxVisiblePortalsForRecursion[0], numRecursions + 1);
+
+
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
@@ -62,6 +72,12 @@ private:
 	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_cameratMat;
 	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_ubo_buffer;
 	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameratMat_buffer;
+
+	// Stores indices to access the camera mat buffer
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameraMatIndexBuffer;
+
+	// only used by portal rendering, to calc its index, so it can write into the correct location of cameraMatIndexBuffer
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_portalIdxHelperBuffer;
 
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_renderedDepth;
 	std::array<UniqueVmaImage,2> m_image_renderedDepth;
