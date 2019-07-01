@@ -74,6 +74,9 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 		}
 
+		drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
+			vk::DependencyFlags{}, {}, {}, {});
+
 		{
 			pushConstant.portalStencilVal = isLastPortalIteration
 				? stencilRefs[iterationElementIndex]
@@ -82,7 +85,13 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 
 			pushConstant.model = m_portals[i].b_transform.ToMat();
 			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);	
+			
+		
 		}
+
+	drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
+			vk::DependencyFlags{}, {}, {}, {});
+
 	}
 }

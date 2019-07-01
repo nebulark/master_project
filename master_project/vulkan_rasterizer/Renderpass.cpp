@@ -444,6 +444,9 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 	);
 
 
+
+
+
 	int clearAttachmentSubpasses = 0;
 
 	// subsequent subpasses
@@ -683,63 +686,71 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 	// initial subpasses
 	// intial scene subpass
 	// iteration 0, this means use even where neccessary
-
-	if (optionalDebug)
 	{
-		optionalDebug->clear();
-		optionalDebug->resize(std::size(subpasses));
+		if (optionalDebug)
+		{
+			optionalDebug->clear();
+			optionalDebug->resize(std::size(subpasses));
+		}
+
+		constexpr int initialSceneSubpassIdx = 0;
+		subpasses[initialSceneSubpassIdx] = vk::SubpassDescription{}
+			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+			.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
+			.setPDepthStencilAttachment(&depthStencilAttachment)
+			;
+
+		if (optionalDebug)
+		{
+			(*optionalDebug)[initialSceneSubpassIdx] = "initialScene";
+		}
+
+		dependencies.push_back(vk::SubpassDependency{}
+			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
+			.setDstSubpass(initialSceneSubpassIdx)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)
+			.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
+			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
+		);
+
+
+		// first Portal sub pass
+
+		constexpr int initialPortalSubpassIdx = initialSceneSubpassIdx + 1;
+		subpasses[initialPortalSubpassIdx] = vk::SubpassDescription{}
+			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+			.setColorAttachmentCount(GetSizeUint32(renderPortalOutput[even])).setPColorAttachments(std::data(renderPortalOutput[even]))
+			.setPDepthStencilAttachment(&depthStencilAttachment)
+			;
+
+		if (optionalDebug)
+		{
+			(*optionalDebug)[initialPortalSubpassIdx] = "initialPortal";
+		}
+
+		// we need to wait for the depth buffer write (and maybe color) before rendering portal
+		dependencies.push_back(vk::SubpassDependency{}
+			.setSrcSubpass(initialSceneSubpassIdx)
+			.setDstSubpass(initialPortalSubpassIdx)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
+		);
+
+		// self dependency to wait for writes to portal index helper
+		dependencies.push_back(vk::SubpassDependency{}
+			.setSrcSubpass(initialPortalSubpassIdx)
+			.setDstSubpass(initialPortalSubpassIdx)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+		);
 	}
-
-	constexpr int initialSceneSubpassIdx = 0;
-	subpasses[initialSceneSubpassIdx] = vk::SubpassDescription{}
-		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-		.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
-		.setPDepthStencilAttachment(&depthStencilAttachment)
-		;
-
-	if (optionalDebug)
-	{
-		(*optionalDebug)[initialSceneSubpassIdx] = "initialScene";
-	}
-
-	dependencies.push_back(vk::SubpassDependency{}
-		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-		.setDstSubpass(initialSceneSubpassIdx)
-		.setSrcStageMask(vk::PipelineStageFlagBits::eBottomOfPipe)
-		.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
-		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
-		.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
-	);
-
-
-	// first Portal sub pass
-
-	constexpr int initialPortalSubpassIdx = initialSceneSubpassIdx + 1;
-	subpasses[initialPortalSubpassIdx] = vk::SubpassDescription{}
-		.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-		.setColorAttachmentCount(GetSizeUint32(renderPortalOutput[even])).setPColorAttachments(std::data(renderPortalOutput[even]))
-		.setPDepthStencilAttachment(&depthStencilAttachment)
-		;
-
-	if (optionalDebug)
-	{
-		(*optionalDebug)[initialPortalSubpassIdx] = "initialPortal";
-	}
-
-	// we need to wait for the depth buffer write (and maybe color) before rendering portal
-	dependencies.push_back(vk::SubpassDependency{}
-		.setSrcSubpass(initialSceneSubpassIdx)
-		.setDstSubpass(initialPortalSubpassIdx)
-		.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-		.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
-		.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
-		.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
-	);
-
-
-	int clearAttachmentSubpasses = 0;
 
 	// subsequent subpasses
 	for (int iteration = 1; iteration <= iterationCount; ++iteration)
@@ -809,7 +820,18 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
 			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
+		);	
+
+		// self dependency to wait for writes to portal index helper
+		dependencies.push_back(vk::SubpassDependency{}
+			.setSrcSubpass(portalSubpassIdx)
+			.setDstSubpass(portalSubpassIdx)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setSrcAccessMask(vk::AccessFlagBits::eShaderWrite)
+			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
 		);
+
 	}
 
 	vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()

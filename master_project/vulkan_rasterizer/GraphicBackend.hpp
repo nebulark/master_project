@@ -27,12 +27,14 @@ private:
 	static constexpr int maxVisiblePortalsForRecursion[] = {4,4};
 	static constexpr int numRecursions = std::size(maxVisiblePortalsForRecursion);
 	static constexpr int cameraMatCount = NTree::CalcTotalElements(maxPortalCount, numRecursions + 1);
-
-
 	// Technically incorrect, but fine as long as all recursion have the same maxVisiblePortalsCount
 	static constexpr int cameraIndexCount = NTree::CalcTotalElements(maxVisiblePortalsForRecursion[0], numRecursions + 1);
 
 	static_assert(cameraMatCount >= cameraIndexCount);
+
+	static constexpr vk::DeviceSize cameraMatBufferSize = sizeof(glm::mat4) * cameraMatCount;
+	static constexpr vk::DeviceSize cameraIndexBufferSize = sizeof(uint32_t) * cameraIndexCount;
+	static constexpr vk::DeviceSize portalIndexHelperBufferSize = sizeof(uint32_t) * cameraMatCount;
 
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;

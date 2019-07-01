@@ -7,6 +7,8 @@ struct PushConstant
 	glm::vec4 debugColor;
 	uint32_t cameraIdx;
 	uint32_t portalStencilVal;
+	uint32_t currentIdx;
+
 };
 
 constexpr size_t PushConstant_Size = sizeof(PushConstant);
