@@ -59,6 +59,10 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			pushConstant.portalStencilVal = stencilRefs[a_childIndex];
 			//printf("portal %i a set stencil %i\n", iterationElementIndex, stencilRefs[a_childIndex]);
 		}
+		else
+		{
+			pushConstant.portalStencilVal = stencilRefs[iterationElementIndex];
+		}
 
 		drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
@@ -69,6 +73,10 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		{
 			pushConstant.portalStencilVal = stencilRefs[b_childIndex];
 			//printf("portal %i b set stencil %i\n", iterationElementIndex, stencilRefs[b_childIndex]);
+		}
+		else
+		{
+			pushConstant.portalStencilVal = stencilRefs[iterationElementIndex];
 		}
 
 
