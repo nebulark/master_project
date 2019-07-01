@@ -8,6 +8,27 @@ void PortalManager::Add(const Portal& portal)
 	m_portals.push_back(portal);
 }
 
+namespace {
+	const glm::vec4 debugColors[] =
+	{
+
+		glm::vec4(1.f, 0.f, 0.f, 1.f),
+		glm::vec4(0.75f, 0.25f, 0.f, 1.f),
+		glm::vec4(0.5f, 0.5f, 0.f, 1.f),
+		glm::vec4(0.25f, 0.75f, 0.f, 1.f),
+		glm::vec4(0.f, 1.f, 0.f, 1.f),
+		glm::vec4(0.f, 0.75f, 0.25f, 1.f),
+		glm::vec4(0.f, 0.5f, 0.5f, 1.f),
+		glm::vec4(0.f, 0.25f, 0.75f, 1.f),
+		glm::vec4(0.f, 0.f, 1.f, 1.f),
+		glm::vec4(0.25f, 0.f, 1.f, 0.75f),
+		glm::vec4(0.5f, 0.f, 1.f, 0.5f),
+		glm::vec4(0.75f, 0.f, 1.f, 0.25f),
+
+	};
+
+}
+
 void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager,
 	vk::PipelineLayout layout, int iterationElementIndex, std::vector<uint8_t> stencilRefs)
 {
@@ -29,6 +50,7 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		PushConstant pushConstant = {};
 		pushConstant.cameraIdx = iterationElementIndex;
 
+		pushConstant.debugColor = debugColors[iterationElementIndex % std::size(debugColors)];
 
 		pushConstant.model = portal.a_transform.ToMat();
 		// if this is false this is the last portal rendering and we won't need to set stencil
@@ -37,7 +59,6 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			pushConstant.portalStencilVal = stencilRefs[a_childIndex];
 			//printf("portal %i a set stencil %i\n", iterationElementIndex, stencilRefs[a_childIndex]);
 		}
-		pushConstant.debugColor = glm::vec4(0.5f, 0.f, 0.f, 1.f);
 
 		drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
@@ -50,7 +71,6 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			//printf("portal %i b set stencil %i\n", iterationElementIndex, stencilRefs[b_childIndex]);
 		}
 
-		pushConstant.debugColor = glm::vec4(0.0f, 0.f, 0.5f, 1.f);
 
 		drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);

@@ -75,7 +75,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 	constexpr int numPortals = 4;
-	constexpr int numRecursions = 2;
+	constexpr int numRecursions = 1;
 
 	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
@@ -310,7 +310,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		VmaAllocationCreateInfo vmaAllocImage = {};
 		vmaAllocImage.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-		m_depthBuffer = UniqueVmaImage(m_allocator.get(), imageCreateInfo, vmaAllocImage);	
+		m_depthBuffer = UniqueVmaImage(m_allocator.get(), imageCreateInfo, vmaAllocImage);
+		
+		VulkanDebug::SetObjectName(m_device.get(), m_depthBuffer.Get(), "Depth Stencil Buffer");
+
 		//---------------
 
 		{
@@ -710,24 +713,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
 
-	const ShaderSpecialisation::MultiBytes<2> multibytes_disableRenderedDepth = []() {
-		ShaderSpecialisation::MultiBytes<2> multibytes{};
-		multibytes.data[0] = false; // disable rendered depth input a these are the initial shaders
-		multibytes.data[1] = gsl::narrow<uint8_t>(cameraMatCount);
+
+	const ShaderSpecialisation::MultiBytes<1> multibytes_camerMats = []() {
+		ShaderSpecialisation::MultiBytes<1> multibytes{};
+		multibytes.data[0] = gsl::narrow<uint8_t>(cameraMatCount);
 		return multibytes;
 	}();
 
-	const vk::SpecializationInfo disableRenderedDepth = ShaderSpecialisation::ReferenceMultibytes(multibytes_disableRenderedDepth);
-
-
-	const ShaderSpecialisation::MultiBytes<2> multibytes_enableRenderedDepth = []() {
-		ShaderSpecialisation::MultiBytes<2> multibytes{};
-		multibytes.data[0] = false; // disable rendered depth input a these are the initial shaders
-		multibytes.data[1] = gsl::narrow<uint8_t>(cameraMatCount);
-		return multibytes;
-	}();
-
-	const vk::SpecializationInfo enableRenderedDepth = ShaderSpecialisation::ReferenceMultibytes(multibytes_enableRenderedDepth);
+	const vk::SpecializationInfo setCameraMats = ShaderSpecialisation::ReferenceMultibytes(multibytes_camerMats);
 
 	{
 		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
@@ -737,14 +730,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule.get(),
 				"main",
-				&disableRenderedDepth),
+				&setCameraMats),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule.get(),
 				"main",
-				&disableRenderedDepth),
+				&setCameraMats),
 		};
 
 
@@ -764,14 +757,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule.get(),
 				"main",
-				&disableRenderedDepth),
+				&setCameraMats),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule_subsequent.get(),
 				"main",
-				&disableRenderedDepth),
+				&setCameraMats),
 		};
 
 
@@ -793,14 +786,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 				vk::ShaderStageFlagBits::eVertex,
 				m_vertShaderModule_portal.get(),
 				"main",
-				&enableRenderedDepth),
+				&setCameraMats),
 
 			vk::PipelineShaderStageCreateInfo(
 				vk::PipelineShaderStageCreateFlags(),
 				vk::ShaderStageFlagBits::eFragment,
 				m_fragShaderModule_portal.get(),
 				"main",
-				&enableRenderedDepth),
+				&setCameraMats),
 		};
 
 		m_graphicsPipeline_portals_initial = GraphicsPipeline::CreateGraphicsPipeline_PortalRender_Initial(
@@ -821,12 +814,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
 			.setModule(m_vertShaderModule.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
 
 		vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eFragment)
 			.setModule(m_fragShaderModule.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		};
 	vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
@@ -834,12 +830,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
 			.setModule(m_vertShaderModule_portal.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eFragment)
 			.setModule(m_fragShaderModule_portal.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		};
 	vk::PipelineShaderStageCreateInfo shaderStage_scene_subsequent[] =
@@ -847,12 +845,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
 			.setModule(m_vertShaderModule.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eFragment)
 			.setModule(m_fragShaderModule_subsequent.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		};
 	vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
@@ -860,12 +860,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
 			.setModule(m_vertShaderModule_portal.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eFragment)
 			.setModule(m_fragShaderModule_portal_subsequent.get())
-			.setPName("main"),
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
 
 		};
 
@@ -898,7 +900,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj" };
+	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj", "inverted_cube.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_meshData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 	enum ObjIdx
@@ -907,7 +909,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		sphereIdx,
 		cubeIdx,
 		planeIdx,
-		halfSphereIdx
+		halfSphereIdx,
+		invertedCubeIdx,
 	};
 
 	// Init Scene
@@ -935,6 +938,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 			floorTransform.translation.y += 40.f;
 			m_scene->Add(cubeIdx, floorTransform.ToMat());
 		}
+
+		{
+			Transform enclosingCube = Transform(glm::vec3{}, 150.f, glm::identity<glm::quat>());
+			//m_scene->Add(invertedCubeIdx, enclosingCube.ToMat());
+		}
+
 		{
 			const glm::vec3 spherePos[] = {
 					glm::vec3(-3.f,10.f, -5.f),
@@ -1136,7 +1145,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				//draw Scene
 				{
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
-					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
+					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					const int renderedDepthInputIdx = (iteration+1) % 2;
 
@@ -1154,7 +1163,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					{
 						//if (layerElementIdx == 2) { continue; }
 
-						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, m_stencilRefs[layerElementIdx]);
+						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, m_stencilRefs[layerElementIdx]);
 						//printf("draw scene element %i with stencil %i , mask %i\n", layerElementIdx, m_stencilRefs[layerElementIdx], layerComparMask);
 						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);	
 						// draw Camera

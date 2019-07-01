@@ -245,4 +245,9 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="models\halfSphere.obj" />
   </ItemGroup>
+  <ItemGroup>
+    <Object Include="models\inverted_cube.obj">
+      <Filter>Resource Files</Filter>
+    </Object>
+  </ItemGroup>
 </Project>
