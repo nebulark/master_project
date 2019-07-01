@@ -50,7 +50,7 @@ public:
 
 		for (int i = 0; i < layerNum;++i)
 		{
-			result = result * 4 + 1;
+			result = result * n + 1;
 		}
 		return result;
 	}
