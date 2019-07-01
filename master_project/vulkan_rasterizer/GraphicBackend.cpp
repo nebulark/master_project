@@ -283,6 +283,28 @@ void GraphicsBackend::Init(SDL_Window* window)
 				.setLayerCount(1));
 
 		m_textureImageView = m_device->createImageViewUnique(imageViewCreateInfo);
+
+
+		vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
+			.setMagFilter(vk::Filter::eLinear)
+			.setMinFilter(vk::Filter::eLinear)
+			.setAddressModeU(vk::SamplerAddressMode::eRepeat)
+			.setAddressModeV(vk::SamplerAddressMode::eRepeat)
+			.setAddressModeW(vk::SamplerAddressMode::eRepeat)
+			//	.setAnisotropyEnable(true)
+			//	.setMaxAnisotropy(16)
+			.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+			.setUnnormalizedCoordinates(false)
+			.setCompareEnable(false)
+			.setCompareOp(vk::CompareOp::eAlways)
+			.setMipmapMode(vk::SamplerMipmapMode::eLinear)
+			.setMipLodBias(0.f)
+			.setMinLod(0.f)
+			.setMaxLod(static_cast<float>(1))
+			;
+
+		m_textureSampler = m_device->createSamplerUnique(samplerCreateInfo);
+
 	}
 
 	int windowWidth, windowHeight;
@@ -294,6 +316,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	m_depthFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
+	// Create Depth Stencil Buffer
 	{
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo{}
 			.setImageType(vk::ImageType::e2D)
@@ -308,23 +331,23 @@ void GraphicsBackend::Init(SDL_Window* window)
 		vmaAllocImage.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
 		m_depthBuffer = UniqueVmaImage(m_allocator.get(), imageCreateInfo, vmaAllocImage);
-		
+
 		VulkanDebug::SetObjectName(m_device.get(), m_depthBuffer.Get(), "Depth Stencil Buffer");
 
 		//---------------
 
-		{
-			m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
-				.setViewType(vk::ImageViewType::e2D)
-				.setFormat(m_depthFormat)
-				.setImage(m_depthBuffer.Get())
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1)));
-		}
+
+		m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
+			.setViewType(vk::ImageViewType::e2D)
+			.setFormat(m_depthFormat)
+			.setImage(m_depthBuffer.Get())
+			.setSubresourceRange(vk::ImageSubresourceRange()
+				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+				.setBaseMipLevel(0)
+				.setLevelCount(1)
+				.setBaseArrayLayer(0)
+				.setLayerCount(1)));
+
 	}
 	// create rendered Depth buffer
 	{
@@ -354,33 +377,29 @@ void GraphicsBackend::Init(SDL_Window* window)
 			VulkanDebug::SetObjectName(m_device.get(), renderedDepthImage.Get(), renderedDepthImageName.c_str());
 		}
 
-
-
-	}
-	
-
-	{
 		for (size_t i = 0; i < m_imageview_renderedDepth.size(); ++i)
 		{
-	vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
-					.setImage(m_image_renderedDepth[i].Get())
-					.setViewType(vk::ImageViewType::e2D)
-					.setFormat(renderedDepthFormat)
-					.setSubresourceRange(vk::ImageSubresourceRange{}
-						.setAspectMask(vk::ImageAspectFlagBits::eColor)
-						.setBaseArrayLayer(0)
-						.setLayerCount(1)
-						.setBaseMipLevel(0)
-						.setLevelCount(1))
-					;
-				m_imageview_renderedDepth[i] = m_device->createImageViewUnique(imageViewCreateInfo);
+			vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
+				.setImage(m_image_renderedDepth[i].Get())
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(renderedDepthFormat)
+				.setSubresourceRange(vk::ImageSubresourceRange{}
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1))
+				;
+			m_imageview_renderedDepth[i] = m_device->createImageViewUnique(imageViewCreateInfo);
 
-				
+
 		}
 	}
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, maxPortalCount, numRecursions, &debugRenderpass);
+
+	// create Framebuffer
 	{
 
 		vk::FramebufferCreateInfo framebufferPrototype = vk::FramebufferCreateInfo{}
@@ -394,7 +413,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				imageView.get(),
 				m_depthBufferView.get(),
 				m_imageview_renderedDepth[0].get(),
-				m_imageview_renderedDepth[1].get() 
+				m_imageview_renderedDepth[1].get()
 			};
 			m_framebuffer.push_back(m_device->createFramebufferUnique(
 				vk::FramebufferCreateInfo{ framebufferPrototype }
@@ -404,34 +423,105 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 	}
 
-	m_vertShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.vert.spv", m_device.get());
-	m_fragShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.frag.spv", m_device.get());
-	m_fragShaderModule_subsequent = VulkanUtils::CreateShaderModuleFromFile("shader_subsequent.frag.spv", m_device.get());
-
-	m_vertShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.vert.spv", m_device.get());
-	m_fragShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.frag.spv", m_device.get());
-	m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
-
-
-	// Descriptor Sets - Combined Image Sampler
+	// create Shader Modules
 	{
+		m_vertShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.vert.spv", m_device.get());
+		m_fragShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.frag.spv", m_device.get());
+		m_fragShaderModule_subsequent = VulkanUtils::CreateShaderModuleFromFile("shader_subsequent.frag.spv", m_device.get());
+
+		m_vertShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.vert.spv", m_device.get());
+		m_fragShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.frag.spv", m_device.get());
+		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
+	}
+
+	// Createing Descriptor Set Buffers
+	constexpr vk::DeviceSize cameraMatBufferSize = sizeof(glm::mat4) * cameraMatCount;
+	constexpr vk::DeviceSize cameraIndexBufferSize = sizeof(uint32_t) * cameraIndexCount;
+	constexpr vk::DeviceSize portalIndexHelperBufferSize = sizeof(uint32_t) * cameraMatCount;
+	constexpr vk::DeviceSize globalRenderDataUboSize = sizeof(Ubo_GlobalRenderData);
+
+	{
+
+		for (size_t i = 0; i < MaxInFlightFrames; ++i)
+		{
+			std::string indexAsString = std::to_string(i);
+
+			{
+				const vk::BufferCreateInfo cameraMatBufferCreateInfo = vk::BufferCreateInfo{}
+					.setSize(cameraMatBufferSize)
+					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo allocCreateInfo = {};
+				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+				m_cameratMat_buffer[i] = UniqueVmaBuffer(m_allocator.get(), cameraMatBufferCreateInfo, allocCreateInfo);
+				VulkanDebug::SetObjectName(m_device.get(), m_cameratMat_buffer[i].Get(), (std::string("camera mat") + indexAsString).c_str());
+			}
+
+			{
+				const vk::BufferCreateInfo cameraIndexBufferCreateInfo = vk::BufferCreateInfo{}
+					.setSize(cameraIndexBufferSize)
+					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo cameraIndexBufferAllocCreateInfo = {};
+				cameraIndexBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
+
+				m_cameraIndexBuffer[i] = UniqueVmaBuffer(m_allocator.get(), cameraIndexBufferCreateInfo, cameraIndexBufferAllocCreateInfo);
+				VulkanDebug::SetObjectName(m_device.get(), m_cameraIndexBuffer[i].Get(), (std::string("camera index") + indexAsString).c_str());
+			}
+			{
+				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
+					.setSize(portalIndexHelperBufferSize)
+					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo portalIdxHelperBufferAllocCreateInfo = {};
+				portalIdxHelperBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
+
+				m_portalIndexHelperBuffer[i] = UniqueVmaBuffer(m_allocator.get(), portalIdxHelperCreateInfo, portalIdxHelperBufferAllocCreateInfo);
+				VulkanDebug::SetObjectName(m_device.get(), m_portalIndexHelperBuffer[i].Get(), (std::string("portal idx helper") + indexAsString).c_str());
+			}
+			{
+				const vk::BufferCreateInfo uboBufferCreateInfo = vk::BufferCreateInfo{}
+					.setSize(globalRenderDataUboSize)
+					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+					.setSharingMode(vk::SharingMode::eExclusive);
+
+				VmaAllocationCreateInfo uboAllocCreateInfo = {};
+				uboAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+				m_ubo_buffer[i] = UniqueVmaBuffer(m_allocator.get(), uboBufferCreateInfo, uboAllocCreateInfo);
+				VulkanDebug::SetObjectName(m_device.get(), m_ubo_buffer[i].Get(), (std::string("ubo buffer") + indexAsString).c_str());
+			}
+
+
+		}
+	}
+
+
+	// Descriptor Set layouts - Combined Image Sampler
+	{
+		// Texture
 		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_texture[] = {
-		vk::DescriptorSetLayoutBinding{}
-			.setBinding(0)
-			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
-			.setStageFlags(vk::ShaderStageFlagBits::eFragment),
-
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0)
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eCombinedImageSampler)
+					.setStageFlags(vk::ShaderStageFlagBits::eFragment),
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_texture = vk::DescriptorSetLayoutCreateInfo()
 				.setBindingCount(GetSizeUint32(descriptorSetBinding_texture))
 				.setPBindings(descriptorSetBinding_texture)
 				;
 
-			m_descriptorSetLayout_texture = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_texture);
+			m_descriptorSetLayout_texture = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_texture);
 		}
+
+		// Ubo
 		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_ubo[] =
 			{
@@ -442,13 +532,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setStageFlags(vk::ShaderStageFlagBits::eVertex),
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_ubo = vk::DescriptorSetLayoutCreateInfo()
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_ubo = vk::DescriptorSetLayoutCreateInfo()
 				.setBindingCount(GetSizeUint32(descriptorSetBinding_ubo))
 				.setPBindings(descriptorSetBinding_ubo)
 				;
 
-			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_ubo);
+			m_descriptorSetLayout_ubo = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_ubo);
 		}
+
+		// camera mats
 		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_cameraMat[] =
 			{
@@ -459,32 +551,72 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setStageFlags(vk::ShaderStageFlagBits::eVertex),
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_cameraMat = vk::DescriptorSetLayoutCreateInfo()
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_cameraMat = vk::DescriptorSetLayoutCreateInfo()
 				.setBindingCount(GetSizeUint32(descriptorSetBinding_cameraMat))
 				.setPBindings(descriptorSetBinding_cameraMat)
 				;
 
-			m_descriptorSetLayout_cameraMat = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_cameraMat);
+			m_descriptorSetLayout_cameraMat = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_cameraMat);
 		}
+		// camera indices
+		{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_cameraIndices[] =
+			{
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0) // matches Shader code
+					.setDescriptorType(vk::DescriptorType::eStorageBuffer)
+					.setDescriptorCount(1)
+					.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment),
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_cameraIndices = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_cameraIndices))
+				.setPBindings(descriptorSetBinding_cameraIndices)
+				;
+
+			m_descriptorSetLayout_cameraIndices = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_cameraIndices);
+		}
+		// portal index helper
+		{
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_portalIndexHelper[] =
+			{
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0) // matches Shader code
+					.setDescriptorType(vk::DescriptorType::eStorageBuffer)
+					.setDescriptorCount(1)
+					.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment),
+			};
+
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_portalIndexHelper = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_portalIndexHelper))
+				.setPBindings(descriptorSetBinding_portalIndexHelper)
+				;
+
+			m_descriptorSetLayout_portalIndexHelper = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_portalIndexHelper);
+		}
+
+
 		// rendered Depth storage texel buffer
 		{
 			vk::DescriptorSetLayoutBinding descriptorSetBinding_renderedDepth[] = {
-		vk::DescriptorSetLayoutBinding{}
-			.setBinding(0)
-			.setDescriptorCount(1)
-			.setDescriptorType(vk::DescriptorType::eInputAttachment)
-			.setStageFlags(vk::ShaderStageFlagBits::eFragment),
-
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(0)
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eInputAttachment)
+					.setStageFlags(vk::ShaderStageFlagBits::eFragment),
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descritorSetLayoutInfo_renderedDepth = vk::DescriptorSetLayoutCreateInfo()
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_renderedDepth = vk::DescriptorSetLayoutCreateInfo()
 				.setBindingCount(GetSizeUint32(descriptorSetBinding_renderedDepth))
 				.setPBindings(descriptorSetBinding_renderedDepth)
 				;
 
-			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descritorSetLayoutInfo_renderedDepth);
+			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_renderedDepth);
 		}
+	}
 
+	// create Descriptor pool
+	{
 		vk::DescriptorPoolSize descritproPoolSizes[] =
 		{
 
@@ -494,8 +626,13 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		vk::DescriptorPoolSize{}
 			.setType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(GetSizeUint32(m_descriptorSet_ubo) + GetSizeUint32(m_descriptorSet_cameratMat)),
+			.setDescriptorCount(
+				GetSizeUint32(m_descriptorSet_ubo)
+				+ GetSizeUint32(m_descriptorSet_cameratMat)
+				+ GetSizeUint32(m_descriptorSet_cameraIndices)
+				+ GetSizeUint32(m_descriptorSet_portalIndexHelper)
 
+			),
 
 			vk::DescriptorPoolSize{}
 			.setType(vk::DescriptorType::eInputAttachment)
@@ -505,59 +642,60 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo_sampler = vk::DescriptorPoolCreateInfo()
 			.setPoolSizeCount(GetSizeUint32(descritproPoolSizes)).setPPoolSizes(descritproPoolSizes)
-			.setMaxSets(7);
+			.setMaxSets(
+				1 // combined image sampler
+				+ GetSizeUint32(m_descriptorSet_ubo)
+				+ GetSizeUint32(m_descriptorSet_cameratMat)
+				+ GetSizeUint32(m_descriptorSet_cameraIndices)
+				+ GetSizeUint32(m_descriptorSet_portalIndexHelper)
+				+ GetSizeUint32(m_descriptorSet_renderedDepth)
+			);
 
 
 		m_descriptorPool = m_device->createDescriptorPoolUnique(descriptorPoolCreateInfo_sampler);
-
-		{
-			vk::DescriptorSetLayout layouts[] = {
-				m_descriptorSetLayout_texture.get(),
-				m_descriptorSetLayout_ubo.get(),
-				m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
-				m_descriptorSetLayout_renderedDepth.get(),
-				m_descriptorSetLayout_renderedDepth.get(),
-				m_descriptorSetLayout_cameraMat.get(),
-				m_descriptorSetLayout_cameraMat.get(),
-			};
-
-			vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
-				.setDescriptorPool(m_descriptorPool.get())
-				.setDescriptorSetCount(GetSizeUint32(layouts))
-				.setPSetLayouts(layouts);
+	}
 
 
-			std::vector<vk::DescriptorSet> descriptorSets = m_device->allocateDescriptorSets(descritproSetAllocateInfo);
-			m_descriptorSet_texture = std::move(descriptorSets[0]);
-			m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
-			m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
-			m_descriptorSet_renderedDepth[0] = std::move(descriptorSets[3]);
-			m_descriptorSet_renderedDepth[1] = std::move(descriptorSets[4]);
-			m_descriptorSet_cameratMat[0] = std::move(descriptorSets[5]);
-				m_descriptorSet_cameratMat[1] = std::move(descriptorSets[6]);
-		}
+	// create descriptor Sets
+	{
+		vk::DescriptorSetLayout layouts[] = {
+			m_descriptorSetLayout_texture.get(),
+			m_descriptorSetLayout_ubo.get(),
+			m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
+			m_descriptorSetLayout_renderedDepth.get(),
+			m_descriptorSetLayout_renderedDepth.get(),
+			m_descriptorSetLayout_cameraMat.get(),
+			m_descriptorSetLayout_cameraMat.get(),
+			m_descriptorSetLayout_cameraIndices.get(),
+			m_descriptorSetLayout_cameraIndices.get(),
+			m_descriptorSetLayout_portalIndexHelper.get(),
+			m_descriptorSetLayout_portalIndexHelper.get(),
+		};
 
+		vk::DescriptorSetAllocateInfo descritproSetAllocateInfo = vk::DescriptorSetAllocateInfo{}
+			.setDescriptorPool(m_descriptorPool.get())
+			.setDescriptorSetCount(GetSizeUint32(layouts))
+			.setPSetLayouts(layouts);
+
+
+		std::vector<vk::DescriptorSet> descriptorSets = m_device->allocateDescriptorSets(descritproSetAllocateInfo);
+		m_descriptorSet_texture = std::move(descriptorSets[0]);
+		m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
+		m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
+		m_descriptorSet_renderedDepth[0] = std::move(descriptorSets[3]);
+		m_descriptorSet_renderedDepth[1] = std::move(descriptorSets[4]);
+		m_descriptorSet_cameratMat[0] = std::move(descriptorSets[5]);
+		m_descriptorSet_cameratMat[1] = std::move(descriptorSets[6]);
+		m_descriptorSet_cameraIndices[0] = std::move(descriptorSets[7]);
+		m_descriptorSet_cameraIndices[1] = std::move(descriptorSets[8]);
+		m_descriptorSet_portalIndexHelper[0] = std::move(descriptorSets[9]);
+		m_descriptorSet_portalIndexHelper[1] = std::move(descriptorSets[10]);
+	}
+
+	// write descriptor sets
+	{
 		// write texture descriptor set
 		{
-			vk::SamplerCreateInfo samplerCreateInfo = vk::SamplerCreateInfo()
-				.setMagFilter(vk::Filter::eLinear)
-				.setMinFilter(vk::Filter::eLinear)
-				.setAddressModeU(vk::SamplerAddressMode::eRepeat)
-				.setAddressModeV(vk::SamplerAddressMode::eRepeat)
-				.setAddressModeW(vk::SamplerAddressMode::eRepeat)
-				//	.setAnisotropyEnable(true)
-				//	.setMaxAnisotropy(16)
-				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
-				.setUnnormalizedCoordinates(false)
-				.setCompareEnable(false)
-				.setCompareOp(vk::CompareOp::eAlways)
-				.setMipmapMode(vk::SamplerMipmapMode::eLinear)
-				.setMipLodBias(0.f)
-				.setMinLod(0.f)
-				.setMaxLod(static_cast<float>(1))
-				;
-
-			m_textureSampler = m_device->createSamplerUnique(samplerCreateInfo);
 
 			vk::DescriptorImageInfo imageInfo = vk::DescriptorImageInfo{}
 				.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
@@ -573,144 +711,111 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_device->updateDescriptorSets(writeDescriptorSet, {});
 		}
-		// write ubo descriptorSet
+
+
+		auto updateDescriptorSetsBuffers = [](
+			vk::Device device,
+			std::array<UniqueVmaBuffer, MaxInFlightFrames>& buffer,
+			std::array<vk::DescriptorSet, MaxInFlightFrames>& descriptorSet,
+			vk::DeviceSize bufferSize, vk::DescriptorType type, int binding)
 		{
+			std::array<vk::DescriptorBufferInfo, MaxInFlightFrames> descriptorBufferInfos;
+			std::array<vk::WriteDescriptorSet, MaxInFlightFrames> writeDescriptorSets;
 
-			vk::DeviceSize uniformBufferSize = sizeof(Ubo_GlobalRenderData);
-			for (size_t i = 0; i < m_ubo_buffer.size(); ++i)
-			{
-				const vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(uniformBufferSize)
-					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-					.setSharingMode(vk::SharingMode::eExclusive);
-
-				VmaAllocationCreateInfo allocCreateInfo = {};
-				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-				m_ubo_buffer[i] = UniqueVmaBuffer(m_allocator.get(), bufferCreateInfo, allocCreateInfo);
-			}
-
-
-			std::array<vk::DescriptorBufferInfo, std::tuple_size_v<decltype(m_ubo_buffer)>> descriptorBufferInfos;
-			std::array<vk::WriteDescriptorSet, std::tuple_size_v<decltype(m_ubo_buffer)>> writeDescriptorSets;
-
-			for (size_t i = 0; i < descriptorBufferInfos.size(); ++i)
+			for (size_t i = 0; i < MaxInFlightFrames; ++i)
 			{
 
 				descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
-					.setBuffer(m_ubo_buffer[i].Get())
+					.setBuffer(buffer[i].Get())
 					.setOffset(0)
-					.setRange(sizeof(Ubo_GlobalRenderData));
+					.setRange(bufferSize);
 
 
 				writeDescriptorSets[i] = vk::WriteDescriptorSet{}
 					.setDescriptorCount(1)
-					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+					.setDescriptorType(type)
 					.setDstArrayElement(0)
 					.setDstBinding(0) // matches shader code
-					.setDstSet(m_descriptorSet_ubo[i])
+					.setDstSet(descriptorSet[i])
 					.setPBufferInfo(&descriptorBufferInfos[i])
 					;
 			}
 
-			m_device->updateDescriptorSets(writeDescriptorSets, {});
+			device.updateDescriptorSets(writeDescriptorSets, {});
+		};
+
+		// write ubo buffer descriptor set
+		updateDescriptorSetsBuffers(m_device.get(), m_ubo_buffer, m_descriptorSet_ubo, sizeof(Ubo_GlobalRenderData),
+			vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+
+		// write camera mat descriptor set
+		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat, cameraMatBufferSize,
+			vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+
+		// write camera index descriptor set
+		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices, cameraIndexBufferSize,
+			vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
+
+		// write portal index helper descriptor set
+		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper, portalIndexHelperBufferSize,
+			vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
 
 
-		}
-// write cameraMat descriptorSet
+		// write rendered Depth descriptor Set
 		{
-			constexpr vk::DeviceSize uniformBufferSize = sizeof(glm::mat4) * cameraMatCount;
-			for (size_t i = 0; i < m_cameratMat_buffer.size(); ++i)
-			{
-				const vk::BufferCreateInfo bufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(uniformBufferSize)
-					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-					.setSharingMode(vk::SharingMode::eExclusive);
-
-				VmaAllocationCreateInfo allocCreateInfo = {};
-				allocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-				m_cameratMat_buffer[i] = UniqueVmaBuffer(m_allocator.get(), bufferCreateInfo, allocCreateInfo);
-			}
-
-
-			std::array<vk::DescriptorBufferInfo, std::tuple_size_v<decltype(m_cameratMat_buffer)>> descriptorBufferInfos;
-			std::array<vk::WriteDescriptorSet, std::tuple_size_v<decltype(m_cameratMat_buffer)>> writeDescriptorSets;
-
-			for (size_t i = 0; i < descriptorBufferInfos.size(); ++i)
-			{
-
-				descriptorBufferInfos[i] = vk::DescriptorBufferInfo{}
-					.setBuffer(m_cameratMat_buffer[i].Get())
-					.setOffset(0)
-					.setRange(uniformBufferSize);
-
-
-				writeDescriptorSets[i] = vk::WriteDescriptorSet{}
-					.setDescriptorCount(1)
-					.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-					.setDstArrayElement(0)
-					.setDstBinding(0) // matches shader code
-					.setDstSet(m_descriptorSet_cameratMat[i])
-					.setPBufferInfo(&descriptorBufferInfos[i])
-					;
-			}
-
-			m_device->updateDescriptorSets(writeDescriptorSets, {});
-
-
-		}
-
-		// writed rendered Depth descriptor Set
-		{
-			std::array<vk::DescriptorImageInfo,2> imageInfos;
-			std::array<vk::WriteDescriptorSet,2> writeDescriptorSet_inputAttachment;
+			std::array<vk::DescriptorImageInfo, 2> imageInfos;
+			std::array<vk::WriteDescriptorSet, 2> writeDescriptorSet_inputAttachment;
 
 			for (size_t i = 0; i < std::size(imageInfos); ++i)
 			{
 
-			imageInfos[i] = vk::DescriptorImageInfo{}
+				imageInfos[i] = vk::DescriptorImageInfo{}
 					.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 					.setImageView(m_imageview_renderedDepth[i].get());
 
-			writeDescriptorSet_inputAttachment[i] = vk::WriteDescriptorSet{}
-				.setDescriptorCount(1)
-				.setPImageInfo(&imageInfos[i])
-				.setDescriptorType(vk::DescriptorType::eInputAttachment)
-				.setDstArrayElement(0)
-				.setDstBinding(0)
-				.setDstSet(m_descriptorSet_renderedDepth[i])
-				;
+				writeDescriptorSet_inputAttachment[i] = vk::WriteDescriptorSet{}
+					.setDescriptorCount(1)
+					.setPImageInfo(&imageInfos[i])
+					.setDescriptorType(vk::DescriptorType::eInputAttachment)
+					.setDstArrayElement(0)
+					.setDstBinding(0)
+					.setDstSet(m_descriptorSet_renderedDepth[i])
+					;
 
 			}
 
-			
+
 			m_device->updateDescriptorSets(writeDescriptorSet_inputAttachment, {});
 
 		}
 	}
 
-	vk::PushConstantRange pushConstantRange = vk::PushConstantRange{}
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-		.setOffset(0)
-		.setSize(sizeof(PushConstant));
+	// create Pipeline Layout
+	{
+		vk::PushConstantRange pushConstantRange = vk::PushConstantRange{}
+			.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+			.setOffset(0)
+			.setSize(sizeof(PushConstant));
 
 
-	vk::DescriptorSetLayout layouts[] = {
-		m_descriptorSetLayout_texture.get(),
-		m_descriptorSetLayout_ubo.get(),
-		m_descriptorSetLayout_cameraMat.get(),
-		m_descriptorSetLayout_renderedDepth.get(),
-	};
+		vk::DescriptorSetLayout layouts[] = {
+			m_descriptorSetLayout_texture.get(),
+			m_descriptorSetLayout_ubo.get(),
+			m_descriptorSetLayout_cameraMat.get(),
+			m_descriptorSetLayout_renderedDepth.get(),
+			m_descriptorSetLayout_cameraIndices.get(),
+			m_descriptorSetLayout_portalIndexHelper.get(),
+		};
 
-	vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
-		.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
-		.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange);
+		vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
+			.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
+			.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange);
 
-	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
+		m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
+	}
 
 	// create Graphic pipelines
-	{	
+	{
 		const ShaderSpecialisation::MultiBytes<1> multibytes_camerMats = []() {
 			ShaderSpecialisation::MultiBytes<1> multibytes{};
 			multibytes.data[0] = gsl::narrow<uint8_t>(cameraMatCount);
@@ -991,7 +1096,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					m_descriptorSet_ubo[m_currentframe],
 					m_descriptorSet_cameratMat[m_currentframe],
 					m_descriptorSet_renderedDepth[1],
-				};
+		};
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
@@ -999,7 +1104,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
 
 
-			}
+	}
 			{
 				// First Portal Pass
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
@@ -1136,7 +1241,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 
 			drawBuffer.endRenderPass();
-		}
+}
 
 		drawBuffer.end();
 

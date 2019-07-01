@@ -28,9 +28,11 @@ private:
 	static constexpr int numRecursions = std::size(maxVisiblePortalsForRecursion);
 	static constexpr int cameraMatCount = NTree::CalcTotalElements(maxPortalCount, numRecursions + 1);
 
-	// Technically incorrect, but fine as long as all recursion have the same maxVisiblePortalsCount
-	static constexpr int cameraMatIndexCount = NTree::CalcTotalElements(maxVisiblePortalsForRecursion[0], numRecursions + 1);
 
+	// Technically incorrect, but fine as long as all recursion have the same maxVisiblePortalsCount
+	static constexpr int cameraIndexCount = NTree::CalcTotalElements(maxVisiblePortalsForRecursion[0], numRecursions + 1);
+
+	static_assert(cameraMatCount >= cameraIndexCount);
 
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;
@@ -55,32 +57,44 @@ private:
 	Swapchain m_swapchain;
 	vk::Format m_depthFormat;
 	UniqueVmaImage m_depthBuffer;
+	vk::UniqueImageView m_depthBufferView;
+
 	std::vector<vk::UniqueFramebuffer> m_framebuffer;
 
 	vk::UniqueRenderPass m_portalRenderPass;
 
 	vk::UniqueDescriptorPool m_descriptorPool;
 
-	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_texture;
-	vk::DescriptorSet m_descriptorSet_texture;
+	vk::UniqueSampler m_textureSampler;
+	UniqueVmaImage m_textureImage;
+	vk::UniqueImageView m_textureImageView;
 
-	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_ubo;
-	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraMat;
-	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_ubo;
-	std::array<vk::DescriptorSet , MaxInFlightFrames> m_descriptorSet_cameratMat;
 	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_ubo_buffer;
 	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameratMat_buffer;
 
 	// Stores indices to access the camera mat buffer
-	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameraMatIndexBuffer;
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_cameraIndexBuffer;
 
 	// only used by portal rendering, to calc its index, so it can write into the correct location of cameraMatIndexBuffer
-	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_portalIdxHelperBuffer;
+	std::array<UniqueVmaBuffer, MaxInFlightFrames> m_portalIndexHelperBuffer;
 
+	std::array<UniqueVmaImage, 2> m_image_renderedDepth;
+	std::array<vk::UniqueImageView, 2> m_imageview_renderedDepth;
+
+
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_texture;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_ubo;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraMat;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraIndices;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_portalIndexHelper;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_renderedDepth;
-	std::array<UniqueVmaImage,2> m_image_renderedDepth;
-	std::array<vk::UniqueImageView,2> m_imageview_renderedDepth;
-	std::array<vk::DescriptorSet,2> m_descriptorSet_renderedDepth;
+
+	vk::DescriptorSet m_descriptorSet_texture;
+	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_ubo;
+	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_cameratMat;
+	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_cameraIndices;
+	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_portalIndexHelper;
+	std::array<vk::DescriptorSet, 2> m_descriptorSet_renderedDepth;
 
 	vk::UniquePipelineLayout m_pipelineLayout;
 
@@ -95,10 +109,6 @@ private:
 	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
 	std::vector<uint8_t> m_stencilRefs;
 
-	vk::UniqueSampler m_textureSampler;
-	UniqueVmaImage m_textureImage;
-	vk::UniqueImageView m_textureImageView;
-	vk::UniqueImageView m_depthBufferView;
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::unique_ptr<Scene> m_scene;
 	PortalManager m_portalManager;
