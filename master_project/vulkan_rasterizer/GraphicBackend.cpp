@@ -75,7 +75,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 	constexpr int numPortals = 4;
-	constexpr int numRecursions = 1;
+	constexpr int numRecursions = 2;
 
 	constexpr uint32_t cameraMatCount =  NTree::CalcTotalElements(numPortals, numRecursions + 1);
 }
