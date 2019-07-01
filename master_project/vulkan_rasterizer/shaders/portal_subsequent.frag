@@ -22,7 +22,7 @@ layout(push_constant) uniform PushConstant {
 void main() 
 {
 
-	if(gl_FragCoord.z < subpassLoad(inputDepth).r + 0.05)
+	//if(gl_FragCoord.z <= subpassLoad(inputDepth).r)
 	{
 		discard;
 	}

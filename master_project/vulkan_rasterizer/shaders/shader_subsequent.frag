@@ -12,7 +12,7 @@ layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput i
 
 void main() {
 
-	if(gl_FragCoord.z < subpassLoad(inputDepth).r +0.05) 
+	if(gl_FragCoord.z <= subpassLoad(inputDepth).r) 
 	{
 		discard;
 	}
