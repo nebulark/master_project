@@ -12,12 +12,12 @@ layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput i
 
 void main() {
 
-	if(gl_FragCoord.z < subpassLoad(inputDepth).r)
+	if(gl_FragCoord.z < subpassLoad(inputDepth).r +0.05) 
 	{
 		discard;
 	}
 
-    outColor = texture(texSampler,fragTexCoord) - vec4(vec3(0.1),1.0);
+    outColor = texture(texSampler,fragTexCoord);// - vec4(vec3(0.1),1.0);
 
 #if 0
 	float renderedDepth = subpassLoad(inputDepth).r / 2.f;
