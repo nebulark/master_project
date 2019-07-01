@@ -709,6 +709,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
 		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
+		.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 	);
 
 
@@ -734,6 +735,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 		.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 		.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+		.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 	);
 
 
@@ -775,6 +777,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);
 
 		subpasses[portalSubpassIdx] = vk::SubpassDescription{}
@@ -805,6 +808,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);
 	}
 
