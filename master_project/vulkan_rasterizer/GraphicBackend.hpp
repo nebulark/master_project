@@ -57,8 +57,6 @@ private:
 	UniqueVmaImage m_depthBuffer;
 	std::vector<vk::UniqueFramebuffer> m_framebuffer;
 
-	vk::UniqueRenderPass m_colorDepthRenderPass;
-
 	vk::UniqueRenderPass m_portalRenderPass;
 
 	vk::UniqueDescriptorPool m_descriptorPool;
@@ -93,11 +91,6 @@ private:
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_imageAvailableSem;
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_renderFinishedSem;
 	int m_currentframe = 0;
-
-	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_initial;
-	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_scene_subsequent;
-	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_initial;
-	vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> m_graphicsPipeline_portals_subesquent;
 
 	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
 	std::vector<uint8_t> m_stencilRefs;

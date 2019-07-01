@@ -11,7 +11,6 @@ layout(push_constant) uniform PushConstant {
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
-    mat4 view;
     mat4 proj;
 } u_grd;
 
@@ -33,11 +32,10 @@ void main() {
 
     gl_Position = 
 	u_grd.proj *
-	viewMat * //u_grd.view *
+	viewMat *
 	pc.model *
 	vec4(inPosition, 1.0);
 
-//	gl_Position = vec4(clamp(inPosition, vec3(-1.0), vec3(+1.0)), 1.0);
     fragNormal = inNormal;
     fragTexCoord = inTexCoord;
 }

@@ -8,33 +8,6 @@ namespace GraphicsPipeline
 		extern const vk::PipelineMultisampleStateCreateInfo multisampleState_noMultisampling;
 		extern const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_triangleList;
 
-		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_drawScene_initial(
-			vk::Device logicalDevice,
-			vk::Extent2D swapchainExtent,
-			vk::RenderPass renderpass,
-			vk::PipelineLayout pipelineLayout,
-			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos
-		);
-
-			
-		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_PortalRender_Initial(
-			vk::Device logicalDevice,
-			vk::Extent2D swapchainExtent,
-			vk::RenderPass renderpass,
-			vk::PipelineLayout pipelineLayout,
-			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos
-		);
-
-		vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic> CreateGraphicsPipeline_drawScene_subsequent(
-			vk::Device logicalDevice,
-			vk::Extent2D swapchainExtent,
-			vk::RenderPass renderpass,
-			vk::PipelineLayout pipelineLayout,
-			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos,
-			int subpassIndex
-		);
-
-
 		struct PipelinesCreateInfo
 		{
 			vk::Device logicalDevice;
@@ -48,8 +21,6 @@ namespace GraphicsPipeline
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_portalSubsequent;
 
 		};
-
-		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals, std::vector<std::string>* optionalDebug = nullptr);
 
 		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals, std::vector<std::string>* optionalDebug = nullptr);
 }

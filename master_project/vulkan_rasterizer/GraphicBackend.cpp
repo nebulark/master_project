@@ -378,7 +378,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 				
 		}
 	}
-	m_colorDepthRenderPass = Renderpass::Portals_One_Pass_old(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat);
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, maxPortalCount, numRecursions, &debugRenderpass);
@@ -710,101 +709,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
 
+	// create Graphic pipelines
+	{	
+		const ShaderSpecialisation::MultiBytes<1> multibytes_camerMats = []() {
+			ShaderSpecialisation::MultiBytes<1> multibytes{};
+			multibytes.data[0] = gsl::narrow<uint8_t>(cameraMatCount);
+			return multibytes;
+		}();
 
-	const ShaderSpecialisation::MultiBytes<1> multibytes_camerMats = []() {
-		ShaderSpecialisation::MultiBytes<1> multibytes{};
-		multibytes.data[0] = gsl::narrow<uint8_t>(cameraMatCount);
-		return multibytes;
-	}();
-
-	const vk::SpecializationInfo setCameraMats = ShaderSpecialisation::ReferenceMultibytes(multibytes_camerMats);
-
-	{
-		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
-		{
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eVertex,
-				m_vertShaderModule.get(),
-				"main",
-				&setCameraMats),
-
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eFragment,
-				m_fragShaderModule.get(),
-				"main",
-				&setCameraMats),
-		};
-
-
-		m_graphicsPipeline_scene_initial = GraphicsPipeline::CreateGraphicsPipeline_drawScene_initial(
-			m_device.get(),
-			m_swapchain.extent,
-			m_colorDepthRenderPass.get(),
-			m_pipelineLayout.get(),
-			pipelineShaderStageCreationInfos);
-	}
-	{
-
-		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos[] =
-		{
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eVertex,
-				m_vertShaderModule.get(),
-				"main",
-				&setCameraMats),
-
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eFragment,
-				m_fragShaderModule_subsequent.get(),
-				"main",
-				&setCameraMats),
-		};
-
-
-		m_graphicsPipeline_scene_subsequent = GraphicsPipeline::CreateGraphicsPipeline_drawScene_subsequent(
-			m_device.get(),
-			m_swapchain.extent,
-			m_colorDepthRenderPass.get(),
-			m_pipelineLayout.get(),
-			pipelineShaderStageCreationInfos,
-			2);
-	}
-
-
-	{
-		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreationInfos_portal[] =
-		{
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eVertex,
-				m_vertShaderModule_portal.get(),
-				"main",
-				&setCameraMats),
-
-			vk::PipelineShaderStageCreateInfo(
-				vk::PipelineShaderStageCreateFlags(),
-				vk::ShaderStageFlagBits::eFragment,
-				m_fragShaderModule_portal.get(),
-				"main",
-				&setCameraMats),
-		};
-
-		m_graphicsPipeline_portals_initial = GraphicsPipeline::CreateGraphicsPipeline_PortalRender_Initial(
-			m_device.get(),
-			m_swapchain.extent,
-			m_colorDepthRenderPass.get(),
-			m_pipelineLayout.get(),
-			pipelineShaderStageCreationInfos_portal);
-
-
-	}
-
-
-	{
+		const vk::SpecializationInfo setCameraMats = ShaderSpecialisation::ReferenceMultibytes(multibytes_camerMats);
 
 		vk::PipelineShaderStageCreateInfo shaderStage_scene_initial[] =
 		{
@@ -822,7 +735,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPSpecializationInfo(&setCameraMats),
 
 		};
-	vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
+		vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
 		{
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
@@ -837,7 +750,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPSpecializationInfo(&setCameraMats),
 
 		};
-	vk::PipelineShaderStageCreateInfo shaderStage_scene_subsequent[] =
+		vk::PipelineShaderStageCreateInfo shaderStage_scene_subsequent[] =
 		{
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
@@ -852,7 +765,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPSpecializationInfo(&setCameraMats),
 
 		};
-	vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
+		vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
 		{
 			vk::PipelineShaderStageCreateInfo{}
 			.setStage(vk::ShaderStageFlagBits::eVertex)
@@ -995,7 +908,6 @@ void GraphicsBackend::Render(const Camera& camera)
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), ubo_Allocation);
 		Ubo_GlobalRenderData renderData;
 		renderData.proj = camera.GetProjectionMatrix();
-		renderData.view = camera.m_transform.ToViewMat();
 
 		std::memcpy(memoryMap.GetMappedMemoryPtr(), &renderData, sizeof(renderData));
 	}
@@ -1082,7 +994,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				};
 
 				drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
-			
+
 
 				m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
 
@@ -1144,7 +1056,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
-					const int renderedDepthInputIdx = (iteration+1) % 2;
+					const int renderedDepthInputIdx = (iteration + 1) % 2;
 
 					std::array<vk::DescriptorSet, 4> descriptorSets = {
 						m_descriptorSet_texture,
@@ -1156,13 +1068,13 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
-					//for (int layerElementIdx = layerEndIndex - 1; layerElementIdx >= layerStartIndex; --layerElementIdx)
+						//for (int layerElementIdx = layerEndIndex - 1; layerElementIdx >= layerStartIndex; --layerElementIdx)
 					{
 						//if (layerElementIdx == 2) { continue; }
 
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, m_stencilRefs[layerElementIdx]);
 						//printf("draw scene element %i with stencil %i , mask %i\n", layerElementIdx, m_stencilRefs[layerElementIdx], layerComparMask);
-						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);	
+						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);
 						// draw Camera
 						{
 
@@ -1195,7 +1107,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				{
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawPortalPipelineIdx].get());
-					
+
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
 					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
@@ -1209,7 +1121,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 
 
-		
+
 			// skip other passes for now
 			// start with i = 3 as we have used three passes so far
 		/*	for (size_t i = 3; i < m_graphicPipelines.size(); ++i)
@@ -1217,7 +1129,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 			}*/
 
-			
+
 
 			// Subsequent Portal Pass
 			//drawBuffer.nextSubpass(vk::SubpassContents::eInline);
