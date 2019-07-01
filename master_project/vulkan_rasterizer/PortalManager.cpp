@@ -13,6 +13,11 @@ namespace {
 	{
 
 		glm::vec4(1.f, 0.f, 0.f, 1.f),
+		glm::vec4(0.f, 1.f, 0.f, 1.f),
+		glm::vec4(0.f, 0.f, 1.f, 1.f),
+
+
+
 		glm::vec4(0.75f, 0.25f, 0.f, 1.f),
 		glm::vec4(0.5f, 0.5f, 0.f, 1.f),
 		glm::vec4(0.25f, 0.75f, 0.f, 1.f),
@@ -51,6 +56,11 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		pushConstant.cameraIdx = iterationElementIndex;
 
 		pushConstant.debugColor = debugColors[iterationElementIndex % std::size(debugColors)];
+
+		if (a_childIndex >= stencilRefs.size())
+		{
+			pushConstant.debugColor = glm::vec4(1.f, 1.f, 1.f, 1.f);
+		}
 
 		pushConstant.model = portal.a_transform.ToMat();
 		// if this is false this is the last portal rendering and we won't need to set stencil
