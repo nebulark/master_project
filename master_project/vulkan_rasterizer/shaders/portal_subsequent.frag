@@ -12,16 +12,24 @@ layout(location = 1) out vec4 outColor;
 out int gl_FragStencilRefARB;
 
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+layout(push_constant) uniform PushConstant {
+    mat4 model;
+	vec4 debugColor;
+	uint cameraIdx;
+	uint portalStencilVal;
+} pc;
 
 void main() 
 {
 
-	if(gl_FragCoord.z < subpassLoad(inputDepth).r)
+	if(gl_FragCoord.z < subpassLoad(inputDepth).r + 0.05)
 	{
 		discard;
 	}
 
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
-	gl_FragStencilRefARB = 1;
+	int stencilVal = int( pc.portalStencilVal);
+	gl_FragStencilRefARB =stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
+
+	outColor =pc.debugColor;
 }
