@@ -59,14 +59,16 @@ void main()
 	{
 		discard;
 	}
-#if 0
-	int stencilVal = int( pc.portalStencilVal);
+#if 1
+	int stencilVal = int(pc.layerStencilVal);
+
 	gl_FragStencilRefARB =stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
 #endif
 
+#if 0
 	// count previous visible portals
 	// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
 	int childNum = 0;
@@ -97,4 +99,5 @@ void main()
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
+	#endif
 }

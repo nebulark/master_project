@@ -55,16 +55,17 @@ layout(set = 4, binding = 0) buffer CameraIndices {
 
 void main() 
 {
-#if 0
+#if 1
     outColor = vec4(1.0, 0.0, 0.0, 1.0);
-	int stencilVal = int( pc.portalStencilVal);
-	gl_FragStencilRefARB =stencilVal;
+	
+	int stencilVal = int(pc.layerStencilVal);
+	gl_FragStencilRefARB = stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
 #endif
 
-#if 1
+#if 0
 	// count previous visible portals
 	// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
 	int childNum = 0;

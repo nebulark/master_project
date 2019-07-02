@@ -59,14 +59,17 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		pushConstant.maxVisiblePortalCountForRecursion = maxVisiblePortalCount;
 		pushConstant.numOfBitsToShiftChildStencilVal = numBitsToShiftStencil;
 
-
+		
 		pushConstant.debugColor = debugColors[iterationElementIndex % std::size(debugColors)];
 
 		{
+			// comment this when ready to calc portal val in shader
+			pushConstant.layerStencilVal = stencilRef | ((a_childNum + 1) << numBitsToShiftStencil);
+
 			pushConstant.portalCameraIndex = a_childNum + firstChildIdx;
 
 			pushConstant.currentHelperIndex = a_childNum + firstChildIdx;
-
+			
 			pushConstant.model = m_portals[i].a_transform.ToMat();
 			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
@@ -77,6 +80,9 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 
 		{
 			pushConstant.portalCameraIndex = b_childNum + firstChildIdx;
+
+			// comment this when ready to calc portal val in shader
+			pushConstant.layerStencilVal = stencilRef | ((b_childNum + 1) << numBitsToShiftStencil);
 
 			pushConstant.currentHelperIndex = b_childNum + firstChildIdx;
 
