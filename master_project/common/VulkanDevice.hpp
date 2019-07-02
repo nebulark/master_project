@@ -56,5 +56,5 @@ namespace VulkanDevice
 		vk::PhysicalDevice device,
 		gsl::span<const QueueResult> queues,
 		gsl::span<const char*> enabledValidationLayers,
-		gsl::span<const char*> enabledExtensions, vk::PhysicalDeviceFeatures deviceFeatures);
+		gsl::span<const char*> enabledExtensions, const vk::PhysicalDeviceFeatures& deviceFeatures);
 }

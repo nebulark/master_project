@@ -15,9 +15,42 @@ layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput i
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
-	uint cameraIdx;
-	uint portalStencilVal;
+	int cameraIdx;
+
+	// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
+	int firstHelperIndex;
+	// our index in  PortalIndexHelper
+	int currentHelperIndex;
+
+	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
+	int firstCameraIndicesIndex;
+
+	// the stencil value of the layer
+	uint layerStencilVal;
+
+	// the index we need to write into CameraIndices
+	int portalCameraIndex;
+
+	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
+	int numOfBitsToShiftChildStencilVal;
+
+	int maxVisiblePortalCountForRecursion;
 } pc;
+
+layout(constant_id = 1) const int maxPortalCount = 4;
+
+layout(set = 2, binding = 0) uniform ubo_cameraMats
+{
+	mat4 mats[];
+} u_cMats;
+
+layout(set = 5, binding = 0) buffer PortalIndexHelper {
+    int indices[];
+} pih;
+
+layout(set = 4, binding = 0) buffer CameraIndices {
+    int cIndices[];
+} ci;
 
 void main() 
 {
@@ -26,9 +59,41 @@ void main()
 	{
 		discard;
 	}
-
+#if 0
 	int stencilVal = int( pc.portalStencilVal);
 	gl_FragStencilRefARB =stencilVal;
+	outRenderedDepth = gl_FragCoord.z;
+
+	outColor =pc.debugColor;
+#endif
+
+	// count previous visible portals
+	// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
+	int childNum = 0;
+	for(int i = 0; i < maxPortalCount; ++i)
+	{
+		childNum+= pih.indices[i + pc.firstHelperIndex];
+	}
+
+	if(childNum >= pc.maxVisiblePortalCountForRecursion)
+	{
+		// to many visible portals, sadly we won't be visible,
+		// we could set a value, so that subsequent portals won't be rendered to maybe improb perf
+		discard;
+	}
+
+	// mark that we are a visible portal
+	pih.indices[pc.currentHelperIndex] = 1;
+
+	// skip zero to avoid ambiguities
+	uint myStencilVal = childNum+1;
+
+	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
+	int stencilRef_i = int(stencilRef_ui);
+	gl_FragStencilRefARB = stencilRef_i;
+
+	// write our camera index into camera index buffer
+	ci.cIndices[pc.firstCameraIndicesIndex + childNum] = pc.portalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;

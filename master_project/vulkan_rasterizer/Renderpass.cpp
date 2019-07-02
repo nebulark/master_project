@@ -262,7 +262,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_old(vk::Device logicalDevice, 
 
 vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::Format colorFormat, vk::Format depthStencilFormat, int maxPortals, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
 {
-
+#if 0
 	vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
 	enum AttachmentDescriptionIdx
@@ -554,7 +554,8 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass(vk::Device logicalDevice, vk::
 		;
 
 	return logicalDevice.createRenderPassUnique(renderPassCreateInfo);
-
+#endif
+	return vk::UniqueHandle<vk::RenderPass, vk::DispatchLoaderStatic>(vk::RenderPass{});
 }
 
 
@@ -619,10 +620,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 	//////////////////////////////////////////////////////////////////////////
 	// Subpass Description
 
-	// *2 because scene + portalSubpass
-	const uint32_t subpassCount = (iterationCount+1) * 2;
-	std::unique_ptr<vk::SubpassDescription[]> subpassStorage = std::make_unique<vk::SubpassDescription[]>(subpassCount);
-	gsl::span<vk::SubpassDescription> subpasses = gsl::make_span(subpassStorage.get(), subpassCount);
 
 
 	// for render scene we will  always have this output
@@ -679,6 +676,13 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		return subsequentPassInput;
 	}();
 
+
+	// (*2 because scene + portalSubpass) + one last scenepass
+	const uint32_t subpassCount = ((iterationCount -1)* 2) + 1;
+	std::unique_ptr<vk::SubpassDescription[]> subpassStorage = std::make_unique<vk::SubpassDescription[]>(subpassCount);
+	gsl::span<vk::SubpassDescription> subpasses = gsl::make_span(subpassStorage.get(), subpassCount);
+
+
 	// don't know how many there are, maybe test it?
 	std::vector<vk::SubpassDependency> dependencies;
 
@@ -712,7 +716,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eMemoryRead)
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite)
-			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);
 
 
@@ -738,7 +741,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
-			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);
 
 		// self dependency to wait for writes to portal index helper
@@ -753,7 +755,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 	}
 
 	// subsequent subpasses
-	for (int iteration = 1; iteration <= iterationCount; ++iteration)
+	for (int iteration = 1; iteration < iterationCount-1; ++iteration)
 	{
 
 		const IterationParity iterationParity = iteration % 2 == 0 ? even : odd;
@@ -788,7 +790,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
-			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);
 
 		subpasses[portalSubpassIdx] = vk::SubpassDescription{}
@@ -819,7 +820,6 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
 			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
 			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
-			.setDependencyFlags(vk::DependencyFlagBits::eByRegion) // each pixel only depends on pixels at the same location
 		);	
 
 		// self dependency to wait for writes to portal index helper
@@ -833,6 +833,41 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		);
 
 	}
+
+	// final subpass
+	{
+		const int finalSubpassIteration = iterationCount - 1;
+		const int finalSceneSubpassIndex = finalSubpassIteration * 2;
+		const int previousPortalSubpassIndex = finalSceneSubpassIndex - 1;
+
+		const IterationParity finalSubpassIterationParity = finalSubpassIteration % 2 == 0 ? even : odd;
+
+		// we depend on the last portal pass from the previous layer, which is responsible for clearing depth
+		dependencies.push_back(vk::SubpassDependency{}
+			.setSrcSubpass(previousPortalSubpassIndex)
+			.setDstSubpass(finalSceneSubpassIndex)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+			.setDstStageMask(vk::PipelineStageFlagBits::eFragmentShader)
+			.setDstAccessMask(vk::AccessFlagBits::eShaderRead)
+		);
+
+		subpasses[finalSceneSubpassIndex] = vk::SubpassDescription{}
+			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+			.setColorAttachmentCount(GetSizeUint32(renderSceneOutput)).setPColorAttachments(renderSceneOutput)
+			.setInputAttachmentCount(GetSizeUint32(subsequentPassInput[finalSubpassIterationParity]))
+			.setPInputAttachments(std::data(subsequentPassInput[finalSubpassIterationParity]))
+			.setPDepthStencilAttachment(&depthStencilAttachment)
+			;
+
+		if (optionalDebug)
+		{
+			(*optionalDebug)[finalSceneSubpassIndex] = "finalSceneSubpassIndex";
+		}
+
+	}
+
+
 
 	vk::RenderPassCreateInfo renderPassCreateInfo = vk::RenderPassCreateInfo()
 		.setAttachmentCount(GetSizeUint32(attachmentsDescritpions)).setPAttachments(std::data(attachmentsDescritpions))

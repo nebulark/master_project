@@ -296,7 +296,7 @@ std::optional<VulkanDevice::PickDeviceResult> VulkanDevice::PickPhysicalDevice(v
 }
 
 vk::UniqueDevice VulkanDevice::CreateLogicalDevice(vk::PhysicalDevice device, gsl::span<const QueueResult> queues,
-	gsl::span<const char*> enabledValidationLayers, gsl::span<const char*> enabledExtensions, vk::PhysicalDeviceFeatures deviceFeatures)
+	gsl::span<const char*> enabledValidationLayers, gsl::span<const char*> enabledExtensions, const vk::PhysicalDeviceFeatures& deviceFeatures)
 {
 	// used everywhere as priorities are mandatory, be in truth we don't care about them (at the moment)
 	// works as long as we don't create more than std::size(priorities) queues of the same family

@@ -12,6 +12,7 @@
 #include "UniqueVmaObject.hpp"
 #include "PortalManager.hpp"
 #include "NTree.hpp"
+#include "StencilRefTree.hpp"
 
 class Camera;
 
@@ -24,9 +25,11 @@ public:
 private:
 	static constexpr int MaxInFlightFrames = 2;	
 	static constexpr int maxPortalCount = 4;
-	static constexpr int maxVisiblePortalsForRecursion[] = {4,4};
+	static constexpr int maxVisiblePortalsForRecursion[] = {maxPortalCount,maxPortalCount};
 	static constexpr int numRecursions = std::size(maxVisiblePortalsForRecursion);
 	static constexpr int cameraMatCount = NTree::CalcTotalElements(maxPortalCount, numRecursions + 1);
+
+
 	// Technically incorrect, but fine as long as all recursion have the same maxVisiblePortalsCount
 	static constexpr int cameraIndexCount = NTree::CalcTotalElements(maxVisiblePortalsForRecursion[0], numRecursions + 1);
 
@@ -109,7 +112,7 @@ private:
 	int m_currentframe = 0;
 
 	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
-	std::vector<uint8_t> m_stencilRefs;
+	StencilRefTree m_stencilRefTree;
 
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::unique_ptr<Scene> m_scene;

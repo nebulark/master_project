@@ -235,21 +235,27 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		// and the possibility to get it to work without stencil export
 		;
 
-	const uint32_t pipelineCount = (iterationCount +1) * 2;
+	// +1 one for last scene pass
+	const uint32_t pipelineCount = ((iterationCount-1) * 2) + 1;
 	std::unique_ptr<vk::GraphicsPipelineCreateInfo[]> pipelineCreateInfoStorage = std::make_unique<vk::GraphicsPipelineCreateInfo[]>(pipelineCount);
 	gsl::span<vk::GraphicsPipelineCreateInfo> pipelineCreateInfo = gsl::make_span(pipelineCreateInfoStorage.get(), pipelineCount);
 
-	pipelineCreateInfo[0] = graphicsPipelineCreateInfo_sceneInitial;
-	pipelineCreateInfo[1] = graphicsPipelineCreateInfo_portalInitial;
+	const int firstScenePass = 0;
+	const int firstPortalPass = firstScenePass+ 1;
+
+	const int lastScenePass = pipelineCount - 1;
+
+	pipelineCreateInfo[firstScenePass] = graphicsPipelineCreateInfo_sceneInitial;
+	pipelineCreateInfo[firstPortalPass] = graphicsPipelineCreateInfo_portalInitial;
 
 	if (optionalDebugCreateInfo)
 	{
-		optionalDebugCreateInfo->resize(pipelineCreateInfo.size());
-		(*optionalDebugCreateInfo)[0] = "sceneInitial";
-		(*optionalDebugCreateInfo)[1] = "portalInitial";
+		optionalDebugCreateInfo->resize(pipelineCount);
+		(*optionalDebugCreateInfo)[firstScenePass] = "sceneInitial";
+		(*optionalDebugCreateInfo)[firstPortalPass] = "portalInitial";
 	}
 
-	for (uint32_t layer = 1; layer <= iterationCount; ++layer)
+	for (uint32_t layer = 1; layer < iterationCount - 1; ++layer)
 	{
 		const int renderSceneIdx = layer * 2;
 		const int renderPortalIdx = renderSceneIdx + 1;
@@ -275,6 +281,15 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 			assert(bytesWritten < std::size(buff));
 			(*optionalDebugCreateInfo)[renderPortalIdx] = buff;
 		}
+	}
+
+	pipelineCreateInfo[lastScenePass] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneSubsequent_prototype }
+		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
+		.setSubpass(lastScenePass);
+
+	if (optionalDebugCreateInfo)
+	{
+		(*optionalDebugCreateInfo)[lastScenePass] = "lastScene";
 	}
 
 

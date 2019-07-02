@@ -5,9 +5,27 @@ struct PushConstant
 {
 	alignas(16) glm::mat4 model;
 	glm::vec4 debugColor;
-	uint32_t cameraIdx;
-	uint32_t portalStencilVal;
-	uint32_t currentIdx;
+	int32_t cameraIdx;
+
+		// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
+	int32_t firstHelperIndex;
+	// our index in  PortalIndexHelper
+	int32_t currentHelperIndex;
+
+	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
+	int32_t firstCameraIndicesIndex;
+
+	// the stencil value of the layer
+	uint32_t layerStencilVal;
+
+	// the index we need to write into CameraIndices
+	int32_t portalCameraIndex;
+
+	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
+	int32_t numOfBitsToShiftChildStencilVal;
+
+	int32_t maxVisiblePortalCountForRecursion;
+
 
 };
 

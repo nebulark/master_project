@@ -35,7 +35,7 @@ namespace {
 }
 
 void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager,
-	vk::PipelineLayout layout, int iterationElementIndex, std::vector<uint8_t> stencilRefs)
+	vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef)
 {
 	const uint32_t actualPortalCount = GetSizeUint32(m_portals) * 2;
 
@@ -44,9 +44,6 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
 	const int firstChildIdx = NTree::GetChildElementIdx(actualPortalCount, iterationElementIndex, 0);
-
-	
-	const bool isLastPortalIteration = firstChildIdx >= stencilRefs.size();
 
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
@@ -58,16 +55,19 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 
 		PushConstant pushConstant = {};
 		pushConstant.cameraIdx = iterationElementIndex;
+		pushConstant.layerStencilVal = stencilRef;
+		pushConstant.firstHelperIndex = firstChildIdx;
+		pushConstant.firstCameraIndicesIndex = firstChildIdx;
+		pushConstant.maxVisiblePortalCountForRecursion = maxVisiblePortalCount;
+		pushConstant.numOfBitsToShiftChildStencilVal = numBitsToShiftStencil;
 
-		pushConstant.debugColor =  isLastPortalIteration 
-			? glm::vec4(1.f,1.f,1.f,1.f)
-			: debugColors[iterationElementIndex % std::size(debugColors)];
+
+		pushConstant.debugColor = debugColors[iterationElementIndex % std::size(debugColors)];
 
 		{
-			pushConstant.portalStencilVal = isLastPortalIteration
-				? stencilRefs[iterationElementIndex]
-				: stencilRefs[a_childNum + firstChildIdx]
-				;
+			pushConstant.portalCameraIndex = a_childNum + firstChildIdx;
+
+			pushConstant.currentHelperIndex = a_childNum + firstChildIdx;
 
 			pushConstant.model = m_portals[i].a_transform.ToMat();
 			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
@@ -78,10 +78,9 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			vk::DependencyFlags{}, {}, {}, {});
 
 		{
-			pushConstant.portalStencilVal = isLastPortalIteration
-				? stencilRefs[iterationElementIndex]
-				: stencilRefs[b_childNum + firstChildIdx]
-				;
+			pushConstant.portalCameraIndex = b_childNum + firstChildIdx;
+
+			pushConstant.currentHelperIndex = b_childNum + firstChildIdx;
 
 			pushConstant.model = m_portals[i].b_transform.ToMat();
 			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);

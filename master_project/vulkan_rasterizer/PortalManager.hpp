@@ -12,7 +12,7 @@ class PortalManager
 public:
 	void Add(const Portal& portal);
 
-	void DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager, vk::PipelineLayout layout, int iterationElementIndex, std::vector<uint8_t> stencilRefs);
+	void DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager, vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef);
 	gsl::span<const Portal> GetPortals() const { return m_portals; }
 
 

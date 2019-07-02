@@ -100,6 +100,9 @@
     <ClCompile Include="PortalManager.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="StencilRefTree.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -195,6 +198,9 @@
     <ClInclude Include="PortalManager.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="StencilRefTree.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -244,10 +250,6 @@
       <Filter>Resource Files</Filter>
     </CopyFileToFolders>
     <CopyFileToFolders Include="models\halfSphere.obj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="models\inverted_cube.obj">
-      <Filter>Resource Files</Filter>
-    </Object>
+    <CopyFileToFolders Include="models\inverted_cube.obj" />
   </ItemGroup>
 </Project>

@@ -14,52 +14,48 @@ out int gl_FragStencilRefARB;
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
-	uint cameraIdx;
-	uint portalStencilVal;
+	int cameraIdx;
 
-
-
-	#if 0
 	// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
-	uint firstHelperIndex;
+	int firstHelperIndex;
 	// our index in  PortalIndexHelper
-	uint currentHelperIndex;
+	int currentHelperIndex;
 
 	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
-	uint firstCameraIndicesIndex;
+	int firstCameraIndicesIndex;
 
 	// the stencil value of the layer
 	uint layerStencilVal;
 
 	// the index we need to write into CameraIndices
-	uint portalCameraIndex;
+	int portalCameraIndex;
 
 	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
-	uint numOfBitsToShiftChildStencilVal;
-	#endif
+	int numOfBitsToShiftChildStencilVal;
+
+	int maxVisiblePortalCountForRecursion;
 } pc;
 
 
-#if 0
-layout(constant_id = 0) const int maxPortalCount = 4;
-layout(constant_id = 0) const int maxVisiblePortalCount = 3;
+layout(constant_id = 1) const int maxPortalCount = 4;
 
 layout(set = 2, binding = 0) uniform ubo_cameraMats
 {
-	mat4 mats[cameraMatCount];
+	mat4 mats[];
 } u_cMats;
 
-layout(set = 6, binding = 0) buffer PortalIndexHelper {
+layout(set = 5, binding = 0) buffer PortalIndexHelper {
     int indices[];
 } pih;
 
-layout(set = 5, binding = 0) buffer CameraIndices {
+layout(set = 4, binding = 0) buffer CameraIndices {
     int cIndices[];
 } ci;
-#endif
+
+
 void main() 
 {
-#if 1
+#if 0
     outColor = vec4(1.0, 0.0, 0.0, 1.0);
 	int stencilVal = int( pc.portalStencilVal);
 	gl_FragStencilRefARB =stencilVal;
@@ -68,15 +64,22 @@ void main()
 	outColor =pc.debugColor;
 #endif
 
-#if 0
+#if 1
 	// count previous visible portals
+	// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
 	int childNum = 0;
-	for(int i = pc.firstHelperIndex; i < pc.currentHelperIndex; ++i)
+	for(int i = 0; i < maxPortalCount; ++i)
 	{
-		childNum+=1;
+		int index = i + pc.firstHelperIndex;
+
+		// don't count myself, as I am currently writing to it an the value may be zero or 1
+		if(index != pc.currentHelperIndex)
+		{
+			childNum+= pih.indices[i + pc.firstHelperIndex];
+		}
 	}
 
-	if(childNum >= maxVisiblePortalCount)
+	if(childNum >= pc.maxVisiblePortalCountForRecursion)
 	{
 		// to many visible portals, sadly we won't be visible,
 		// we could set a value, so that subsequent portals won't be rendered to maybe improb perf
@@ -84,12 +87,14 @@ void main()
 	}
 
 	// mark that we are a visible portal
-	ih.indices[pc.currentHelperIndex] = 1;
+	pih.indices[pc.currentHelperIndex] = 1;
 
 	// skip zero to avoid ambiguities
 	uint myStencilVal = childNum+1;
 
-	gl_FragStencilRefARB = pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal);
+	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
+	int stencilRef_i = int(stencilRef_ui);
+	gl_FragStencilRefARB = stencilRef_i;
 
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] = pc.portalCameraIndex;

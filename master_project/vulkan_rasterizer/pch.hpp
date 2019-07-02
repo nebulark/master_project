@@ -10,6 +10,7 @@
 #include <optional>
 #include <unordered_set>
 #include <array>
+#include <functional>
 
 #include <gsl/gsl>
 #include "SDL.h"
