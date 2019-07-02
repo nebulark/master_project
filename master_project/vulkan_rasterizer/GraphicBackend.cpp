@@ -389,8 +389,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 	}
 
+
+
 	std::vector<std::string> debugRenderpass;
-	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format, m_depthFormat, maxPortalCount, numRecursions, &debugRenderpass);
+	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
+		m_depthFormat, recursionCount, &debugRenderpass);
 
 	// create Framebuffer
 	{
@@ -427,7 +430,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	// Createing Descriptor Set Buffersd
+	const int expectedPortalCount = 4;
+	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
+
+	m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
+
+	// Creating Descriptor Set Buffers
 	{
 
 		for (size_t i = 0; i < MaxInFlightFrames; ++i)
@@ -436,7 +444,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			{
 				const vk::BufferCreateInfo cameraMatBufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(cameraMatBufferSize)
+					.setSize(cameraMatElements * sizeof(glm::mat4))
 					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -449,7 +457,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			{
 				const vk::BufferCreateInfo cameraIndexBufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(cameraIndexBufferSize)
+					.setSize(m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -461,7 +469,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			}
 			{
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
-					.setSize(portalIndexHelperBufferSize)
+					.setSize(PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -737,16 +745,17 @@ void GraphicsBackend::Init(SDL_Window* window)
 			vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
 
 		// write camera mat descriptor set
-		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat, cameraMatBufferSize,
-			vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat,
+			PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
 
 		// write camera index descriptor set
-		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices, cameraIndexBufferSize,
+		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
+			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t),
 			vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
 
 		// write portal index helper descriptor set
-		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper, portalIndexHelperBufferSize,
-			vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
+		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
+			PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t),vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
 
 
 		// write rendered Depth descriptor Set
@@ -800,116 +809,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange);
 
 		m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
-	}
-
-	// create Graphic pipelines
-	{
-		enum specialisationConstantId
-		{
-			camera_mat_count_cid = 0,
-			max_portal_count_cid = 1,
-			max_visible_portal_count_cid = 2,
-
-			enum_size_specialisationId,
-		};
-
-
-		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = []() {
-			ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes{};
-			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint8_t>(cameraMatCount);
-
-			multibytes.data[max_portal_count_cid] = gsl::narrow<uint8_t>(maxPortalCount);
-			return multibytes;
-		}();
-
-		const vk::SpecializationInfo setCameraMats = ShaderSpecialisation::ReferenceMultibytes(multibytes_camerMats);
-
-		vk::PipelineShaderStageCreateInfo shaderStage_scene_initial[] =
-		{
-			vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(m_vertShaderModule.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-
-		vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eFragment)
-			.setModule(m_fragShaderModule.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		};
-		vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
-		{
-			vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(m_vertShaderModule_portal.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eFragment)
-			.setModule(m_fragShaderModule_portal.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		};
-		vk::PipelineShaderStageCreateInfo shaderStage_scene_subsequent[] =
-		{
-			vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(m_vertShaderModule.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eFragment)
-			.setModule(m_fragShaderModule_subsequent.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		};
-		vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
-		{
-			vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eVertex)
-			.setModule(m_vertShaderModule_portal.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		vk::PipelineShaderStageCreateInfo{}
-			.setStage(vk::ShaderStageFlagBits::eFragment)
-			.setModule(m_fragShaderModule_portal_subsequent.get())
-			.setPName("main")
-			.setPSpecializationInfo(&setCameraMats),
-
-		};
-
-
-		GraphicsPipeline::PipelinesCreateInfo createInfo;
-		createInfo.logicalDevice = m_device.get();
-		createInfo.pipelineLayout = m_pipelineLayout.get();
-		createInfo.renderpass = m_portalRenderPass.get();
-		createInfo.swapchainExtent = m_swapchain.extent;
-
-		createInfo.pipelineShaderStageCreationInfos_sceneInitial = shaderStage_scene_initial;
-		createInfo.pipelineShaderStageCreationInfos_sceneSubsequent = shaderStage_scene_subsequent;
-		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
-		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
-
-		std::vector<std::string> debugPipelines;
-		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(createInfo, numRecursions, maxPortalCount, &debugPipelines);
-
-		m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
-	}
-
-	for (int i = 0; i < MaxInFlightFrames; ++i)
-	{
-
-		m_frameFence[i] = m_device->createFenceUnique(vk::FenceCreateInfo{}.setFlags(vk::FenceCreateFlagBits::eSignaled));
-		m_imageAvailableSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
-		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
@@ -999,6 +898,115 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
 	}
 
+	// create Graphic pipelines
+	{
+		enum specialisationConstantId
+		{
+			max_portal_count_cid = 0,
+			camera_mat_count_cid = 1,
+
+			enum_size_specialisationId,
+		};
+
+
+		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = [this]() {
+			ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes{};
+			multibytes.data[max_portal_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
+			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
+			return multibytes;
+		}();
+
+		const vk::SpecializationInfo setCameraMats = ShaderSpecialisation::ReferenceMultibytes(multibytes_camerMats);
+
+		vk::PipelineShaderStageCreateInfo shaderStage_scene_initial[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		};
+		vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule_portal.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule_portal.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		};
+		vk::PipelineShaderStageCreateInfo shaderStage_scene_subsequent[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule_subsequent.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		};
+		vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule_portal.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule_portal_subsequent.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		};
+
+
+		GraphicsPipeline::PipelinesCreateInfo createInfo;
+		createInfo.logicalDevice = m_device.get();
+		createInfo.pipelineLayout = m_pipelineLayout.get();
+		createInfo.renderpass = m_portalRenderPass.get();
+		createInfo.swapchainExtent = m_swapchain.extent;
+
+		createInfo.pipelineShaderStageCreationInfos_sceneInitial = shaderStage_scene_initial;
+		createInfo.pipelineShaderStageCreationInfos_sceneSubsequent = shaderStage_scene_subsequent;
+		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
+		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
+
+		std::vector<std::string> debugPipelines;
+		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
+			createInfo, recursionCount, &debugPipelines);
+
+	}
+
+	for (int i = 0; i < MaxInFlightFrames; ++i)
+	{
+
+		m_frameFence[i] = m_device->createFenceUnique(vk::FenceCreateInfo{}.setFlags(vk::FenceCreateFlagBits::eSignaled));
+		m_imageAvailableSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
+	}
+
+
 }
 
 void GraphicsBackend::Render(const Camera& camera)
@@ -1017,13 +1025,16 @@ void GraphicsBackend::Render(const Camera& camera)
 	}
 
 	{
-		Transform cameraTransforms[cameraMatCount];
-		// TODO: probably put this in portal manager
-		Portal::CreateCameraTransforms(m_portalManager.GetPortals(), camera.m_transform, numRecursions, cameraTransforms);
+		const int cameraBufferElementCount = m_portalManager.GetCameraBufferElementCount(recursionCount);
 
-		glm::mat4 cameraViewMats[cameraMatCount];
+		std::vector<Transform> cameraTransforms;
+		cameraTransforms.resize(cameraBufferElementCount);
+		m_portalManager.CreateCameraTransforms(camera.m_transform, recursionCount, cameraTransforms);
 
-		std::transform(std::begin(cameraTransforms), std::end(cameraTransforms), cameraViewMats, [](const Transform& e)
+		std::vector<glm::mat4> cameraViewMats;
+		cameraViewMats.resize(cameraBufferElementCount);
+
+		std::transform(std::begin(cameraTransforms), std::end(cameraTransforms), std::begin(cameraViewMats), [](const Transform& e)
 			{
 				return e.ToViewMat();
 			});
@@ -1031,7 +1042,7 @@ void GraphicsBackend::Render(const Camera& camera)
 		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
 
-		std::memcpy(memoryMap.GetMappedMemoryPtr(), &cameraViewMats, sizeof(cameraViewMats[0]) * std::size(cameraViewMats));
+		std::memcpy(memoryMap.GetMappedMemoryPtr(), std::data(cameraViewMats), sizeof(cameraViewMats[0]) * std::size(cameraViewMats));
 	}
 
 
@@ -1055,10 +1066,12 @@ void GraphicsBackend::Render(const Camera& camera)
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		// clear the helper buffer
-		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0, portalIndexHelperBufferSize, 0);
+		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0,
+			m_portalManager.GetPortalIndexHelperElementCount(recursionCount) * sizeof(uint32_t), 0);
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
-		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0, cameraIndexBufferSize, ~(uint32_t(0)));
+		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
+			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), (uint32_t(0)));
 		// render pass
 		{
 #if 0
@@ -1113,7 +1126,8 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 
 
-					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, 0);
+					constexpr int cameraIndex = 0;
+					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, cameraIndex, 0);
 				}
 
 
@@ -1147,9 +1161,9 @@ void GraphicsBackend::Render(const Camera& camera)
 				}
 			}
 
-			for (int iteration = 1; iteration < numRecursions-1; ++iteration)
+			for (int iteration = 0; iteration < recursionCount-1; ++iteration)
 			{
-				const int renderedDepthInputIdx = (iteration + 1) % 2;
+				const int renderedDepthInputIdx = iteration % 2;
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
@@ -1166,13 +1180,13 @@ void GraphicsBackend::Render(const Camera& camera)
 				drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 
-				const int drawScenePipelineIdx = iteration * 2;
+				const int drawScenePipelineIdx = (iteration + 1) * 2;
 				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
 
 				const int layerStartIndex = m_stencilRefTree.CalcLayerStartIndex(iteration);
 				const int layerEndIndex = layerStartIndex + m_stencilRefTree.CalcLayerElementCount(iteration);
 
-				const uint8_t layerComparMask = m_stencilRefTree.GetLayerCompareMask(iteration - 1);
+				const uint8_t layerComparMask = m_stencilRefTree.GetLayerCompareMask(iteration);
 
 				//draw Scene
 				{
@@ -1193,17 +1207,17 @@ void GraphicsBackend::Render(const Camera& camera)
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 					}
 
-					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
+					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						// bandaidfix layerelement - 1 becasue first stencil ref is at index 0
-						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(layerElementIdx - 1);
+						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront,	stencilRef);
-						//printf("draw scene element %i with stencil %i , mask %i\n", layerElementIdx, m_stencilRefs[layerElementIdx], layerComparMask);
-						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);
+						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, elementIdx, stencilRef);
+					
 						// draw Camera
 						{
 
+#if 0
 							drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 							vk::DeviceSize vertexBufferOffset = 0;
 							drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
@@ -1214,7 +1228,7 @@ void GraphicsBackend::Render(const Camera& camera)
 							PushConstant pushConstant = {};
 							Transform cameraTransform = camera.m_transform;
 							pushConstant.model = cameraTransform.ToMat();
-							pushConstant.cameraIdx = layerElementIdx;
+							pushConstant.cameraIdx = cameraIndex;
 
 							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
@@ -1224,6 +1238,7 @@ void GraphicsBackend::Render(const Camera& camera)
 							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
 
+#endif
 						}
 
 					}
@@ -1251,15 +1266,15 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
-					for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
+					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(layerElementIdx);
+						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						// not really needed
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, stencilRef);
 
 						m_portalManager.DrawPortals(
-							drawBuffer, *m_meshData, m_pipelineLayout.get(), layerElementIdx,
+							drawBuffer, *m_meshData, m_pipelineLayout.get(), elementIdx,
 							numRightShifts, numVisiblePortalsforLayer, stencilRef);
 					}
 				}
@@ -1270,8 +1285,8 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 				drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines.back().get());
-				const int finalIteration = numRecursions-1;
-				const int renderedDepthInputIdx = (finalIteration + 1) % 2;
+				const int finalIteration = recursionCount-1;
+				const int renderedDepthInputIdx = finalIteration % 2;
 
 				// clear depth attachment, to be able to render objects "behind" the portal
 				{
@@ -1292,7 +1307,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				const int layerEndIndex = layerStartIndex + m_stencilRefTree.CalcLayerElementCount(finalIteration);
 
-				const uint8_t layerComparMask = m_stencilRefTree.GetLayerCompareMask(finalIteration - 1);
+				const uint8_t layerComparMask = m_stencilRefTree.GetLayerCompareMask(finalIteration);
 
 				drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 				// bind descriptor sets
@@ -1309,13 +1324,14 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 				}
 
-				for (int layerElementIdx = layerStartIndex; layerElementIdx < layerEndIndex; ++layerElementIdx)
+				for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 				{
-					const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(layerElementIdx);
+					const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 					drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
-					//printf("draw scene element %i with stencil %i , mask %i\n", layerElementIdx, m_stencilRefs[layerElementIdx], layerComparMask);
-					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, layerElementIdx);
+
+					const int cameraIndex = elementIdx;
+					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, cameraIndex, stencilRef);
 				}
 
 

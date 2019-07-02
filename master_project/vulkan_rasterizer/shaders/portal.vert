@@ -1,7 +1,6 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(constant_id = 0) const int cameraMatCount = 3;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
@@ -32,6 +31,7 @@ layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
     mat4 proj;
 } u_grd;
 
+layout(constant_id = 1) const int cameraMatCount = 21;
 layout(set = 2, binding = 0) uniform ubo_cameraMats
 {
 	mat4 mats[cameraMatCount];
@@ -53,7 +53,7 @@ const uint invalid_matIndex = ~0;
 void main() {
 
 	
-	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
+	uint viewMatIndex = pc.cameraIdx;//pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
 
 	if(viewMatIndex != invalid_matIndex)
 	{

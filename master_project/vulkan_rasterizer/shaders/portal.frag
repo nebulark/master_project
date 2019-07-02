@@ -37,7 +37,7 @@ layout(push_constant) uniform PushConstant {
 } pc;
 
 
-layout(constant_id = 1) const int maxPortalCount = 4;
+layout(constant_id = 0) const int maxPortalCount = 4;
 
 layout(set = 2, binding = 0) uniform ubo_cameraMats
 {

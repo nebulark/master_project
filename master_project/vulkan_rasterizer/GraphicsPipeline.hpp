@@ -22,5 +22,5 @@ namespace GraphicsPipeline
 
 		};
 
-		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals, std::vector<std::string>* optionalDebug = nullptr);
+		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, std::vector<std::string>* optionalDebug = nullptr);
 }

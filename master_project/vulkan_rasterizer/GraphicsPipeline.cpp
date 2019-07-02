@@ -64,7 +64,8 @@ const vk::PipelineInputAssemblyStateCreateInfo GraphicsPipeline::inputAssembly_t
 	);
 
 
-std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPipeline::CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, uint32_t maxPortals, std::vector<std::string>* optionalDebugCreateInfo /*= nullptr*/)
+std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPipeline::CreateGraphicPipelines_dynamicState(
+	const PipelinesCreateInfo& createInfo, uint32_t iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
 {
 	const vk::Viewport viewport = vk::Viewport()
 		.setX(0.f)
@@ -236,7 +237,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		;
 
 	// +1 one for last scene pass
-	const uint32_t pipelineCount = ((iterationCount-1) * 2) + 1;
+	const uint32_t pipelineCount = ((iterationCount) * 2) + 1;
 	std::unique_ptr<vk::GraphicsPipelineCreateInfo[]> pipelineCreateInfoStorage = std::make_unique<vk::GraphicsPipelineCreateInfo[]>(pipelineCount);
 	gsl::span<vk::GraphicsPipelineCreateInfo> pipelineCreateInfo = gsl::make_span(pipelineCreateInfoStorage.get(), pipelineCount);
 
@@ -248,14 +249,14 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 	pipelineCreateInfo[firstScenePass] = graphicsPipelineCreateInfo_sceneInitial;
 	pipelineCreateInfo[firstPortalPass] = graphicsPipelineCreateInfo_portalInitial;
 
-	if (optionalDebugCreateInfo)
+	if (optionalDebug)
 	{
-		optionalDebugCreateInfo->resize(pipelineCount);
-		(*optionalDebugCreateInfo)[firstScenePass] = "sceneInitial";
-		(*optionalDebugCreateInfo)[firstPortalPass] = "portalInitial";
+		optionalDebug->resize(pipelineCount);
+		(*optionalDebug)[firstScenePass] = "sceneInitial";
+		(*optionalDebug)[firstPortalPass] = "portalInitial";
 	}
 
-	for (uint32_t layer = 1; layer < iterationCount - 1; ++layer)
+	for (uint32_t layer = 1; layer < iterationCount ; ++layer)
 	{
 		const int renderSceneIdx = layer * 2;
 		const int renderPortalIdx = renderSceneIdx + 1;
@@ -268,18 +269,18 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 			.setPDepthStencilState(&depthStencilStateCreateInfo_portalSubsequent_dynamic_stencilRef_compareMask)
 			.setSubpass(renderPortalIdx);
 
-		if (optionalDebugCreateInfo)
+		if (optionalDebug)
 		{
 			char buff[128] = {};
 			int bytesWritten = 128;
 
 			bytesWritten = std::sprintf(buff, "scene l%i dynamic", layer);
 			assert(bytesWritten < std::size(buff));
-			(*optionalDebugCreateInfo)[renderSceneIdx] = buff;
+			(*optionalDebug)[renderSceneIdx] = buff;
 
 			bytesWritten = std::sprintf(buff, "portal l%i dynamic", layer);
 			assert(bytesWritten < std::size(buff));
-			(*optionalDebugCreateInfo)[renderPortalIdx] = buff;
+			(*optionalDebug)[renderPortalIdx] = buff;
 		}
 	}
 
@@ -287,9 +288,9 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
 		.setSubpass(lastScenePass);
 
-	if (optionalDebugCreateInfo)
+	if (optionalDebug)
 	{
-		(*optionalDebugCreateInfo)[lastScenePass] = "lastScene";
+		(*optionalDebug)[lastScenePass] = "lastScene";
 	}
 
 

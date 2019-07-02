@@ -14,12 +14,14 @@ void StencilRefTree::RecalcTree(gsl::span<const int> visiblePortalCountForLayer)
 
 	m_stencilRefs.resize(totalStencilRefCount);
 	
-	int currentStencilRefIdx = 0;
+
+	m_stencilRefs[0] = 0;
+	int currentStencilRefIdx = 1;
 
 
 	int bitsToShift = 0;
 
-	// first layer
+	// layer 0
 	{		
 		constexpr int firstLayer = 0;
 		const int bitsForFirstLayer = GetNumBitsToStoreValue(visiblePortalCountForLayer[firstLayer] + 1);
@@ -39,7 +41,7 @@ void StencilRefTree::RecalcTree(gsl::span<const int> visiblePortalCountForLayer)
 		bitsToShift += bitsForFirstLayer;
 	}
 
-	int previousLayerStartIndex = 0;
+	int previousLayerStartIndex = 1;
 
 	// subsequentlayers
 	for (int layer = 1, layercount = visiblePortalCountForLayer.size(); layer < layercount; ++layer)
@@ -95,7 +97,7 @@ gsl::span<const uint8_t> StencilRefTree::GetStencilRefsForLayer(int layerNum) co
 
 int StencilRefTree::CalcLayerStartIndex(int layerNum) const
 {
-	int result = 0;
+	int result = 1;
 	for (int i = 0; i < layerNum; ++i)
 	{
 		result += CalcLayerElementCount(i);
