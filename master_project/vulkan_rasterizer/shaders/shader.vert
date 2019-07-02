@@ -54,22 +54,9 @@ const uint invalid_matIndex = ~0;
 
 void main() {
 
-	uint viewMatIndex = pc.cameraIdx;//pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
+	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
 
-	mat4 viewMat = u_cMats.mats[1];
-
-		gl_Position = 
-		u_grd.proj *
-		viewMat *
-		pc.model *
-		vec4(inPosition, 1.0);
-
-	
-		fragNormal = inNormal;
-		fragTexCoord = inTexCoord;
-
-	#if 0
-	if(true )//viewMatIndex != invalid_matIndex)
+	if(viewMatIndex != invalid_matIndex)
 	{
 		mat4 viewMat = u_cMats.mats[viewMatIndex];
 
@@ -78,23 +65,13 @@ void main() {
 		viewMat *
 		pc.model *
 		vec4(inPosition, 1.0);
-
-		fragNormal = inNormal;
-		fragTexCoord = inTexCoord;
 	}
 	else
 	{
-		mat4 viewMat = u_cMats.mats[viewMatIndex];
-
-		gl_Position = 
-		u_grd.proj *
-		viewMat *
-		pc.model *
-		vec4(inPosition, 1.0);
-
-		fragNormal = inNormal;
-		fragTexCoord = vec2(0.5,0.5);
+		gl_Position = vec4(1);
 	}
-	#endif
 
-   }
+    fragNormal = inNormal;
+    fragTexCoord = inTexCoord;
+
+ }

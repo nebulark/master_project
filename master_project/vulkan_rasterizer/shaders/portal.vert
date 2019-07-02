@@ -51,9 +51,7 @@ layout(location = 1) out vec2 fragTexCoord;
 const uint invalid_matIndex = ~0;
 
 void main() {
-
-	
-	uint viewMatIndex = pc.cameraIdx;//pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
+	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
 
 	if(viewMatIndex != invalid_matIndex)
 	{
