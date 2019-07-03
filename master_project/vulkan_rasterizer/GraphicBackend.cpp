@@ -904,6 +904,40 @@ void GraphicsBackend::Init(SDL_Window* window)
 			}
 		}
 
+		{
+
+			const glm::vec4 debugColors[] =
+			{
+
+				glm::vec4(0.75f, 0.25f, 0.f, 1.f),
+				glm::vec4(0.5f, 0.5f, 0.f, 1.f),
+				glm::vec4(0.25f, 0.75f, 0.f, 1.f),
+				glm::vec4(0.f, 1.f, 0.f, 1.f),
+				glm::vec4(0.f, 0.75f, 0.25f, 1.f),
+				glm::vec4(0.f, 0.5f, 0.5f, 1.f),
+				glm::vec4(0.f, 0.25f, 0.75f, 1.f),
+				glm::vec4(0.f, 0.f, 1.f, 1.f),
+				glm::vec4(0.25f, 0.f, 1.f, 0.75f),
+				glm::vec4(0.5f, 0.f, 1.f, 0.5f),
+				glm::vec4(0.75f, 0.f, 1.f, 0.25f),
+
+			};
+
+
+			int count = 8;
+			const glm::vec3 baseTranslation = glm::vec3(0.f, 0.f, 50.f);
+			for (int i = 0; i < count; ++i)
+			{
+				const glm::vec3 trans = glm::rotate(glm::angleAxis(glm::radians( (360.f / 8) * i), glm::vec3(0.f, 1.f, 0.f)), baseTranslation);
+
+
+				Transform transf(trans, glm::vec3(3.f, 10.f, 3.f), glm::identity<glm::quat>());
+				m_scene->Add(cubeIdx, transf.ToMat(), debugColors[i]);
+			}
+
+
+		}
+
 	}
 
 	{
@@ -1140,7 +1174,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						m_descriptorSet_texture,
 						m_descriptorSet_ubo[m_currentframe],
 						m_descriptorSet_cameratMat[m_currentframe],
-						m_descriptorSet_renderedDepth[renderedDepthInputIdx],	
+						m_descriptorSet_renderedDepth[renderedDepthInputIdx],
 						m_descriptorSet_cameraIndices[m_currentframe],
 						m_descriptorSet_portalIndexHelper[m_currentframe],
 
@@ -1190,17 +1224,17 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
-// clear depth attachment, to be able to render objects "behind" the portal
+				// clear depth attachment, to be able to render objects "behind" the portal
 				{
-				vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
-					.setColorAttachment(1)
-					.setAspectMask(vk::ImageAspectFlagBits::eDepth)
-					.setClearValue(vk::ClearDepthStencilValue(1.f, 255));
+					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
+						.setColorAttachment(1)
+						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
+						.setClearValue(vk::ClearDepthStencilValue(1.f, 255));
 
 
-				const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
-				std::array<vk::ClearAttachment, 1> clearAttachments = { clearDepthOnly, };
-				drawBuffer.clearAttachments(clearAttachments, wholeScreen);
+					const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
+					std::array<vk::ClearAttachment, 1> clearAttachments = { clearDepthOnly, };
+					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 
 				const int drawScenePipelineIdx = (iteration + 1) * 2;
@@ -1236,9 +1270,9 @@ void GraphicsBackend::Render(const Camera& camera)
 					{
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
-						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront,	stencilRef);
+						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
 						m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, elementIdx, stencilRef);
-					
+
 						// draw Camera
 						{
 
@@ -1305,7 +1339,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			}
 
 			drawBuffer.endRenderPass();
-		}
+}
 
 		drawBuffer.end();
 
