@@ -13,6 +13,7 @@ struct SceneObject
 {
 	glm::mat4 modelMat;
 	int meshIdx;
+	glm::vec4 debugColor;
 };
 
 class Scene
@@ -20,7 +21,7 @@ class Scene
 public:
 	Scene(VmaAllocator allocator);
 
-	void Add(int MeshIdx, const glm::mat4& modelmat);
+	void Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor = glm::vec4(0.f));
 	void Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, uint8_t stencil) const;
 
 

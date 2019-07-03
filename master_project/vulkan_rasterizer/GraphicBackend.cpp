@@ -838,10 +838,21 @@ void GraphicsBackend::Init(SDL_Window* window)
 				glm::vec3(-6.f,10.f, -15.f),
 				glm::vec3(6.f, 10.f , 15.f),
 			};
-
-			for (const glm::vec3& torusPos : torusPositions)
+			
+			const glm::vec4 debugColors[] =
 			{
-				m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPos));
+				glm::vec4(1.f,1.f,1.f,1.f),
+				glm::vec4(1.f,1.f,1.f,1.f),
+				glm::vec4(1.f,1.f,1.f,1.f),
+				glm::vec4(0.f,0.f,0.f,1.f),
+				glm::vec4(0.33f,0.33f,0.33f,1.f),
+				glm::vec4(.66f,.66f,.66f,1.f),
+			};
+
+
+			for (int i = 0; i < std::size(torusPositions); ++i)
+			{
+				m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPositions[i]), debugColors[i]);
 			}
 		}
 		{
@@ -862,10 +873,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 					glm::vec3(-3.f,10.f, -5.f),
 					glm::vec3(3.f, 10.f , 5.f),
 			};
-
-			for (const glm::vec3& p : spherePos)
+	
+			const glm::vec4 debugColors[] =
 			{
-				m_scene->Add(sphereIdx, glm::translate(glm::mat4(1), p));
+				glm::vec4(1.f,0.33f,0.33f,1.f),
+				glm::vec4(1.f,.66f,.66f,1.f),
+			};
+
+			for (int i = 0; i < std::size(spherePos); ++i)
+			{
+				m_scene->Add(sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
 			}
 
 		}
@@ -874,10 +891,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 							glm::vec3(-7.f,13.f, -9.f),
 							glm::vec3(1.f, 10.f , -9.f),
 			};
-
-			for (const glm::vec3& p : cubePos)
+		
+			const glm::vec4 debugColors[] =
 			{
-				m_scene->Add(cubeIdx, glm::translate(glm::mat4(1), p));
+				glm::vec4(.66f,0.33f,0.99f,1.f),
+				glm::vec4(.33f,.66f,.99f,1.f),
+			};
+
+			for (int i = 0; i < std::size(cubePos); ++i)
+			{
+				m_scene->Add(cubeIdx, glm::translate(glm::mat4(1), cubePos[i]), debugColors[i]);
 			}
 		}
 

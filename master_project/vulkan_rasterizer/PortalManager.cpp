@@ -13,9 +13,9 @@ namespace {
 	const glm::vec4 debugColors[] =
 	{
 
-		glm::vec4(1.f, 0.f, 0.f, 1.f),
-		glm::vec4(0.f, 1.f, 0.f, 1.f),
-		glm::vec4(0.f, 0.f, 1.f, 1.f),
+		glm::vec4(0.6f, 0.2f, 0.2f, 1.f),
+		glm::vec4(0.2f, 0.6f, 0.2f, 1.f),
+		glm::vec4(0.2f, 0.2f, 0.6f, 1.f),
 
 		glm::vec4(0.75f, 0.25f, 0.f, 1.f),
 		glm::vec4(0.5f, 0.5f, 0.f, 1.f),
@@ -60,11 +60,12 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		pushConstant.numOfBitsToShiftChildStencilVal = numBitsToShiftStencil;
 
 		
-		pushConstant.debugColor = debugColors[iterationElementIndex % std::size(debugColors)];
+		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
 
 		{
 			// comment this when ready to calc portal val in shader
 			pushConstant.layerStencilVal = stencilRef | ((a_childNum + 1) << numBitsToShiftStencil);
+
 
 			pushConstant.portalCameraIndex = a_childNum + firstChildIdx;
 

@@ -28,9 +28,9 @@ Scene::Scene(VmaAllocator allocator)
 
 }
 
-void Scene::Add(int MeshIdx, const glm::mat4& modelmat)
+void Scene::Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor /*= glm::vec4(0.f)*/)
 {
-	m_objects.push_back(SceneObject{ modelmat, MeshIdx });
+	m_objects.push_back(SceneObject{ modelmat, MeshIdx, debugColor });
 }
 
 void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, uint8_t stencil) const
@@ -48,6 +48,8 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 		pushConstant.model = object.modelMat;
 		pushConstant.cameraIdx = cameraMatIdx;
 		pushConstant.layerStencilVal = stencil;
+
+		pushConstant.debugColor = object.debugColor;
 
 		drawCommandBuffer.pushConstants<PushConstant>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		const MeshDataRef& portalMeshRef = meshDataRefs[object.meshIdx];
