@@ -209,6 +209,9 @@
     <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis">
       <Filter>Natvis</Filter>
     </Natvis>
+    <Natvis Include="..\external\glm\glm.natvis">
+      <Filter>Natvis</Filter>
+    </Natvis>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders\shader.frag">

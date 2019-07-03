@@ -281,6 +281,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Natvis Include="..\external\glm\glm.natvis" />
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis" />
     <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis" />
   </ItemGroup>
