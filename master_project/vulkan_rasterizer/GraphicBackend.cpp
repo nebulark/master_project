@@ -1206,6 +1206,8 @@ void GraphicsBackend::Render(const Camera& camera)
 				const int drawScenePipelineIdx = (iteration + 1) * 2;
 				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
 
+				const int numVisiblePortalsforLayer = m_stencilRefTree.GetVisiblePortalCountForLayer(iteration);
+
 				const int layerStartIndex = m_stencilRefTree.CalcLayerStartIndex(iteration);
 				const int layerEndIndex = layerStartIndex + m_stencilRefTree.CalcLayerElementCount(iteration);
 
@@ -1269,7 +1271,6 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				// Draw Portals
 				{
-					const int numVisiblePortalsforLayer = m_stencilRefTree.GetVisiblePortalCountForLayer(iteration);
 					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
 
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
