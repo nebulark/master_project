@@ -1240,7 +1240,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						// draw Camera
 						{
 
-#if 0
+#if 1
 							drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 							vk::DeviceSize vertexBufferOffset = 0;
 							drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
@@ -1251,7 +1251,7 @@ void GraphicsBackend::Render(const Camera& camera)
 							PushConstant pushConstant = {};
 							Transform cameraTransform = camera.m_transform;
 							pushConstant.model = cameraTransform.ToMat();
-							pushConstant.cameraIdx = cameraIndex;
+							pushConstant.cameraIdx = elementIdx;
 
 							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
@@ -1355,6 +1355,33 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					const int cameraIndex = elementIdx;
 					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, cameraIndex, stencilRef);
+
+					// draw Camera
+					{
+
+#if 1
+						drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+						vk::DeviceSize vertexBufferOffset = 0;
+						drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+
+						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
+						const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+
+						PushConstant pushConstant = {};
+						Transform cameraTransform = camera.m_transform;
+						pushConstant.model = cameraTransform.ToMat();
+						pushConstant.cameraIdx = elementIdx;
+
+						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+						drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
+
+						cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
+						pushConstant.model = cameraTransform.ToMat();
+						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+						drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
+
+#endif
+					}
 				}
 
 
