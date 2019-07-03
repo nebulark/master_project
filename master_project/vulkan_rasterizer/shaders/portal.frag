@@ -95,7 +95,7 @@ void main()
 
 	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
 	int stencilRef_i = int(stencilRef_ui);
-	gl_FragStencilRefARB = stencilRef_i;
+	// gl_FragStencilRefARB = stencilRef_i;
 
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] = pc.portalCameraIndex;

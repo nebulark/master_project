@@ -74,7 +74,13 @@ void main()
 	int childNum = 0;
 	for(int i = 0; i < maxPortalCount; ++i)
 	{
-		childNum+= pih.indices[i + pc.firstHelperIndex];
+		int index = i + pc.firstHelperIndex;
+
+		// don't count myself, as I am currently writing to it an the value may be zero or 1
+		if(index != pc.currentHelperIndex)
+		{
+			childNum+= pih.indices[i + pc.firstHelperIndex];
+		}
 	}
 
 	if(childNum >= pc.maxVisiblePortalCountForRecursion)
@@ -92,7 +98,7 @@ void main()
 
 	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
 	int stencilRef_i = int(stencilRef_ui);
-	gl_FragStencilRefARB = stencilRef_i;
+	// gl_FragStencilRefARB = stencilRef_i;
 
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] = pc.portalCameraIndex;
@@ -100,4 +106,5 @@ void main()
 
 	outColor =pc.debugColor;
 	#endif
+
 }
