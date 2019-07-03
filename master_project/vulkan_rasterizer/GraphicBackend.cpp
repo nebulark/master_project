@@ -968,7 +968,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = [this]() {
 			ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes{};
-			multibytes.data[max_portal_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
+			multibytes.data[max_portal_count_cid] = 4;// gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
 			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
 			return multibytes;
 		}();
@@ -1128,7 +1128,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
 		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
-			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), (uint32_t(0)));
+			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(0)));
 		// render pass
 		{
 #if 0

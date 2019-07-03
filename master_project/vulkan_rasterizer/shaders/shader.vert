@@ -55,7 +55,7 @@ const uint invalid_matIndex = ~0;
 void main() {
 
 	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
-	viewMatIndex = pc.cameraIdx;
+	//viewMatIndex = pc.cameraIdx;
 
 	if(viewMatIndex != invalid_matIndex)
 	{

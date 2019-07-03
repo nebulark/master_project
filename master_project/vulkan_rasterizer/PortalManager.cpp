@@ -64,10 +64,10 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 
 		{
 			// comment this when ready to calc portal val in shader
-			pushConstant.layerStencilVal = stencilRef | ((a_childNum + 1) << numBitsToShiftStencil);
+			//pushConstant.layerStencilVal = stencilRef | ((a_childNum + 1) << numBitsToShiftStencil);
 
 
-			pushConstant.portalCameraIndex = a_childNum + firstChildIdx;
+			pushConstant.portalCameraIndex = a_childNum;// +firstChildIdx;
 
 			pushConstant.currentHelperIndex = a_childNum + firstChildIdx;
 			
@@ -80,10 +80,10 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			vk::DependencyFlags{}, {}, {}, {});
 
 		{
-			pushConstant.portalCameraIndex = b_childNum + firstChildIdx;
+			pushConstant.portalCameraIndex = b_childNum;// + firstChildIdx;
 
 			// comment this when ready to calc portal val in shader
-			pushConstant.layerStencilVal = stencilRef | ((b_childNum + 1) << numBitsToShiftStencil);
+			//pushConstant.layerStencilVal = stencilRef | ((b_childNum + 1) << numBitsToShiftStencil);
 
 			pushConstant.currentHelperIndex = b_childNum + firstChildIdx;
 
