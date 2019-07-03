@@ -909,9 +909,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 	{
 		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		const Transform portal_a_to_b = Transform(glm::vec3(5.f, 0.f, 30.f), 1.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(1.f, 0.f, 0.f)));
+		const Transform portal_a_to_b = Transform(glm::vec3(5.f, 0.f, 30.f), 1.f, glm::angleAxis(glm::radians(.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
+		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(halfSphereIdx, portal_a, portal_a_to_b));
 	}
 	{
 		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), glm::vec3(10.f, 10.f, 10.f), glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
@@ -1270,7 +1270,7 @@ void GraphicsBackend::Render(const Camera& camera)
 				// Draw Portals
 				{
 					const int numVisiblePortalsforLayer = m_stencilRefTree.GetVisiblePortalCountForLayer(iteration);
-					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration);
+					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
 
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawPortalPipelineIdx].get());
