@@ -136,7 +136,30 @@ void PortalManager::CreateCameraTransforms(Transform cameraTransform, int maxRec
 				assert(childIdx1 < matrixCount);
 
 				outTransforms[childIdx0] = m_portals[i].a_to_b * outTransforms[parentIdx];
+				{
+					// we find the new position by finding the delta to the first portal, rotating it and subtracting it from det pos of the second portal
+					const glm::vec3 deltaTrans = (m_portals[i].a_transform.translation - outTransforms[parentIdx].translation);
+					const glm::vec3 rotatateTrans = m_portals[i].a_to_b.rotation * deltaTrans;
+					const glm::vec3 pos = m_portals[i].b_transform.translation - rotatateTrans;
+
+					const glm::quat rotation = m_portals[i].a_to_b.rotation * outTransforms[parentIdx].rotation;
+
+					outTransforms[childIdx0] = Transform(pos, 1.f, rotation);
+				}
+
+
 				outTransforms[childIdx1] = m_portals[i].b_to_a * outTransforms[parentIdx];
+				{
+					// we find the new position by finding the delta to the first portal, rotating it and subtracting it from det pos of the second portal
+					const glm::vec3 deltaTrans = (m_portals[i].b_transform.translation - outTransforms[parentIdx].translation);
+					const glm::vec3 rotatateTrans = m_portals[i].b_to_a.rotation * deltaTrans;
+					const glm::vec3 pos = m_portals[i].a_transform.translation - rotatateTrans;
+
+					const glm::quat rotation = m_portals[i].b_to_a.rotation * outTransforms[parentIdx].rotation;
+
+					outTransforms[childIdx1] = Transform(pos, 1.f, rotation);
+				}
+
 			}
 		}
 	}
