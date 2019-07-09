@@ -431,7 +431,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	const int expectedPortalCount = maxVisiblePortalsForRecursion[0];
+	const int expectedPortalCount = 4;
 	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
 
 	m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
@@ -1193,7 +1193,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						constexpr uint8_t stencilRef = 0;
 						constexpr int numBitToShiftStencilRef = 0;
 						const int maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
-						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), iterationElementIndex, numBitToShiftStencilRef, maxVisiblePortalsForRecursion[0], 0);
+						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), iterationElementIndex, numBitToShiftStencilRef, maxVisiblePortalsForRecursion[0], 0, 1);
 					}
 				}
 			}
@@ -1201,6 +1201,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			for (int iteration = 0; iteration < recursionCount; ++iteration)
 			{
 				const int renderedDepthInputIdx = iteration % 2;
+				const bool isLastIteration = (iteration == (recursionCount - 1));
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
@@ -1220,7 +1221,11 @@ void GraphicsBackend::Render(const Camera& camera)
 				const int drawScenePipelineIdx = (iteration + 1) * 2;
 				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
 
-				const int numVisiblePortalsforLayer = m_stencilRefTree.GetVisiblePortalCountForLayer(iteration);
+
+				// last iteration draw all portals
+				const int numVisiblePortalsforLayer = (iteration == recursionCount - 1)
+					? m_portalManager.GetPortalCount()
+					: m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
 
 				const int layerStartIndex = m_stencilRefTree.CalcLayerStartIndex(iteration);
 				const int layerEndIndex = layerStartIndex + m_stencilRefTree.CalcLayerElementCount(iteration);
@@ -1287,6 +1292,10 @@ void GraphicsBackend::Render(const Camera& camera)
 				{
 					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
 
+					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : m_stencilRefTree.CalcLayerStartIndex(iteration + 1);
+
+					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
+
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawPortalPipelineIdx].get());
 					{
@@ -1306,6 +1315,11 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
+
+						int childnum = elementIdx - layerStartIndex;
+						int firstCameraIndex = cameraIndicesLayerStartIndex + childnum * firstCameraIndicesOffsetForLayer;
+
+					
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						// not really needed
@@ -1313,7 +1327,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 						m_portalManager.DrawPortals(
 							drawBuffer, *m_meshData, m_pipelineLayout.get(), elementIdx,
-							numRightShifts, numVisiblePortalsforLayer, stencilRef);
+							numRightShifts, numVisiblePortalsforLayer, stencilRef, firstCameraIndex);
 					}
 				}
 			}

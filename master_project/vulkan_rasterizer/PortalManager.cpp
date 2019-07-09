@@ -34,7 +34,7 @@ namespace {
 }
 
 void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager,
-	vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef)
+	vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef, int firstCameraIndex)
 {
 	const uint32_t actualPortalCount = GetSizeUint32(m_portals) * 2;
 
@@ -43,6 +43,8 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
 	const int firstChildIdx = NTree::GetChildElementIdx(actualPortalCount, iterationElementIndex, 0);
+
+	const int firstCameraIndicesIndex = firstCameraIndex;
 
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
@@ -55,7 +57,7 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		pushConstant.cameraIdx = iterationElementIndex;
 		pushConstant.layerStencilVal = stencilRef;
 		pushConstant.firstHelperIndex = firstChildIdx;
-		pushConstant.firstCameraIndicesIndex = firstChildIdx;
+		pushConstant.firstCameraIndicesIndex = firstCameraIndicesIndex;
 		pushConstant.maxVisiblePortalCountForRecursion = maxVisiblePortalCount;
 		pushConstant.numOfBitsToShiftChildStencilVal = numBitsToShiftStencil;
 

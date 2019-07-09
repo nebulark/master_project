@@ -7,18 +7,30 @@
 
 class MeshDataManager;
 
+
+struct DrawPortalsInfo{
+	vk::CommandBuffer drawBuffer;
+	MeshDataManager& meshDataManager;
+	vk::PipelineLayout layout;
+	int iterationElementIndex;
+	int numBitsToShiftStencil;
+	int maxVisiblePortalCount;
+	uint8_t stencilRef;
+};
+
+
 class PortalManager
 {
 public:
 	void Add(const Portal& portal);
 
-	void DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager, vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef);
+	void DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager, vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef, int firstCameraIndex);
 	gsl::span<const Portal> GetPortals() const { return m_portals; }
 
 	void CreateCameraTransforms(
-	Transform cameraTransform,
-	int maxRecursionCount,
-	gsl::span<Transform> outTransforms) const;
+		Transform cameraTransform,
+		int maxRecursionCount,
+		gsl::span<Transform> outTransforms) const;
 
 	int GetCameraBufferElementCount(int maxRecursionCount) const;
 
