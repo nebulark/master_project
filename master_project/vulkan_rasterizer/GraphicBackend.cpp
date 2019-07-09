@@ -1128,9 +1128,9 @@ void GraphicsBackend::Render(const Camera& camera)
 			m_portalManager.GetPortalIndexHelperElementCount(recursionCount) * sizeof(uint32_t), 0);
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
-	/*	drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
-			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(1)));*/
-
+		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
+			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(0)));
+#if 0
 		{
 
 			UniqueVmaMemoryMap memoryMap(m_allocator.get(), m_cameraIndexBuffer[m_currentframe].GetAllocation());
@@ -1143,6 +1143,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			std::memcpy(memoryMap.GetMappedMemoryPtr(), std::data(cameraIndices), sizeof(cameraIndices[0]) * std::size(cameraIndices));
 
 		}
+#endif
 		// render pass
 		{
 #if 0
