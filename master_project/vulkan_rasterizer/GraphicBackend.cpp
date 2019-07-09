@@ -463,7 +463,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
 				VmaAllocationCreateInfo cameraIndexBufferAllocCreateInfo = {};
-				cameraIndexBufferAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;// VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
+				cameraIndexBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
 
 				m_cameraIndexBuffer[i] = UniqueVmaBuffer(m_allocator.get(), cameraIndexBufferCreateInfo, cameraIndexBufferAllocCreateInfo);
 				VulkanDebug::SetObjectName(m_device.get(), m_cameraIndexBuffer[i].Get(), (std::string("camera index") + indexAsString).c_str());
@@ -475,7 +475,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
 				VmaAllocationCreateInfo portalIdxHelperBufferAllocCreateInfo = {};
-				portalIdxHelperBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
+				portalIdxHelperBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
 
 				m_portalIndexHelperBuffer[i] = UniqueVmaBuffer(m_allocator.get(), portalIdxHelperCreateInfo, portalIdxHelperBufferAllocCreateInfo);
 				VulkanDebug::SetObjectName(m_device.get(), m_portalIndexHelperBuffer[i].Get(), (std::string("portal idx helper") + indexAsString).c_str());
@@ -953,7 +953,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_a_to_b = Transform(glm::vec3(5.f, 05.f, 20.f), 1.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(0.f, 1.f, 0.f)));
 
-		//m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
+		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
 	}
 
 	// create Graphic pipelines
@@ -1130,44 +1130,9 @@ void GraphicsBackend::Render(const Camera& camera)
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
 		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
 			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(0)));
-#if 0
-		{
 
-			UniqueVmaMemoryMap memoryMap(m_allocator.get(), m_cameraIndexBuffer[m_currentframe].GetAllocation());
-			std::vector<uint32_t> cameraIndices;
-			cameraIndices.resize(m_stencilRefTree.GetCameraIndexBufferElementCount());
-
-
-			std::iota(cameraIndices.begin(), cameraIndices.end(), 0);
-
-			std::memcpy(memoryMap.GetMappedMemoryPtr(), std::data(cameraIndices), sizeof(cameraIndices[0]) * std::size(cameraIndices));
-
-		}
-#endif
 		// render pass
 		{
-#if 0
-			const vk::ImageMemoryBarrier setRenderedImageAsColorAttachment = vk::ImageMemoryBarrier{}
-				.setOldLayout(vk::ImageLayout::eUndefined)
-				.setNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
-				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-				.setImage(m_swapchain.images[imageIndex])
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1))
-				.setSrcAccessMask(vk::AccessFlags())
-				.setDstAccessMask(vk::AccessFlagBits::eShaderWrite);
-
-			;
-
-			drawBuffer.pipelineBarrier(
-				vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eFragmentShader,
-				{}, {}, {}, setRenderedImageAsColorAttachment);
-#endif
 
 			// initial / iteration 0
 			{
