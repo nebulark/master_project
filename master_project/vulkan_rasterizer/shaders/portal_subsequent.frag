@@ -69,6 +69,7 @@ void main()
 #endif
 
 #if 1
+gl_FragStencilRefARB = 0;
 	int currentViewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
 
 	int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
@@ -84,7 +85,7 @@ void main()
 		// don't count myself, as I am currently writing to it an the value may be zero or 1
 		if(index != pc.currentHelperIndex)
 		{
-			childNum+= pih.indices[i + pc.firstHelperIndex];
+			childNum+= (pih.indices[i + pc.firstHelperIndex]) == 0 ? 0 : 1;
 		}
 	}
 
@@ -96,17 +97,18 @@ void main()
 	}
 
 	// mark that we are a visible portal
-	pih.indices[pc.currentHelperIndex] = 1;
+	pih.indices[pc.currentHelperIndex] = childNum + 1;
 
 	// skip zero to avoid ambiguities
 	uint myStencilVal = childNum+1;
+	myStencilVal = pc.portalCameraIndex + 1;
 
 	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
 	int stencilRef_i = int(stencilRef_ui);
 	gl_FragStencilRefARB = stencilRef_i;
 
 	// write our camera index into camera index buffer
-	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;//pc.portalCameraIndex;
+	//ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;//pc.portalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;

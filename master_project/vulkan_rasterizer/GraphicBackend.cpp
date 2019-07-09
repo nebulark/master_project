@@ -157,7 +157,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		int texWidth, texHeight, texChannels;
 		stbi_uc* pixels = stbi_load("testTexture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 		assert(pixels);
-		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texHeight * 4;
+		constexpr int rgbaPixelSize = 4;
+		vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(texWidth) * texHeight * rgbaPixelSize;
 
 
 		vk::BufferCreateInfo stagingBufferInfo = vk::BufferCreateInfo{}
@@ -430,7 +431,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	const int expectedPortalCount = 4;
+	const int expectedPortalCount = maxVisiblePortalsForRecursion[0];
 	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
 
 	m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
@@ -462,7 +463,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
 				VmaAllocationCreateInfo cameraIndexBufferAllocCreateInfo = {};
-				cameraIndexBufferAllocCreateInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
+				cameraIndexBufferAllocCreateInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;// VmaMemoryUsage::VMA_MEMORY_USAGE_CPU_ONLY;
 
 				m_cameraIndexBuffer[i] = UniqueVmaBuffer(m_allocator.get(), cameraIndexBufferCreateInfo, cameraIndexBufferAllocCreateInfo);
 				VulkanDebug::SetObjectName(m_device.get(), m_cameraIndexBuffer[i].Get(), (std::string("camera index") + indexAsString).c_str());
@@ -952,7 +953,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_a_to_b = Transform(glm::vec3(5.f, 05.f, 20.f), 1.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(0.f, 1.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
+		//m_portalManager.Add(Portal::CreateWithTransformAndAtoB(planeIdx, portal_a, portal_a_to_b));
 	}
 
 	// create Graphic pipelines
@@ -966,9 +967,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 		};
 
 
-		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = [this]() {
+		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = [this, expectedPortalCount]() {
 			ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes{};
-			multibytes.data[max_portal_count_cid] = 4;// gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
+			multibytes.data[max_portal_count_cid] = expectedPortalCount;// gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
 			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
 			return multibytes;
 		}();
@@ -1063,7 +1064,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-
+	assert(m_portalManager.GetPortalCount() == expectedPortalCount);
 }
 
 void GraphicsBackend::Render(const Camera& camera)
@@ -1127,8 +1128,21 @@ void GraphicsBackend::Render(const Camera& camera)
 			m_portalManager.GetPortalIndexHelperElementCount(recursionCount) * sizeof(uint32_t), 0);
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
-		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
-			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(0)));
+	/*	drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
+			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(1)));*/
+
+		{
+
+			UniqueVmaMemoryMap memoryMap(m_allocator.get(), m_cameraIndexBuffer[m_currentframe].GetAllocation());
+			std::vector<uint32_t> cameraIndices;
+			cameraIndices.resize(m_stencilRefTree.GetCameraIndexBufferElementCount());
+
+
+			std::iota(cameraIndices.begin(), cameraIndices.end(), 0);
+
+			std::memcpy(memoryMap.GetMappedMemoryPtr(), std::data(cameraIndices), sizeof(cameraIndices[0]) * std::size(cameraIndices));
+
+		}
 		// render pass
 		{
 #if 0

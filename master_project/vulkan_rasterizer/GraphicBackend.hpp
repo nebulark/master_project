@@ -24,7 +24,7 @@ public:
 	void WaitIdle() { m_device->waitIdle(); }
 private:
 	static constexpr int MaxInFlightFrames = 2;	
-	static constexpr int maxVisiblePortalsForRecursion[] = {4,4};
+	static constexpr int maxVisiblePortalsForRecursion[] = {2,2};
 	static constexpr int recursionCount = std::size(maxVisiblePortalsForRecursion);
 
 	vk::UniqueInstance m_vkInstance;
