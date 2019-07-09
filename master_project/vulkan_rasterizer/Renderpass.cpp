@@ -5,10 +5,8 @@
 
 
 vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logicalDevice, vk::Format colorFormat, 
-	vk::Format depthStencilFormat, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
+	vk::Format depthStencilFormat, vk::Format renderedDepthFormat, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
 {
-	vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
-
 	enum AttachmentDescriptionIdx
 	{
 		color,

@@ -345,7 +345,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 	// create rendered Depth buffer
 	{
-		vk::Format depthFormat = renderedDepthFormat;
 		vk::DeviceSize texelSize = sizeof(float);
 
 
@@ -356,7 +355,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setImageType(vk::ImageType::e2D)
 			.setArrayLayers(1)
 			.setExtent(vk::Extent3D(m_swapchain.extent.width, m_swapchain.extent.height, 1))
-			.setFormat(depthFormat)
+			.setFormat(renderedDepthFormat)
 			.setInitialLayout(vk::ImageLayout::eUndefined)
 			.setMipLevels(1)
 			.setTiling(vk::ImageTiling::eOptimal)
@@ -394,7 +393,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
-		m_depthFormat, recursionCount, &debugRenderpass);
+		m_depthFormat, renderedDepthFormat, recursionCount, &debugRenderpass);
 
 	// create Framebuffer
 	{
