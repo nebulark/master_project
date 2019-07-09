@@ -75,6 +75,8 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
+	const vk::Format renderedStencilFormat = vk::Format::eR8Sint;
+
 }
 
 
@@ -389,11 +391,54 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 	}
 
+	// create rendered stencil Buffer
+	{
+		vk::DeviceSize texelSize = sizeof(int8_t);
+
+
+		VmaAllocationCreateInfo vmaInfo = {};
+		vmaInfo.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY;
+
+		vk::ImageCreateInfo renderedStencilInfo = vk::ImageCreateInfo{}
+			.setImageType(vk::ImageType::e2D)
+			.setArrayLayers(1)
+			.setExtent(vk::Extent3D(m_swapchain.extent.width, m_swapchain.extent.height, 1))
+			.setFormat(renderedStencilFormat)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setMipLevels(1)
+			.setTiling(vk::ImageTiling::eOptimal)
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eInputAttachment);
+		;
+
+		for (UniqueVmaImage& renderedStencilImage : m_image_renderedStencil)
+		{
+			renderedStencilImage = UniqueVmaImage(m_allocator.get(), renderedStencilInfo, vmaInfo);
+			std::string renderedStencilImageName = std::string("rendered stencil") + std::to_string(std::distance(&m_image_renderedStencil[0], &renderedStencilImage));
+			VulkanDebug::SetObjectName(m_device.get(), renderedStencilImage.Get(), renderedStencilImageName.c_str());
+		}
+
+		for (size_t i = 0; i < m_image_renderedStencil.size(); ++i)
+		{
+			vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo{}
+				.setImage(m_image_renderedStencil[i].Get())
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(renderedStencilFormat)
+				.setSubresourceRange(vk::ImageSubresourceRange{}
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+					.setBaseMipLevel(0)
+					.setLevelCount(1))
+				;
+			m_imageview_renderedStencil[i] = m_device->createImageViewUnique(imageViewCreateInfo);
+		}
+	}
 
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
-		m_depthFormat, renderedDepthFormat, recursionCount, &debugRenderpass);
+		m_depthFormat, renderedDepthFormat, renderedStencilFormat, recursionCount, &debugRenderpass);
 
 	// create Framebuffer
 	{
@@ -409,7 +454,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 				imageView.get(),
 				m_depthBufferView.get(),
 				m_imageview_renderedDepth[0].get(),
-				m_imageview_renderedDepth[1].get()
+				m_imageview_renderedDepth[1].get(),
+				m_imageview_renderedStencil[0].get(),
+				m_imageview_renderedStencil[1].get(),
 			};
 			m_framebuffer.push_back(m_device->createFramebufferUnique(
 				vk::FramebufferCreateInfo{ framebufferPrototype }
@@ -592,23 +639,36 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 
 
-		// rendered Depth storage texel buffer
+		// rendered  input attachment
 		{
-			vk::DescriptorSetLayoutBinding descriptorSetBinding_renderedDepth[] = {
+			vk::DescriptorSetLayoutBinding descriptorSetBinding_rendered[] = {
+
+				// depth
 				vk::DescriptorSetLayoutBinding{}
 					.setBinding(0)
 					.setDescriptorCount(1)
 					.setDescriptorType(vk::DescriptorType::eInputAttachment)
 					.setStageFlags(vk::ShaderStageFlagBits::eFragment),
+
+				// stencil
+				vk::DescriptorSetLayoutBinding{}
+					.setBinding(1)
+					.setDescriptorCount(1)
+					.setDescriptorType(vk::DescriptorType::eInputAttachment)
+					.setStageFlags(vk::ShaderStageFlagBits::eFragment),
+
+
 			};
 
-			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_renderedDepth = vk::DescriptorSetLayoutCreateInfo()
-				.setBindingCount(GetSizeUint32(descriptorSetBinding_renderedDepth))
-				.setPBindings(descriptorSetBinding_renderedDepth)
+			vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutInfo_rendered = vk::DescriptorSetLayoutCreateInfo()
+				.setBindingCount(GetSizeUint32(descriptorSetBinding_rendered))
+				.setPBindings(descriptorSetBinding_rendered)
 				;
 
-			m_descriptorSetLayout_renderedDepth = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_renderedDepth);
+			m_descriptorSetLayout_rendered = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_rendered);
 		}
+		
+	
 	}
 
 	// create Descriptor pool
@@ -632,7 +692,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			vk::DescriptorPoolSize{}
 			.setType(vk::DescriptorType::eInputAttachment)
-			.setDescriptorCount(GetSizeUint32(m_descriptorSet_renderedDepth)),
+			.setDescriptorCount(GetSizeUint32(m_descriptorSet_rendered) * 2),
 
 		};
 
@@ -644,7 +704,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				+ GetSizeUint32(m_descriptorSet_cameratMat)
 				+ GetSizeUint32(m_descriptorSet_cameraIndices)
 				+ GetSizeUint32(m_descriptorSet_portalIndexHelper)
-				+ GetSizeUint32(m_descriptorSet_renderedDepth)
+				+ GetSizeUint32(m_descriptorSet_rendered)
 			);
 
 
@@ -658,8 +718,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSetLayout_texture.get(),
 			m_descriptorSetLayout_ubo.get(),
 			m_descriptorSetLayout_ubo.get(), // we need two as we write it each frame, so we can leave one alone until its finished		
-			m_descriptorSetLayout_renderedDepth.get(),
-			m_descriptorSetLayout_renderedDepth.get(),
+			m_descriptorSetLayout_rendered.get(),
+			m_descriptorSetLayout_rendered.get(),
 			m_descriptorSetLayout_cameraMat.get(),
 			m_descriptorSetLayout_cameraMat.get(),
 			m_descriptorSetLayout_cameraIndices.get(),
@@ -678,8 +738,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_descriptorSet_texture = std::move(descriptorSets[0]);
 		m_descriptorSet_ubo[0] = std::move(descriptorSets[1]);
 		m_descriptorSet_ubo[1] = std::move(descriptorSets[2]);
-		m_descriptorSet_renderedDepth[0] = std::move(descriptorSets[3]);
-		m_descriptorSet_renderedDepth[1] = std::move(descriptorSets[4]);
+		m_descriptorSet_rendered[0] = std::move(descriptorSets[3]);
+		m_descriptorSet_rendered[1] = std::move(descriptorSets[4]);
 		m_descriptorSet_cameratMat[0] = std::move(descriptorSets[5]);
 		m_descriptorSet_cameratMat[1] = std::move(descriptorSets[6]);
 		m_descriptorSet_cameraIndices[0] = std::move(descriptorSets[7]);
@@ -763,6 +823,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			std::array<vk::DescriptorImageInfo, 2> imageInfos;
 			std::array<vk::WriteDescriptorSet, 2> writeDescriptorSet_inputAttachment;
 
+			// depth
 			for (size_t i = 0; i < std::size(imageInfos); ++i)
 			{
 
@@ -776,13 +837,34 @@ void GraphicsBackend::Init(SDL_Window* window)
 					.setDescriptorType(vk::DescriptorType::eInputAttachment)
 					.setDstArrayElement(0)
 					.setDstBinding(0)
-					.setDstSet(m_descriptorSet_renderedDepth[i])
+					.setDstSet(m_descriptorSet_rendered[i])
 					;
 
 			}
 
 
 			m_device->updateDescriptorSets(writeDescriptorSet_inputAttachment, {});
+			
+			// stencil
+			for (size_t i = 0; i < std::size(imageInfos); ++i)
+			{
+
+				imageInfos[i] = vk::DescriptorImageInfo{}
+					.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+					.setImageView(m_imageview_renderedStencil[i].get());
+
+				writeDescriptorSet_inputAttachment[i] = vk::WriteDescriptorSet{}
+					.setDescriptorCount(1)
+					.setPImageInfo(&imageInfos[i])
+					.setDescriptorType(vk::DescriptorType::eInputAttachment)
+					.setDstArrayElement(0)
+					.setDstBinding(1)
+					.setDstSet(m_descriptorSet_rendered[i])
+					;
+			}
+
+			m_device->updateDescriptorSets(writeDescriptorSet_inputAttachment, {});
+
 
 		}
 	}
@@ -799,7 +881,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_descriptorSetLayout_texture.get(),
 			m_descriptorSetLayout_ubo.get(),
 			m_descriptorSetLayout_cameraMat.get(),
-			m_descriptorSetLayout_renderedDepth.get(),
+			m_descriptorSetLayout_rendered.get(),
 			m_descriptorSetLayout_cameraIndices.get(),
 			m_descriptorSetLayout_portalIndexHelper.get(),
 		};
@@ -1114,8 +1196,14 @@ void GraphicsBackend::Render(const Camera& camera)
 	// drawing
 	{
 		vk::ClearValue clearValues[] = {
+					// output
 					vk::ClearColorValue(std::array<float, 4>{ 100.f / 255.f, 149.f / 255.f, 237.f / 255.f, 1.f }),
+					// depth Stencil
 					vk::ClearDepthStencilValue(1.f, 0),
+					// rendered depth x 2
+					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+					// rendered stencil x 2
 					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
 					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
 		};
@@ -1136,7 +1224,7 @@ void GraphicsBackend::Render(const Camera& camera)
 			// initial / iteration 0
 			{
 
-				const int renderedDepthInputIdx = 1;
+				const int renderedInputIdx = 1;
 				// render Scene Subpass
 				{
 					drawBuffer.beginRenderPass(
@@ -1153,7 +1241,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						m_descriptorSet_texture,
 						m_descriptorSet_ubo[m_currentframe],
 						m_descriptorSet_cameratMat[m_currentframe],
-						m_descriptorSet_renderedDepth[renderedDepthInputIdx],
+						m_descriptorSet_rendered[renderedInputIdx],
 						m_descriptorSet_cameraIndices[m_currentframe],
 						m_descriptorSet_portalIndexHelper[m_currentframe],
 
@@ -1179,7 +1267,7 @@ void GraphicsBackend::Render(const Camera& camera)
 							m_descriptorSet_texture,
 							m_descriptorSet_ubo[m_currentframe],
 							m_descriptorSet_cameratMat[m_currentframe],
-							m_descriptorSet_renderedDepth[renderedDepthInputIdx],
+							m_descriptorSet_rendered[renderedInputIdx],
 							m_descriptorSet_cameraIndices[m_currentframe],
 							m_descriptorSet_portalIndexHelper[m_currentframe],
 						};
@@ -1199,7 +1287,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 			for (int iteration = 0; iteration < recursionCount; ++iteration)
 			{
-				const int renderedDepthInputIdx = iteration % 2;
+				const int renderedInputIdx = iteration % 2;
 				const bool isLastIteration = (iteration == (recursionCount - 1));
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
@@ -1242,7 +1330,7 @@ void GraphicsBackend::Render(const Camera& camera)
 								m_descriptorSet_texture,
 								m_descriptorSet_ubo[m_currentframe],
 								m_descriptorSet_cameratMat[m_currentframe],
-								m_descriptorSet_renderedDepth[renderedDepthInputIdx],
+								m_descriptorSet_rendered[renderedInputIdx],
 								m_descriptorSet_cameraIndices[m_currentframe],
 								m_descriptorSet_portalIndexHelper[m_currentframe],
 						};
@@ -1302,7 +1390,7 @@ void GraphicsBackend::Render(const Camera& camera)
 								m_descriptorSet_texture,
 								m_descriptorSet_ubo[m_currentframe],
 								m_descriptorSet_cameratMat[m_currentframe],
-								m_descriptorSet_renderedDepth[renderedDepthInputIdx],
+								m_descriptorSet_rendered[renderedInputIdx],
 								m_descriptorSet_cameraIndices[m_currentframe],
 								m_descriptorSet_portalIndexHelper[m_currentframe],
 						};

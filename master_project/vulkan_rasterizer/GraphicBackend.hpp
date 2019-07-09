@@ -24,7 +24,7 @@ public:
 	void WaitIdle() { m_device->waitIdle(); }
 private:
 	static constexpr int MaxInFlightFrames = 2;	
-	static constexpr int maxVisiblePortalsForRecursion[] = {4,3,2};
+	static constexpr int maxVisiblePortalsForRecursion[] = {4,1,1};
 	static constexpr int recursionCount = std::size(maxVisiblePortalsForRecursion);
 
 	vk::UniqueInstance m_vkInstance;
@@ -74,20 +74,22 @@ private:
 	std::array<UniqueVmaImage, 2> m_image_renderedDepth;
 	std::array<vk::UniqueImageView, 2> m_imageview_renderedDepth;
 
+	std::array<UniqueVmaImage, 2> m_image_renderedStencil;
+	std::array<vk::UniqueImageView, 2> m_imageview_renderedStencil;
 
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_texture;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_ubo;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraMat;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_cameraIndices;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_portalIndexHelper;
-	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_renderedDepth;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout_rendered;
 
 	vk::DescriptorSet m_descriptorSet_texture;
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_ubo;
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_cameratMat;
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_cameraIndices;
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_portalIndexHelper;
-	std::array<vk::DescriptorSet, 2> m_descriptorSet_renderedDepth;
+	std::array<vk::DescriptorSet, 2> m_descriptorSet_rendered;
 
 	vk::UniquePipelineLayout m_pipelineLayout;
 

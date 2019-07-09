@@ -5,23 +5,24 @@
 
 
 vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logicalDevice, vk::Format colorFormat, 
-	vk::Format depthStencilFormat, vk::Format renderedDepthFormat, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
+	vk::Format depthStencilFormat, vk::Format renderedDepthFormat, vk::Format renderedStencilFormat, int iterationCount, std::vector<std::string>* optionalDebug /*= nullptr*/)
 {
 	enum AttachmentDescriptionIdx
 	{
 		color,
 		depthStencil,
 		renderedDepth_0,
-		renderedDepth_1,
+		renderedDepth_1,	
+		renderedStencil_0,
+		renderedStencil_1,
+
 		enum_size_AttachmentDescriptionIdx
 	};
-
-	static_assert(renderedDepth_0 + 1 == renderedDepth_1);
 
 	constexpr vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
 
 	const std::array<vk::AttachmentDescription, AttachmentDescriptionIdx::enum_size_AttachmentDescriptionIdx> attachmentsDescritpions = 
-	[samples, colorFormat, depthStencilFormat, renderedDepthFormat]()
+	[samples, colorFormat, depthStencilFormat, renderedDepthFormat, renderedStencilFormat]()
 	{
 		std::array<vk::AttachmentDescription, AttachmentDescriptionIdx::enum_size_AttachmentDescriptionIdx> attachmentsDescritpions;
 
@@ -56,6 +57,17 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 
 		attachmentsDescritpions[renderedDepth_1] = attachmentsDescritpions[renderedDepth_0];
 
+		attachmentsDescritpions[renderedStencil_0] = vk::AttachmentDescription()
+			.setFormat(renderedStencilFormat)
+			.setSamples(samples)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
+			;
+
+		attachmentsDescritpions[renderedStencil_1] = attachmentsDescritpions[renderedStencil_0];
+
 		return attachmentsDescritpions;
 	}();
 
@@ -84,19 +96,21 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		enum_size_IterationParity
 	};
 
-	const std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity>  renderPortalOutput = []()
+	const std::array<std::array<vk::AttachmentReference,3>, enum_size_IterationParity>  renderPortalOutput = []()
 	{
-		std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity> renderPortalOutput;
+		std::array<std::array<vk::AttachmentReference,3>, enum_size_IterationParity> renderPortalOutput;
 		renderPortalOutput[even] = 
 		{
 			vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eColorAttachmentOptimal),
 			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
+			vk::AttachmentReference(renderedStencil_0, vk::ImageLayout::eColorAttachmentOptimal),
 		};
 	
 		renderPortalOutput[odd] = 
 		{
 			vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eColorAttachmentOptimal),
 			vk::AttachmentReference(color, vk::ImageLayout::eColorAttachmentOptimal), // TODO: Put this into preserve attachments, for now we keep it for debugging
+			vk::AttachmentReference(renderedStencil_1, vk::ImageLayout::eColorAttachmentOptimal),
 		};
 
 
@@ -104,16 +118,18 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 	}();
 
 	// input attachments all subsequent passes will use (scene AND portal), take care that renderedDepth is the opposite of renderPortalOutput attachments!
-	const std::array<std::array<vk::AttachmentReference,1>, enum_size_IterationParity> subsequentPassInput = []()
+	const std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity> subsequentPassInput = []()
 	{
-		std::array<std::array<vk::AttachmentReference,1>, enum_size_IterationParity> subsequentPassInput;
+		std::array<std::array<vk::AttachmentReference,2>, enum_size_IterationParity> subsequentPassInput;
 
 		subsequentPassInput[even] = {
 			vk::AttachmentReference(renderedDepth_1, vk::ImageLayout::eShaderReadOnlyOptimal),
+			vk::AttachmentReference(renderedStencil_1, vk::ImageLayout::eShaderReadOnlyOptimal),
 		};
 
 		subsequentPassInput[odd] = {
 			vk::AttachmentReference(renderedDepth_0, vk::ImageLayout::eShaderReadOnlyOptimal),
+			vk::AttachmentReference(renderedStencil_0, vk::ImageLayout::eShaderReadOnlyOptimal),
 		};
 
 		return subsequentPassInput;

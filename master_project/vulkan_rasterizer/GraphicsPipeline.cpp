@@ -47,6 +47,13 @@ const vk::PipelineColorBlendStateCreateInfo colorblendstate_override_2 = vk::Pip
 		.setPAttachments(colorblend_override_arr4.data())
 		.setBlendConstants({ 0.f,0.f,0.f,0.f })
 		;
+const vk::PipelineColorBlendStateCreateInfo colorblendstate_override_3 = vk::PipelineColorBlendStateCreateInfo()
+	.setLogicOpEnable(false)
+		.setLogicOp(vk::LogicOp::eCopy)
+		.setAttachmentCount(3)
+		.setPAttachments(colorblend_override_arr4.data())
+		.setBlendConstants({ 0.f,0.f,0.f,0.f })
+		;
 
 
 const vk::PipelineMultisampleStateCreateInfo GraphicsPipeline::multisampleState_noMultisampling = vk::PipelineMultisampleStateCreateInfo()
@@ -214,7 +221,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
 		.setPDepthStencilState(&depthStencilStateCreateInfo_portalInitial)
-		.setPColorBlendState(&colorblendstate_override_2)
+		.setPColorBlendState(&colorblendstate_override_3)
 		.setSubpass(1)
 		;
 
@@ -230,7 +237,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
 		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
-		.setPColorBlendState(&colorblendstate_override_2)
+		.setPColorBlendState(&colorblendstate_override_3)
 		.setPDynamicState(&dynamicStateCreateInfo) 
 		// does not really need dynamic state, as the reference value is changed in shader, but we have it for comparemask convenience
 		// and the possibility to get it to work without stencil export

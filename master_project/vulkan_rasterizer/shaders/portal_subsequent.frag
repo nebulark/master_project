@@ -8,10 +8,13 @@ layout(location = 1) in vec2 fragTexCoord;
 
 layout(location = 0) out float outRenderedDepth;
 layout(location = 1) out vec4 outColor;
+layout(location = 2) out int outRenderedStencil;
 
 out int gl_FragStencilRefARB;
 
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput inputStencil;
+
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
@@ -54,13 +57,22 @@ layout(set = 4, binding = 0) buffer CameraIndices {
 
 void main() 
 {
+	
+	int stencilVal = int(pc.layerStencilVal);
+
+	int compareVal = int(subpassLoad(inputStencil).r);
+
+
+	if(stencilVal != compareVal)
+	{
+		discard;
+	}
 
 	if(gl_FragCoord.z <= subpassLoad(inputDepth).r * 1.00001)
 	{
 		discard;
 	}
 #if 1
-	int stencilVal = int(pc.layerStencilVal);
 
 	gl_FragStencilRefARB =stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
@@ -105,6 +117,8 @@ void main()
 	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
 	int stencilRef_i = int(stencilRef_ui);
 	gl_FragStencilRefARB = stencilRef_i;
+
+	outRenderedStencil = stencilRef_i;
 
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;

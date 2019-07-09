@@ -8,6 +8,7 @@ layout(location = 1) in vec2 fragTexCoord;
 
 layout(location = 0) out float outRenderedDepth;
 layout(location = 1) out vec4 outColor;
+layout(location = 2) out int outRenderedStencil;
 
 out int gl_FragStencilRefARB;
 
@@ -103,6 +104,7 @@ void main()
 	int stencilRef_i = int(stencilRef_ui);
 	gl_FragStencilRefARB = stencilRef_i;
 
+	outRenderedStencil = stencilRef_i;
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;
