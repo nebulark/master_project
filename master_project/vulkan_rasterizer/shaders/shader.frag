@@ -12,6 +12,8 @@ layout(location = 0) out vec4 outColor;
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
 #endif
 
+const vec3 directionalLightDir = normalize(vec3(1.0,1.0,1.0));
+
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
@@ -46,9 +48,20 @@ void main() {
 	}
 #endif
 
-    outColor = texture(texSampler,fragTexCoord);
+	vec3 color = texture(texSampler,fragTexCoord).xyz;
 	if(pc.debugColor.w != 0)
 	{
-		outColor = pc.debugColor;
+		color = pc.debugColor.xyz;
 	}
+
+
+	const float ambient = 0.2;
+
+	vec3 normal = normalize(fragNormal);
+	float diffuse = max(0, dot(directionalLightDir, normal));
+
+	color = color * min(diffuse + ambient, 1.0);
+
+
+	outColor = vec4(color,1.0);
 }
