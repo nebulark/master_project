@@ -8,14 +8,29 @@
 class MeshDataManager;
 
 
-struct DrawPortalsInfo{
+struct DrawPortalsInfo
+{
+	// command buffer used for drawing
 	vk::CommandBuffer drawBuffer;
-	MeshDataManager& meshDataManager;
+
+	// mesh manager that contains the portal meshes, must not be null
+	MeshDataManager* meshDataManager;
+
+	// pipeline layout for portal push constants
 	vk::PipelineLayout layout;
 	int iterationElementIndex;
+
+	// number of bits we would need to shift a value, so that it won't overwrite important stencil Ref bits
 	int numBitsToShiftStencil;
+
+	// the maximum number of visible portals, may be different for each iteration
 	int maxVisiblePortalCount;
+
+	// stencil ref for testing, if we should render the portal
 	uint8_t stencilRef;
+
+	// the first index in the camera indices array, that should be written by the portals
+	int firstCameraIndicesIndex;
 };
 
 
@@ -24,7 +39,7 @@ class PortalManager
 public:
 	void Add(const Portal& portal);
 
-	void DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager, vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef, int firstCameraIndex);
+	void DrawPortals(const DrawPortalsInfo& info);
 	gsl::span<const Portal> GetPortals() const { return m_portals; }
 
 	void CreateCameraTransforms(

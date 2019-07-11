@@ -33,18 +33,21 @@ namespace {
 
 }
 
-void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& meshDataManager,
-	vk::PipelineLayout layout, int iterationElementIndex, int numBitsToShiftStencil, int maxVisiblePortalCount, uint8_t stencilRef, int firstCameraIndex)
+void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 {
 	const uint32_t actualPortalCount = GetSizeUint32(m_portals) * 2;
+	assert(info.meshDataManager);
+	MeshDataManager& meshDataManager = *info.meshDataManager;
 
-	drawBuffer.bindIndexBuffer(meshDataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+	vk::CommandBuffer drawBuffer = info.drawBuffer;
+
+	info.drawBuffer.bindIndexBuffer(meshDataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+
+
 	vk::DeviceSize vertexBufferOffset = 0;
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
-	const int firstChildIdx = NTree::GetChildElementIdx(actualPortalCount, iterationElementIndex, 0);
-
-	const int firstCameraIndicesIndex = firstCameraIndex;
+	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.iterationElementIndex, 0);
 
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
@@ -54,27 +57,23 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
 		PushConstant pushConstant = {};
-		pushConstant.cameraIdx = iterationElementIndex;
-		pushConstant.layerStencilVal = stencilRef;
-		pushConstant.firstHelperIndex = firstChildIdx;
-		pushConstant.firstCameraIndicesIndex = firstCameraIndicesIndex;
-		pushConstant.maxVisiblePortalCountForRecursion = maxVisiblePortalCount;
-		pushConstant.numOfBitsToShiftChildStencilVal = numBitsToShiftStencil;
+		pushConstant.cameraIdx =  info.iterationElementIndex;
+		pushConstant.layerStencilVal =  info.stencilRef;
+		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
+		pushConstant.firstCameraIndicesIndex =  info.firstCameraIndicesIndex;
+		pushConstant.maxVisiblePortalCountForRecursion =  info.maxVisiblePortalCount;
+		pushConstant.numOfBitsToShiftChildStencilVal =  info.numBitsToShiftStencil;
 
 		
 		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
 
 		{
-			// comment this when ready to calc portal val in shader
-			//pushConstant.layerStencilVal = stencilRef | ((a_childNum + 1) << numBitsToShiftStencil);
+			pushConstant.portalCameraIndex = a_childNum;
 
-
-			pushConstant.portalCameraIndex = a_childNum;// +firstChildIdx;
-
-			pushConstant.currentHelperIndex = a_childNum + firstChildIdx;
+			pushConstant.currentHelperIndex = a_childNum + indexHelper_firstChildIndex;
 			
 			pushConstant.model = m_portals[i].a_transform.ToMat();
-			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 		}
 
@@ -82,15 +81,12 @@ void PortalManager::DrawPortals(vk::CommandBuffer drawBuffer, MeshDataManager& m
 			vk::DependencyFlags{}, {}, {}, {});
 
 		{
-			pushConstant.portalCameraIndex = b_childNum;// + firstChildIdx;
-
-			// comment this when ready to calc portal val in shader
-			//pushConstant.layerStencilVal = stencilRef | ((b_childNum + 1) << numBitsToShiftStencil);
-
-			pushConstant.currentHelperIndex = b_childNum + firstChildIdx;
+			pushConstant.portalCameraIndex = b_childNum;
+		
+			pushConstant.currentHelperIndex = b_childNum + indexHelper_firstChildIndex;
 
 			pushConstant.model = m_portals[i].b_transform.ToMat();
-			drawBuffer.pushConstants<PushConstant>(layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);	
 			
 		

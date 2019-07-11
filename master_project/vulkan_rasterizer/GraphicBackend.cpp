@@ -1277,10 +1277,18 @@ void GraphicsBackend::Render(const Camera& camera)
 
 					// draw Portals
 					{
-						constexpr uint8_t stencilRef = 0;
-						constexpr int numBitToShiftStencilRef = 0;
-						const int maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
-						m_portalManager.DrawPortals(drawBuffer, *m_meshData, m_pipelineLayout.get(), iterationElementIndex, numBitToShiftStencilRef, maxVisiblePortalsForRecursion[0], 0, 1);
+						DrawPortalsInfo info = {};
+						info.drawBuffer = drawBuffer;
+						info.firstCameraIndicesIndex = 1;
+						info.iterationElementIndex = iterationElementIndex;
+						info.layout = m_pipelineLayout.get();
+						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
+						info.meshDataManager = m_meshData.get();
+						info.numBitsToShiftStencil = 0;
+						info.stencilRef = 0;
+
+
+						m_portalManager.DrawPortals(info);
 					}
 				}
 			}
@@ -1412,9 +1420,17 @@ void GraphicsBackend::Render(const Camera& camera)
 						// not really needed
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, stencilRef);
 
-						m_portalManager.DrawPortals(
-							drawBuffer, *m_meshData, m_pipelineLayout.get(), elementIdx,
-							numRightShifts, numVisiblePortalsforLayer, stencilRef, firstCameraIndex);
+						DrawPortalsInfo info = {};
+						info.drawBuffer = drawBuffer;
+						info.firstCameraIndicesIndex = firstCameraIndex;
+						info.iterationElementIndex = elementIdx;
+						info.layout = m_pipelineLayout.get();
+						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
+						info.meshDataManager = m_meshData.get();
+						info.numBitsToShiftStencil = numRightShifts;
+						info.stencilRef = stencilRef;
+
+						m_portalManager.DrawPortals(info);
 					}
 				}
 			}
@@ -1422,21 +1438,21 @@ void GraphicsBackend::Render(const Camera& camera)
 			drawBuffer.endRenderPass();
 }
 
-		drawBuffer.end();
+drawBuffer.end();
 
 
-		vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-		m_graphicsPresentQueues.submit(vk::SubmitInfo{}
-			.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
-			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
-			.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-			, m_frameFence[m_currentframe].get());
+vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+m_graphicsPresentQueues.submit(vk::SubmitInfo{}
+	.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
+	.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
+	.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+	, m_frameFence[m_currentframe].get());
 
-		m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
-			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-			.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
-		);
-		m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
+m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
+	.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+	.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
+);
+m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
 
 	}
 
