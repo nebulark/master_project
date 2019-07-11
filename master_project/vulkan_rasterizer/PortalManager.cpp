@@ -134,8 +134,8 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);
 
-				outCameraTransforms[childIdx0] = m_portals[i].b_transform * glm::inverse(m_portals[i].a_transform) * outCameraTransforms[parentIdx];
-				outCameraTransforms[childIdx1] = m_portals[i].a_transform * glm::inverse(m_portals[i].b_transform) * outCameraTransforms[parentIdx];				
+				outCameraTransforms[childIdx0] = m_portals[i].a_to_b * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx1] = m_portals[i].b_to_a * outCameraTransforms[parentIdx];				
 			}
 		}
 	}
