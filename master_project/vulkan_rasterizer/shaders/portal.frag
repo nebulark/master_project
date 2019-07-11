@@ -63,10 +63,7 @@ void main()
 	int stencilVal = int(pc.layerStencilVal);
 
 #ifdef SUBSEQUENT_PASS
-	int compareVal = int(subpassLoad(inputStencil).r);
-
-
-	if(stencilVal != compareVal)
+	if(stencilVal != subpassLoad(inputStencil).r)
 	{
 		discard;
 	}
@@ -77,16 +74,6 @@ void main()
 	}
 #endif
 
-#if 1
-
-	gl_FragStencilRefARB =stencilVal;
-	outRenderedDepth = gl_FragCoord.z;
-
-	outColor =pc.debugColor;
-#endif
-
-#if 1
-	gl_FragStencilRefARB = 0;
 	int currentViewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
 
 	int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
@@ -130,6 +117,4 @@ void main()
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
-	#endif
-
 }
