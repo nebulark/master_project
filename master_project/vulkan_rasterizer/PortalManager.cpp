@@ -72,7 +72,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 			pushConstant.currentHelperIndex = a_childNum + indexHelper_firstChildIndex;
 			
-			pushConstant.model = m_portals[i].a_transform.ToMat();
+			pushConstant.model = m_portals[i].a_transform;
 			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 		}
@@ -85,7 +85,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 		
 			pushConstant.currentHelperIndex = b_childNum + indexHelper_firstChildIndex;
 
-			pushConstant.model = m_portals[i].b_transform.ToMat();
+			pushConstant.model = m_portals[i].b_transform;
 			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);	
 			
@@ -98,72 +98,6 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 	}
 }
 
-void PortalManager::CreateCameraTransforms(Transform cameraTransform, int maxRecursionCount, gsl::span<Transform> outTransforms) const
-{
-	// we build an NTree, with a child for each portal connections (portals are two sided so we have to connection per element in portals)
-	// layer 0  of the NTree has 1 element
-	// layer 1 has portalCount elements
-	// layer 2 has portalCount^2 elements
-	// ....
-
-	// each children corresponds to the product between the parent matrix and the portals translation matrix (a_to_b / b_to_a)
-
-	// each portal struct actually defines two portals
-	// this value will we uses a N for the NTree
-
-	const int portalCount = m_portals.size() * 2;
-	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
-	assert(outTransforms.size() >= matrixCount);
-
-	outTransforms[0] = cameraTransform;
-	for (int cameraTreeLayer = 1; cameraTreeLayer <= maxRecursionCount; ++cameraTreeLayer)
-	{
-		const uint32_t previousLayerStartIndex = NTree::CalcFirstLayerIndex(portalCount, cameraTreeLayer - 1);
-		const uint32_t layerStartIndex = NTree::CalcFirstLayerIndex(portalCount, cameraTreeLayer);
-
-		// for each parent we iterate over all portals
-		for (uint32_t parentIdx = previousLayerStartIndex; parentIdx < layerStartIndex; ++parentIdx)
-		{
-			// we are iterating over 2 elements at once, so the actual portals are 2*i and 2*i +1!
-			for (uint32_t i = 0; i < m_portals.size(); ++i)
-			{
-				const uint32_t childIdx0 = NTree::GetChildElementIdx(portalCount, parentIdx, 2 * i);
-				const uint32_t childIdx1 = childIdx0 + 1;
-
-				// validate that we don't got out of range
-				assert(childIdx1 < matrixCount);
-
-				outTransforms[childIdx0] = m_portals[i].a_to_b * outTransforms[parentIdx];
-				{
-					// we find the new position by finding the delta to the first portal, rotating it and subtracting it from det pos of the second portal
-					const glm::vec3 deltaTrans = (m_portals[i].a_transform.translation - outTransforms[parentIdx].translation);
-					const glm::vec3 rotatateTrans = m_portals[i].a_to_b.rotation * deltaTrans;
-					const glm::vec3 pos = m_portals[i].b_transform.translation - rotatateTrans;
-
-					const glm::quat rotation = m_portals[i].a_to_b.rotation * outTransforms[parentIdx].rotation;
-
-					outTransforms[childIdx0] = Transform(pos, 1.f, rotation);
-				}
-
-
-				outTransforms[childIdx1] = m_portals[i].b_to_a * outTransforms[parentIdx];
-				{
-					// we find the new position by finding the delta to the first portal, rotating it and subtracting it from det pos of the second portal
-					const glm::vec3 deltaTrans = (m_portals[i].b_transform.translation - outTransforms[parentIdx].translation);
-					const glm::vec3 rotatateTrans = m_portals[i].b_to_a.rotation * deltaTrans;
-					const glm::vec3 pos = m_portals[i].a_transform.translation - rotatateTrans;
-
-					const glm::quat rotation = m_portals[i].b_to_a.rotation * outTransforms[parentIdx].rotation;
-
-					outTransforms[childIdx1] = Transform(pos, 1.f, rotation);
-				}
-
-			}
-		}
-	}
-
-	// TODO: could be improved by keeping a parent and a child index and incrementing those as needed instead of recalculating all the time?
-}
 
 void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount, gsl::span<glm::mat4> outCameraTransforms) const
 {
@@ -200,11 +134,8 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);
 
-				if (true)
-				{
-					outCameraTransforms[childIdx0] = m_portals[i].b_transform.ToMat() * glm::inverse(m_portals[i].a_transform.ToMat()) * outCameraTransforms[parentIdx];
-					outCameraTransforms[childIdx1] = m_portals[i].a_transform.ToMat() * glm::inverse(m_portals[i].b_transform.ToMat()) * outCameraTransforms[parentIdx];				
-				}
+				outCameraTransforms[childIdx0] = m_portals[i].b_transform * glm::inverse(m_portals[i].a_transform) * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx1] = m_portals[i].a_transform * glm::inverse(m_portals[i].b_transform) * outCameraTransforms[parentIdx];				
 			}
 		}
 	}

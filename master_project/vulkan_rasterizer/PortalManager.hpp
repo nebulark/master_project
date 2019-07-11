@@ -42,11 +42,6 @@ public:
 	void DrawPortals(const DrawPortalsInfo& info);
 	gsl::span<const Portal> GetPortals() const { return m_portals; }
 
-	void CreateCameraTransforms(
-		Transform cameraTransform,
-		int maxRecursionCount,
-		gsl::span<Transform> outTransforms) const;
-
 	void CreateCameraMats(
 		glm::mat4 cameraMat,
 		int maxRecursionCount,
