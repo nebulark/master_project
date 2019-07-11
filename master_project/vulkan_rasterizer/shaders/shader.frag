@@ -8,6 +8,10 @@ layout(location = 1) in vec2 fragTexCoord;
 
 layout(location = 0) out vec4 outColor;
 
+#ifdef SUBSEQUENT_PASS
+layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+#endif
+
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
@@ -35,9 +39,30 @@ layout(push_constant) uniform PushConstant {
 
 void main() {
 
+#ifdef SUBSEQUENT_PASS
+	if(gl_FragCoord.z <= subpassLoad(inputDepth).r) 
+	{
+		discard;
+	}
+#endif
+
     outColor = texture(texSampler,fragTexCoord);
 	if(pc.debugColor.w != 0)
 	{
 		outColor = pc.debugColor;
 	}
+
+#if 0
+	float renderedDepth = subpassLoad(inputDepth).r / 2.f;
+	if(gl_FragCoord.z < renderedDepth)
+	{
+		outColor = vec4(0.f,1.f,0.f,1.f);
+	}
+	else
+	{
+		outColor = vec4(0.f,0.f,1.f,1.f);
+	}
+	outColor = vec4(vec3(renderedDepth + 0.25), 1.f);
+#endif
+
 }

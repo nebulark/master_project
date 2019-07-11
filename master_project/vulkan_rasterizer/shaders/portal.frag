@@ -12,6 +12,11 @@ layout(location = 2) out int outRenderedStencil;
 
 out int gl_FragStencilRefARB;
 
+#ifdef SUBSEQUENT_PASS
+layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput inputStencil;
+#endif
+
 layout(push_constant) uniform PushConstant {
     mat4 model;
 	vec4 debugColor;
@@ -37,7 +42,6 @@ layout(push_constant) uniform PushConstant {
 	int maxVisiblePortalCountForRecursion;
 } pc;
 
-
 layout(constant_id = 0) const int maxPortalCount = 4;
 
 layout(set = 2, binding = 0) uniform ubo_cameraMats
@@ -53,14 +57,29 @@ layout(set = 4, binding = 0) buffer CameraIndices {
     int cIndices[];
 } ci;
 
-
 void main() 
 {
-#if 1
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
 	
 	int stencilVal = int(pc.layerStencilVal);
-	gl_FragStencilRefARB = stencilVal;
+
+#ifdef SUBSEQUENT_PASS
+	int compareVal = int(subpassLoad(inputStencil).r);
+
+
+	if(stencilVal != compareVal)
+	{
+		discard;
+	}
+
+	if(gl_FragCoord.z <= subpassLoad(inputDepth).r * 1.00001)
+	{
+		discard;
+	}
+#endif
+
+#if 1
+
+	gl_FragStencilRefARB =stencilVal;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
@@ -105,6 +124,7 @@ void main()
 	gl_FragStencilRefARB = stencilRef_i;
 
 	outRenderedStencil = stencilRef_i;
+
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;

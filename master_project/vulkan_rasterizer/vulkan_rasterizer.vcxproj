@@ -288,6 +288,18 @@
   <ItemGroup>
     <CustomBuild Include="shaders\shader.frag">
       <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="shaders\shader.vert">
       <FileType>Document</FileType>
@@ -315,16 +327,20 @@
   <ItemGroup>
     <CustomBuild Include="shaders\portal.frag">
       <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
     </CustomBuild>
     <CustomBuild Include="shaders\portal.vert">
-      <FileType>Document</FileType>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="shaders\portal_subsequent.frag">
-      <FileType>Document</FileType>
-    </CustomBuild>
-    <CustomBuild Include="shaders\shader_subsequent.frag">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

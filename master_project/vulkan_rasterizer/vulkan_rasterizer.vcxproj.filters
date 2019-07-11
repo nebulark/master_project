@@ -226,12 +226,6 @@
     <CustomBuild Include="shaders\portal.vert">
       <Filter>Shader</Filter>
     </CustomBuild>
-    <CustomBuild Include="shaders\portal_subsequent.frag">
-      <Filter>Shader</Filter>
-    </CustomBuild>
-    <CustomBuild Include="shaders\shader_subsequent.frag">
-      <Filter>Shader</Filter>
-    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="models\cone.obj">
