@@ -1166,17 +1166,15 @@ void GraphicsBackend::Render(const Camera& camera)
 	{
 		const int cameraBufferElementCount = m_portalManager.GetCameraBufferElementCount(recursionCount);
 
-		std::vector<Transform> cameraTransforms;
-		cameraTransforms.resize(cameraBufferElementCount);
-		m_portalManager.CreateCameraTransforms(camera.m_transform, recursionCount, cameraTransforms);
-
 		std::vector<glm::mat4> cameraViewMats;
 		cameraViewMats.resize(cameraBufferElementCount);
 
-		std::transform(std::begin(cameraTransforms), std::end(cameraTransforms), std::begin(cameraViewMats), [](const Transform& e)
+		m_portalManager.CreateCameraMats(camera.m_transform.ToMat(), recursionCount, cameraViewMats);
+		std::transform(std::begin(cameraViewMats), std::end(cameraViewMats), std::begin(cameraViewMats), [](const glm::mat4& e)
 			{
-				return e.ToViewMat();
+				return glm::inverse(e);
 			});
+
 
 		VmaAllocation cameraMat_Allocation = m_cameratMat_buffer[m_currentframe].GetAllocation();
 		UniqueVmaMemoryMap memoryMap(m_allocator.get(), cameraMat_Allocation);
@@ -1196,16 +1194,16 @@ void GraphicsBackend::Render(const Camera& camera)
 	// drawing
 	{
 		vk::ClearValue clearValues[] = {
-					// output
-					vk::ClearColorValue(std::array<float, 4>{ 100.f / 255.f, 149.f / 255.f, 237.f / 255.f, 1.f }),
-					// depth Stencil
-					vk::ClearDepthStencilValue(1.f, 0),
-					// rendered depth x 2
-					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-					// rendered stencil x 2
-					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-					vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+			// output
+			vk::ClearColorValue(std::array<float, 4>{ 100.f / 255.f, 149.f / 255.f, 237.f / 255.f, 1.f }),
+			// depth Stencil
+			vk::ClearDepthStencilValue(1.f, 0),
+			// rendered depth x 2
+			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+			// rendered stencil x 2
+			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
 		};
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
@@ -1414,7 +1412,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						int childnum = elementIdx - layerStartIndex;
 						int firstCameraIndex = cameraIndicesLayerStartIndex + childnum * firstCameraIndicesOffsetForLayer;
 
-					
+
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						// not really needed
@@ -1436,23 +1434,23 @@ void GraphicsBackend::Render(const Camera& camera)
 			}
 
 			drawBuffer.endRenderPass();
-}
+		}
 
-drawBuffer.end();
+		drawBuffer.end();
 
 
-vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-m_graphicsPresentQueues.submit(vk::SubmitInfo{}
-	.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
-	.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
-	.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-	, m_frameFence[m_currentframe].get());
+		vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+		m_graphicsPresentQueues.submit(vk::SubmitInfo{}
+			.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
+			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
+			.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+			, m_frameFence[m_currentframe].get());
 
-m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
-	.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-	.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
-);
-m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
+		m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
+			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+			.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
+		);
+		m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
 
 	}
 

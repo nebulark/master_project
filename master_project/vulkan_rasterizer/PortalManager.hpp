@@ -47,6 +47,12 @@ public:
 		int maxRecursionCount,
 		gsl::span<Transform> outTransforms) const;
 
+	void CreateCameraMats(
+		glm::mat4 cameraMat,
+		int maxRecursionCount,
+		gsl::span<glm::mat4> outCameraTransforms) const;
+
+
 	int GetCameraBufferElementCount(int maxRecursionCount) const;
 
 	static int GetCameraBufferElementCount(int maxRecursionCount, int portalCount);
