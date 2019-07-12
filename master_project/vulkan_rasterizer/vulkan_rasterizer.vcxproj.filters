@@ -103,6 +103,15 @@
     <ClCompile Include="StencilRefTree.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="AABB.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="KdTree.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="KdTreeUtils.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -199,6 +208,18 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="StencilRefTree.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="KdTree.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="KdTreeUtils.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="SplitAxis.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

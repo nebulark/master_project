@@ -187,6 +187,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AABB.cpp" />
     <ClCompile Include="Application_Rasterizer.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CommandBufferUtils.cpp" />
@@ -194,6 +195,8 @@
     <ClCompile Include="GraphicBackend.cpp" />
     <ClCompile Include="GraphicsPipeline.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="KdTree.cpp" />
+    <ClCompile Include="KdTreeUtils.cpp" />
     <ClCompile Include="Key.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="main.cpp">
@@ -242,6 +245,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AABB.hpp" />
     <ClInclude Include="Application_Rasterizer.hpp" />
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="CommandBufferUtils.hpp" />
@@ -249,6 +253,8 @@
     <ClInclude Include="GraphicBackend.hpp" />
     <ClInclude Include="GraphicsPipeline.hpp" />
     <ClInclude Include="InputManager.hpp" />
+    <ClInclude Include="KdTree.hpp" />
+    <ClInclude Include="KdTreeUtils.hpp" />
     <ClInclude Include="Key.hpp" />
     <ClInclude Include="Loader.hpp" />
     <ClInclude Include="MeshDataRef.hpp" />
@@ -263,6 +269,7 @@
     <ClInclude Include="MeshDataManager.hpp" />
     <ClInclude Include="Scene.hpp" />
     <ClInclude Include="ShaderSpecialisation.hpp" />
+    <ClInclude Include="SplitAxis.hpp" />
     <ClInclude Include="StencilRefTree.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="Transform.hpp" />
