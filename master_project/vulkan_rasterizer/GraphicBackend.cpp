@@ -942,7 +942,23 @@ void GraphicsBackend::Init(SDL_Window* window)
 			m_scene->Add(cubeIdx, floorTransform.ToMat());
 
 			floorTransform.translation.y += 80.f;
+
 			m_scene->Add(cubeIdx, floorTransform.ToMat());
+		}
+
+		// perspective warped cube
+		{
+			glm::mat4 perspectiveMat(1.f);
+
+			perspectiveMat[1][1] = 2.f;
+			perspectiveMat[1][3] = 1.f;
+			perspectiveMat[3][1] = +1.f;
+			perspectiveMat[3][3] = 1.f;
+
+			Transform trans(glm::vec3(-5.f, 5.f, 0.f), 3.f, glm::identity<glm::quat>());
+
+
+			m_scene->Add(cubeIdx, trans.ToMat() * perspectiveMat);
 		}
 
 		{
