@@ -57,10 +57,11 @@ namespace KdTreeDetail
 		const auto median = begin + (std::size(elementIndices) / 2);
 		const auto end = std::end(elementIndices);
 
-		std::nth_element(begin, median, end, [tree, &GetCentroid](DataIndex index)
+		std::nth_element(begin, median, end, [tree, &GetCentroid](DataIndex a, DataIndex b)
 			{
-				const Triangle& tri = tree.GetDataElement(index);
-				return GetCentroid(tri);
+				const Triangle& tri_a = tree.GetDataElement(a);
+				const Triangle& tri_b = tree.GetDataElement(b);
+				return GetCentroid(tri_a) < GetCentroid(tri_b);
 			});
 
 		const Triangle& medianTri = tree.GetDataElement(*median);
@@ -111,7 +112,6 @@ inline void KdTree::Init(gsl::span<Triangle> triangles)
 
 	m_data.reserve(elementCount);
 	m_data.insert(m_data.end(),  triangles.begin(), triangles.end());
-	const uint32_t elementCount = triangles.size();
 
 	// special case, to few elements to create "real" kdtree
 	if (elementCount <= MaxIndicesPerNode)
@@ -154,11 +154,11 @@ inline void KdTree::Init(gsl::span<Triangle> triangles)
 
 inline void KdTree::InitRescursion(KdNode& inOutnode, const AABB& boundingBox, std::vector<DataIndex>&& indices)
 {
-	const int indicesSize = indices.size();
+	const uint32_t indicesSize = indices.size();
 
 	if (indicesSize <= MaxIndicesPerNode)
 	{
-		const int firstIndicesIndex = m_dataIndices.size();
+		const uint32_t firstIndicesIndex = m_dataIndices.size();
 		m_dataIndices.insert(m_dataIndices.end(), std::begin(indices), std::end(indices));
 		
 		assert(m_dataIndices.size() == firstIndicesIndex + indicesSize);
@@ -169,7 +169,7 @@ inline void KdTree::InitRescursion(KdNode& inOutnode, const AABB& boundingBox, s
 
 
 
-	// split at widest diminsion
+	// split at widest dimension
 	SplitAxis widestDim = boundingBox.FindWidestDim();
 
 	KdTreeDetail::SplitResult splitResult = KdTreeDetail::Split(widestDim, std::move(indices), *this);

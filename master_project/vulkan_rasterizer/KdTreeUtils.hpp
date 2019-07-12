@@ -12,9 +12,9 @@ struct NodeIndex
 
 struct NodePairIndex
 {
-	NodeIndex internalLeftIndex;
-	constexpr NodeIndex GetLeftIndex() const { return  internalLeftIndex; };
-	constexpr NodeIndex GetRightIndex() const { return NodeIndex{ internalLeftIndex.internalIndex + 1 }; };
+	uint32_t internalLeftIndex;
+	constexpr NodeIndex GetLeftIndex() const { return  NodeIndex{ internalLeftIndex }; };
+	constexpr NodeIndex GetRightIndex() const { return NodeIndex{ internalLeftIndex + 1 }; };
 };
 
 struct DataIndicesIndex
@@ -63,7 +63,7 @@ private:
 
 static_assert(sizeof(KdNode) == sizeof(uint32_t) * 2);
 
-inline SplitAxis KdNode::GetSplitAxis() const {
+inline SplitAxis KdNode::GetSplitAxis() const noexcept {
 	uint32_t splitAxisVal = (indexAndSplitAxis >> splitAxisRightShifts);
 	assert(splitAxisVal < static_cast<uint32_t>(SplitAxis::enum_size));
 	return static_cast<SplitAxis>(splitAxisVal);
@@ -101,7 +101,7 @@ inline KdNode KdNode::CreateNode(NodePairIndex childNodes, SplitAxis splitAxis, 
 	const uint32_t splitAxis_shifted = (static_cast<uint32_t>(SplitAxis::leafNode)) << splitAxisRightShifts;
 
 	KdNode result;
-	result.indexAndSplitAxis = childNodes.internalLeftIndex.internalIndex | splitAxis_shifted;
+	result.indexAndSplitAxis = childNodes.internalLeftIndex | splitAxis_shifted;
 	result.splitValOrDataViewSize.splitVal = splitVal;
 	return result;
 }
@@ -138,7 +138,7 @@ private:
 
 inline NodePairIndex KdNodeMemory::AllocNodePair()
 {
-	int internalLeftIndex = static_cast<int>(m_nodes.size());
+	uint32_t internalLeftIndex = static_cast<uint32_t>(m_nodes.size());
 
 	// add two nodes
 	m_nodes.emplace_back();
