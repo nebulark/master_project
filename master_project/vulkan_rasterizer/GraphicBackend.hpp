@@ -13,6 +13,7 @@
 #include "PortalManager.hpp"
 #include "NTree.hpp"
 #include "StencilRefTree.hpp"
+#include "TriangleMesh.hpp"
 
 class Camera;
 
@@ -105,6 +106,7 @@ private:
 	StencilRefTree m_stencilRefTree;
 
 	std::unique_ptr<MeshDataManager> m_meshData;
+	std::vector<TriangleMesh> m_triangleMeshes;
 	std::unique_ptr<Scene> m_scene;
 	PortalManager m_portalManager;
 };

@@ -112,6 +112,15 @@
     <ClCompile Include="KdTreeUtils.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="KdTreeTraverser.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="Triangle.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="TriangleMesh.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -220,6 +229,18 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="SplitAxis.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="KdTreeTraverser.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Triangle.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="TriangleMesh.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Ray.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

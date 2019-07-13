@@ -66,16 +66,24 @@ namespace
 		);
 	}
 
-	void RenderScene(vk::CommandBuffer commandBuffer, gsl::span<const MeshDataRef> Meshes, MeshDataManager& mdm)
-	{
-
-	}
-
-
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
 	const vk::Format renderedStencilFormat = vk::Format::eR8Sint;
+
+	namespace ObjectIds
+	{
+		enum id
+		{
+			torusIdx = 0,
+			sphereIdx,
+			cubeIdx,
+			planeIdx,
+			halfSphereIdx,
+			invertedCubeIdx,
+			enum_size,
+		};
+	}
 
 }
 
@@ -895,18 +903,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj", "inverted_cube.obj" };
+	const char* objsToLoad[ObjectIds::enum_size] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj", "inverted_cube.obj" };
 	// use graphics present queue to avoid ownership transfer
 	m_meshData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
-	enum ObjIdx
+
+	for (const char* obj : objsToLoad)
 	{
-		torusIdx = 0,
-		sphereIdx,
-		cubeIdx,
-		planeIdx,
-		halfSphereIdx,
-		invertedCubeIdx,
-	};
+		m_triangleMeshes.emplace_back();
+		m_triangleMeshes.back().FromFile(obj);
+	}
 
 	// Init Scene
 	{
@@ -934,16 +939,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			for (int i = 0; i < std::size(torusPositions); ++i)
 			{
-				m_scene->Add(torusIdx, glm::translate(glm::mat4(1), torusPositions[i]), debugColors[i]);
+				m_scene->Add(ObjectIds::torusIdx, glm::translate(glm::mat4(1), torusPositions[i]), debugColors[i]);
 			}
 		}
 		{
 			Transform floorTransform = Transform(glm::vec3(0.f, -5.f, 0.f), glm::vec3(100.f, 1.f, 100.f), glm::identity<glm::quat>());
-			m_scene->Add(cubeIdx, floorTransform.ToMat());
+			m_scene->Add(ObjectIds::cubeIdx, floorTransform.ToMat());
 
 			floorTransform.translation.y += 80.f;
 
-			m_scene->Add(cubeIdx, floorTransform.ToMat());
+			m_scene->Add(ObjectIds::cubeIdx, floorTransform.ToMat());
 		}
 
 		// perspective warped cube
@@ -958,7 +963,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			Transform trans(glm::vec3(-5.f, 5.f, 0.f), 3.f, glm::identity<glm::quat>());
 
 
-			m_scene->Add(cubeIdx, trans.ToMat() * perspectiveMat);
+			m_scene->Add(ObjectIds::cubeIdx, trans.ToMat() * perspectiveMat);
 		}
 
 		{
@@ -980,7 +985,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			for (int i = 0; i < std::size(spherePos); ++i)
 			{
-				m_scene->Add(sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
+				m_scene->Add(ObjectIds::sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
 			}
 
 		}
@@ -998,7 +1003,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			for (int i = 0; i < std::size(cubePos); ++i)
 			{
-				m_scene->Add(cubeIdx, glm::translate(glm::mat4(1), cubePos[i]), debugColors[i]);
+				m_scene->Add(ObjectIds::cubeIdx, glm::translate(glm::mat4(1), cubePos[i]), debugColors[i]);
 			}
 		}
 
@@ -1030,7 +1035,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 
 				Transform transf(trans, glm::vec3(3.f, 10.f, 3.f), glm::identity<glm::quat>());
-				m_scene->Add(cubeIdx, transf.ToMat(), debugColors[i]);
+				m_scene->Add(ObjectIds::cubeIdx, transf.ToMat(), debugColors[i]);
 			}
 
 
@@ -1043,14 +1048,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
 	{
 		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 
 		const Transform portal_b = Transform(glm::vec3(35.f, 15.f, 20.f), 10.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(planeIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
 
 	// create Graphic pipelines

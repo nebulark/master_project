@@ -196,6 +196,7 @@
     <ClCompile Include="GraphicsPipeline.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="KdTree.cpp" />
+    <ClCompile Include="KdTreeTraverser.cpp" />
     <ClCompile Include="KdTreeUtils.cpp" />
     <ClCompile Include="Key.cpp" />
     <ClCompile Include="Loader.cpp" />
@@ -232,6 +233,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="Triangle.cpp" />
+    <ClCompile Include="TriangleMesh.cpp" />
     <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="VmaAllocationsPool.cpp" />
     <ClCompile Include="UniqueVmaMemoryMap.cpp" />
@@ -254,6 +257,7 @@
     <ClInclude Include="GraphicsPipeline.hpp" />
     <ClInclude Include="InputManager.hpp" />
     <ClInclude Include="KdTree.hpp" />
+    <ClInclude Include="KdTreeTraverser.hpp" />
     <ClInclude Include="KdTreeUtils.hpp" />
     <ClInclude Include="Key.hpp" />
     <ClInclude Include="Loader.hpp" />
@@ -264,6 +268,7 @@
     <ClInclude Include="Portal.hpp" />
     <ClInclude Include="PortalManager.hpp" />
     <ClInclude Include="PushConstants.hpp" />
+    <ClInclude Include="Ray.hpp" />
     <ClInclude Include="RenderHelper.hpp" />
     <ClInclude Include="Renderpass.hpp" />
     <ClInclude Include="MeshDataManager.hpp" />
@@ -273,6 +278,8 @@
     <ClInclude Include="StencilRefTree.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="Transform.hpp" />
+    <ClInclude Include="Triangle.hpp" />
+    <ClInclude Include="TriangleMesh.hpp" />
     <ClInclude Include="UniformBufferObjects.hpp" />
     <ClInclude Include="Vertex.hpp" />
     <ClInclude Include="VmaAllocationsPool.hpp" />
