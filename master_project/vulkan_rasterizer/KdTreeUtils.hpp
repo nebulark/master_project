@@ -46,10 +46,8 @@ private:
 	// split axis, and either DataIndex or NodeIndex depending on split axis value
 	uint32_t indexAndSplitAxis;
 
-	static constexpr int splitAxisBits = 2;
-	static_assert((1 << splitAxisBits) <= static_cast<int>(SplitAxis::enum_size));
 
-	static constexpr int splitAxisRightShifts = sizeof(uint32_t) * CHAR_BIT - splitAxisBits;
+	static constexpr int splitAxisRightShifts = sizeof(uint32_t) * CHAR_BIT - SplitAxis::StorageBitCount;
 	static constexpr uint32_t splitAxisMask = (~uint32_t(0)) << splitAxisRightShifts;
 	static constexpr uint32_t indexMask = ~splitAxisMask;
 
@@ -66,8 +64,7 @@ static_assert(sizeof(KdNode) == sizeof(uint32_t) * 2);
 
 inline SplitAxis KdNode::GetSplitAxis() const noexcept {
 	uint32_t splitAxisVal = (indexAndSplitAxis >> splitAxisRightShifts);
-	assert(splitAxisVal < static_cast<uint32_t>(SplitAxis::enum_size));
-	return static_cast<SplitAxis>(splitAxisVal);
+	return SplitAxis(splitAxisVal);
 };
 
 inline uint32_t KdNode::GetIndex() const noexcept
@@ -77,20 +74,19 @@ inline uint32_t KdNode::GetIndex() const noexcept
 
 inline NodePairIndex KdNode::GetChildNodeIndexPair() const noexcept
 {
-	assert(GetSplitAxis() != SplitAxis::leafNode);
+	assert(!GetSplitAxis().IsLeafNode());
 	return NodePairIndex{ GetIndex() };
 }
 
 inline const float KdNode::GetSplitVal() const noexcept
 {
-
-	assert(GetSplitAxis() != SplitAxis::leafNode);
+	assert(!GetSplitAxis().IsLeafNode());
 	return splitValOrDataViewSize.splitVal;
 }
 
 inline DataIndicesIndexView KdNode::GetLeafIndexView() const noexcept
 {
-	assert(GetSplitAxis() == SplitAxis::leafNode);
+	assert(GetSplitAxis().IsLeafNode());
 	const uint32_t index = GetIndex();
 	const uint32_t size = splitValOrDataViewSize.dataViewSize;
 
@@ -99,7 +95,7 @@ inline DataIndicesIndexView KdNode::GetLeafIndexView() const noexcept
 
 inline KdNode KdNode::CreateNode(NodePairIndex childNodes, SplitAxis splitAxis, float splitVal)
 {
-	const uint32_t splitAxis_shifted = (static_cast<uint32_t>(SplitAxis::leafNode)) << splitAxisRightShifts;
+	const uint32_t splitAxis_shifted = (static_cast<uint32_t>(splitAxis.GetInternalValue())) << splitAxisRightShifts;
 
 	KdNode result;
 	result.indexAndSplitAxis = childNodes.internalFirstIndex | splitAxis_shifted;
@@ -109,7 +105,7 @@ inline KdNode KdNode::CreateNode(NodePairIndex childNodes, SplitAxis splitAxis, 
 
 inline KdNode KdNode::CreateLeaf(DataIndicesIndexView dataIndexView)
 {
-	constexpr uint32_t leafNode = (static_cast<uint32_t>(SplitAxis::leafNode)) << splitAxisRightShifts;
+	constexpr uint32_t leafNode = (static_cast<uint32_t>(SplitAxis::leafNode().GetInternalValue())) << splitAxisRightShifts;
 	static_assert((leafNode & splitAxisMask) != 0);
 
 	assert((dataIndexView.firstIndex.internalIndex & splitAxisMask) == 0 && "data index view index too large");

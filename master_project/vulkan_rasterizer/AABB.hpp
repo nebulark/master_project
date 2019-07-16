@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glm.hpp>
-#include "SplitAxis.hpp"
 #include <optional>
 #include "Ray.hpp"
 
@@ -39,7 +38,7 @@ struct AABB
 		return true;
 	}
 
-	constexpr SplitAxis FindWidestDim() const
+	constexpr int FindWidestDim() const
 	{
 		const glm::vec3 width = maxBounds - minBounds;
 
@@ -55,8 +54,7 @@ struct AABB
 			}
 		}
 
-		assert(widetstDim <= static_cast<int>(SplitAxis::dim_z));
-		return static_cast<SplitAxis>(widetstDim);
+		return widetstDim;
 	}
 
 	constexpr std::optional<float> RayTrace(const Ray& ray) const

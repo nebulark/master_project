@@ -910,7 +910,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	for (const char* obj : objsToLoad)
 	{
 		m_triangleMeshes.emplace_back();
-		m_triangleMeshes.back().FromFile(obj);
+		m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
 	}
 
 	// Init Scene

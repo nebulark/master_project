@@ -38,7 +38,7 @@ namespace KdTreeTraverser
 		const KdTree& tree = *rayTraceData.tree;
 
 		// handle child node
-		if (splitAxis == SplitAxis::leafNode)
+		if (splitAxis.IsLeafNode())
 		{
 			const DataIndicesIndexView indexView = node.GetLeafIndexView();
 
@@ -72,8 +72,7 @@ namespace KdTreeTraverser
 		}
 
 		// Handle non-leaf node
-		const int dimAsIndex = static_cast<int>(splitAxis);
-		const float currentPosInDim = rayTraceData.ray.origin[dimAsIndex] * tmin;
+		const float currentPosInDim = rayTraceData.ray.origin[splitAxis.ToDim()] * tmin;
 		const float currentSplitValue = node.GetSplitVal();
 
 		const NodePairIndex childIndexPair = node.GetChildNodeIndexPair();
@@ -87,12 +86,12 @@ namespace KdTreeTraverser
 		std::optional<RayTraceResult> rayTraceResult = RayTrace(rayTraceData, firstChildNodeToTraverse, tmax, tmin);
 
 		// in such a case we can never pass the plane, so we don't need to check for triangle behind the plane
-		if (rayTraceData.ray.direction[dimAsIndex] == 0.f)
+		if (rayTraceData.ray.direction[splitAxis.ToDim()] == 0.f)
 		{
 			return  RayTrace(rayTraceData, firstChildNodeToTraverse, tmin, tmax);
 		}
 
-		const float tIntersection = (currentSplitValue - currentPosInDim) / rayTraceData.ray.direction[dimAsIndex];
+		const float tIntersection = (currentSplitValue - currentPosInDim) / rayTraceData.ray.direction[splitAxis.ToDim()];
 
 		// when the intersection happens before the ray origin or after the ray end, we can never pass the plane and only need to check the first part
 		if (tIntersection < tmin || tIntersection > tmax)

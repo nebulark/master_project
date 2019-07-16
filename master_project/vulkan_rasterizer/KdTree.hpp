@@ -21,7 +21,7 @@ public:
 	gsl::span<const int> GetDataIndices(DataIndicesIndexView indicesView) const;
 private:
 
-	void InitRescursion(KdNode& inOutnode, const AABB& boundingBox, gsl::span<const Triangle> dataElements, int splitDim, std::vector<int>&& indices);
+	KdNode CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<int>&& indices);
 
 	KdNode m_firstNode;
 	KdNodeMemory m_nodeMemory;
@@ -29,13 +29,13 @@ private:
 	std::vector<int> m_dataIndices;
 };
 
-namespace KdTreeDetail
+namespace DetailKdTree
 {
 
 
 	inline float FindSplitValue(SplitAxis axis, std::vector<int>& elementIndices, gsl::span<const Triangle> dataElements)
 	{
-	const int dim = static_cast<int>(axis);
+		const int dim = axis.ToDim();
 
 		const auto GetCentroid = [dim](const Triangle& tri)
 		{
@@ -57,11 +57,81 @@ namespace KdTreeDetail
 				return c_a < c_b;
 			});
 
-		const Triangle& medianTri =	dataElements[*median];
+		const Triangle& medianTri = dataElements[*median];
 
 		const float splitValue = GetCentroid(medianTri);
 		return splitValue;
 	}
+
+	inline std::optional<float> FindSplitValue_SAH(SplitAxis axis, float minSplit, float maxSplit, float minSAH, std::vector<int>& elementIndices, gsl::span<const Triangle> dataElements)
+	{
+		const int dim = axis.ToDim();
+		constexpr int sampleCount = 8;
+		constexpr float inverseSampleCount = 1.f / (sampleCount);
+		constexpr float intersect_cost = 1.f;
+		const float splitWidth = (maxSplit - minSplit);
+		const float splitWidthPerSample = splitWidth * inverseSampleCount;
+
+		// if the split width is too small we get floating point problems
+		constexpr float minSplitWidt = 1e-05f;
+		if (splitWidth < minSplitWidt)
+		{
+			return std::nullopt;
+		}
+
+		float bestSAH = std::numeric_limits<float>::max();
+		int bestSampleId = 0;
+
+		// start with 1, as it is impossible that its best to split a min point
+		for (int sampleId = 0; sampleId < sampleCount; ++sampleId)
+		{
+			const float probabilityFirst = sampleId * inverseSampleCount;
+			const float probabilitySecond = 1.f - probabilityFirst;
+			const float splitPos = minSplit + splitWidthPerSample * sampleId;
+
+			int firstTriangleCount = 0;
+			int secondTriangleCount = 0;
+			for (int elementIndex : elementIndices)
+			{
+				const Triangle& tri = dataElements[elementIndex];
+
+				if (tri.vertices[0][dim] < splitPos
+					|| tri.vertices[1][dim] < splitPos
+					|| tri.vertices[2][dim] < splitPos)
+				{
+					++firstTriangleCount;
+				}
+
+				if (tri.vertices[0][dim] > splitPos
+					|| tri.vertices[1][dim] > splitPos
+					|| tri.vertices[2][dim] > splitPos)
+				{
+					++secondTriangleCount;
+				}
+			}
+
+		
+			const float currentSAH = (probabilityFirst * firstTriangleCount) + (probabilitySecond * secondTriangleCount);
+
+			if (currentSAH < bestSAH)
+			{
+				bestSAH = currentSAH;
+				bestSampleId = sampleId;
+			}
+		}
+
+		// if 0 is best this means no split would be best. This happens if a split would create to many duplicates
+		// if we can beat the min SAH it is good enough and we stop splitting
+		if (bestSampleId == 0 || bestSAH < minSAH)
+		{
+			return std::nullopt;
+		}
+		else
+		{
+			return minSplit + splitWidthPerSample * bestSampleId;
+		}
+	}
+
 
 	struct SplitResult
 	{
@@ -71,7 +141,7 @@ namespace KdTreeDetail
 
 	inline SplitResult Split(SplitAxis axis, float splitValue, std::vector<int>&& elementIndices, gsl::span<const Triangle> dataElements)
 	{
-		const int dim = static_cast<int>(axis);
+		const int dim = axis.ToDim();
 
 		SplitResult result;
 
@@ -85,8 +155,7 @@ namespace KdTreeDetail
 		{
 			const Triangle& tri = dataElements[elementIndex];
 
-
-			if (   tri.vertices[0][dim] < splitValue
+			if (tri.vertices[0][dim] < splitValue
 				|| tri.vertices[1][dim] < splitValue
 				|| tri.vertices[2][dim] < splitValue)
 			{
@@ -94,7 +163,7 @@ namespace KdTreeDetail
 				firstTris.push_back(tri);
 			}
 
-			if (   tri.vertices[0][dim] > splitValue
+			if (tri.vertices[0][dim] > splitValue
 				|| tri.vertices[1][dim] > splitValue
 				|| tri.vertices[2][dim] > splitValue)
 			{
@@ -111,36 +180,11 @@ inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triang
 {
 	const uint32_t elementCount = triangles.size();
 
-	// special case 0 elements
-	if (elementCount == 0)
-	{
-		m_firstNode = KdNode::CreateLeaf(DataIndicesIndexView{ 0, 0 });
-		return;
-	}
-
-	// special case, to few elements to create "real" kdtree
-	if (elementCount <= MaxIndicesPerNode)
-	{
-		m_dataIndices.resize(elementCount);
-
-		for (int i = 0; i < m_dataIndices.size(); ++i)
-		{
-			m_dataIndices[i] = i;
-		}
-
-		m_firstNode = KdNode::CreateLeaf(DataIndicesIndexView{ 0, elementCount });
-		assert(m_dataIndices.size() == triangles.size());
-
-		return;
-	}
-
-
 	AABB totalBoundingBox(triangleBoundingBox);
 	if (totalBoundingBox == InvalidAABB)
 	{
 		totalBoundingBox = Triangle::CreateAABB(triangles);
 	}
-
 
 	std::vector<int> initialDataIndices;
 	initialDataIndices.resize(elementCount);
@@ -150,48 +194,68 @@ inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triang
 	}
 
 
-	InitRescursion(m_firstNode, totalBoundingBox, triangles, 0, std::move(initialDataIndices));
+	constexpr SplitAxis lastSplitAxis = SplitAxis::dim_z();
+	constexpr SplitAxis splitAxis = lastSplitAxis.NextAxis();
+
+	m_firstNode = CreateNodeRecursive(totalBoundingBox, triangles, splitAxis, lastSplitAxis, std::move(initialDataIndices));
 }
 
-inline void KdTree::InitRescursion(KdNode& inOutnode, const AABB& boundingBox, gsl::span<const Triangle> dataElements, int splitDim, std::vector<int>&& indices)
+inline KdNode KdTree::CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<int>&& indices)
 {
-	const uint32_t indicesSize = indices.size();
-
-	if (indicesSize <= MaxIndicesPerNode)
+	if (indices.size() == 0)
 	{
-		const uint32_t firstIndicesIndex = m_dataIndices.size();
-		m_dataIndices.insert(m_dataIndices.end(), std::begin(indices), std::end(indices));
-
-		assert(m_dataIndices.size() == firstIndicesIndex + indicesSize);
-
-		inOutnode = KdNode::CreateLeaf(DataIndicesIndexView{ firstIndicesIndex, indicesSize });
-		return;
+		return KdNode::CreateLeaf(DataIndicesIndexView{ 0, 0 });
 	}
 
 
+	const uint32_t indicesSize = indices.size();
 
-	// split at widest dimension
-	SplitAxis widestDim = boundingBox.FindWidestDim();
+test_label:
+	std::optional<float> bestSplitPos =	DetailKdTree::FindSplitValue_SAH(
+		currentSplitAxis, boundingBox.minBounds[currentSplitAxis.ToDim()], boundingBox.maxBounds[currentSplitAxis.ToDim()], 12.f, indices, dataElements);
 
-	float splitval = (boundingBox.maxBounds[splitDim] + boundingBox.minBounds[splitDim]) / 2.f;
-	splitval = KdTreeDetail::FindSplitValue(widestDim, indices, dataElements);
+	if (!bestSplitPos.has_value())
+	{
+		// this means that we failed to split every axis -> Abort
+		if (currentSplitAxis == lastSplitAxis)
+		{
+			const uint32_t firstIndicesIndex = m_dataIndices.size();
+			m_dataIndices.insert(m_dataIndices.end(), std::begin(indices), std::end(indices));
 
-	KdTreeDetail::SplitResult splitResult = KdTreeDetail::Split(widestDim, splitval, std::move(indices), dataElements);
+			assert(m_dataIndices.size() == firstIndicesIndex + indicesSize);
+
+			return KdNode::CreateLeaf(DataIndicesIndexView{ firstIndicesIndex, indicesSize });
+		}
+		else
+		{
+			// Try again with other split axis
+			currentSplitAxis = currentSplitAxis.NextAxis();
+			goto test_label;
+			//return CreateNodeRecursive(boundingBox, dataElements, currentSplitAxis.NextAxis(), lastSplitAxis, std::move(indices));
+		}
+	}
+
+	const float splitPos = *bestSplitPos;
+
+	DetailKdTree::SplitResult splitResult = DetailKdTree::Split(currentSplitAxis, splitPos, std::move(indices), dataElements);
 
 	const NodePairIndex childIndexPair = m_nodeMemory.AllocNodePair();
 
-	inOutnode = KdNode::CreateNode(childIndexPair, widestDim, splitval);
-
 	AABB firstBoundingBox(boundingBox);
-	firstBoundingBox.maxBounds[static_cast<int>(widestDim)] = splitval;
+	firstBoundingBox.maxBounds[currentSplitAxis.ToDim()] = splitPos;
 
 	AABB secondBoundingBox(boundingBox);
-	secondBoundingBox.minBounds[static_cast<int>(widestDim)] = splitval;
+	secondBoundingBox.minBounds[currentSplitAxis.ToDim()] = splitPos;
 
-	int nextSplitDim = (splitDim + 1) % 3;
 
-	InitRescursion(m_nodeMemory.Access(childIndexPair.GetFirstIndex()), firstBoundingBox, dataElements, nextSplitDim, std::move(splitResult.firstDataIndices));
-	InitRescursion(m_nodeMemory.Access(childIndexPair.GetSecondIndex()), secondBoundingBox, dataElements, nextSplitDim, std::move(splitResult.secondDataIndices));
+
+	m_nodeMemory.Access(childIndexPair.GetFirstIndex()) =
+		CreateNodeRecursive(firstBoundingBox, dataElements, currentSplitAxis.NextAxis(), currentSplitAxis, std::move(splitResult.firstDataIndices));
+
+	m_nodeMemory.Access(childIndexPair.GetSecondIndex()) =
+		CreateNodeRecursive(secondBoundingBox, dataElements, currentSplitAxis.NextAxis(), currentSplitAxis, std::move(splitResult.secondDataIndices));
+
+	return KdNode::CreateNode(childIndexPair, currentSplitAxis, splitPos);
 }
 
 inline gsl::span<const int> KdTree::GetDataIndices(DataIndicesIndexView indicesView) const
