@@ -3,6 +3,7 @@
 #include "MeshDataManager.hpp"
 #include "PushConstants.hpp"
 #include "NTree.hpp"
+#include "TriangleMesh.hpp"
 
 void PortalManager::Add(const Portal& portal)
 {
@@ -162,5 +163,61 @@ int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount, int p
 int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount)
 {
 	return GetPortalIndexHelperElementCount(maxRecursionCount, GetPortalCount());
+}
+
+std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
+{
+	enum class PortalType
+	{
+		A,
+		B,
+	};
+
+
+	constexpr int invalidPortalId = -1;
+	int bestPortalId = invalidPortalId;
+	PortalType bestPortalType = PortalType::A;
+	float bestPortalDistance = std::numeric_limits<float>::max();
+	
+
+	for (int portalId = 0; portalId < m_portals.size(); ++portalId)
+	{
+		const Portal& portal = m_portals[portalId];
+		const TriangleMesh& mesh = portalMeshes[portal.meshIndex];
+
+		{
+			const glm::mat4 inverseModel_a = glm::inverse(portal.a_transform);
+			const std::optional<float> rt_result = mesh.RayTrace(ray, inverseModel_a);
+			if (rt_result.has_value() && *rt_result < bestPortalDistance)
+			{
+				bestPortalDistance = *rt_result;
+				bestPortalId = portalId;
+				bestPortalType = PortalType::A;
+			}
+		}
+
+		{
+			const glm::mat4 inverseModel_b = glm::inverse(portal.b_transform);
+			const std::optional<float> rt_result = mesh.RayTrace(ray, inverseModel_b);
+			if (rt_result.has_value() && *rt_result < bestPortalDistance)
+			{
+				bestPortalDistance = *rt_result;
+				bestPortalId = portalId;
+				bestPortalType = PortalType::B;
+			}
+		}
+	}
+
+	if (bestPortalId != invalidPortalId)
+	{
+		printf("port from portal %i from %s to %s",
+			bestPortalId,
+			bestPortalType == PortalType::A ? "A" : "B",
+			bestPortalType == PortalType::A ? "B" : "A");
+
+		return  bestPortalType == PortalType::A ? m_portals[bestPortalId].a_to_b : m_portals[bestPortalId].b_to_a;
+	}
+
+	return std::nullopt;
 }
 

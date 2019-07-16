@@ -62,14 +62,20 @@ struct AABB
 		// https://tavianator.com/fast-branchless-raybounding-box-intersections/
 		// slab method
 
+		float tmin = 0.f;
+		float tmax = ray.distance;
 
-		// find tmin and tmax only considering x
-		const float tx1 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
-		const float tx2 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
+		{
 
-		float tmin = std::min(tx1, tx2);
-		float tmax = std::max(tx1, tx2);
-		
+			// find tmin and tmax only considering x
+			const float tx1 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
+			const float tx2 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
+
+			const float tminx = std::min(tx1, tx2);
+			const float tmaxx = std::max(tx1, tx2);
+			tmin = std::max(tmin, tminx);
+			tmax = std::min(tmax, tmaxx);
+		}
 
 
 		// find tminy and tmaxy only considering y

@@ -125,7 +125,26 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	rightInput *= DeltaSeconds * movementMultiplicator;
 	upInput *= DeltaSeconds * movementMultiplicator;
 	
-	m_camera.UpdateLocation(forwardInput, rightInput, upInput);
+	if (forwardInput != 0.f || rightInput != 0.f || upInput != 0.f)
+	{
+
+		const glm::vec3 oldCameraPos = m_camera.m_transform.translation;
+		m_camera.UpdateLocation(forwardInput, rightInput, upInput);
+
+		gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
+
+		const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
+		const std::optional<glm::mat4> maybeTeleportMat = portalManager.FindHitPortalTeleportMatrix(
+			Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
+
+		if (maybeTeleportMat.has_value())
+		{
+			const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
+
+			m_camera.m_transform.translation = glm::vec3((*maybeTeleportMat) * cameraTranslation);
+			m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+		}
+	}
 
 	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
 

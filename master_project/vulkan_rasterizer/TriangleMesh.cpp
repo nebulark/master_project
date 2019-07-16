@@ -74,12 +74,12 @@ TriangleMesh TriangleMesh::FromTriangles(std::vector<Triangle>&& triangles)
 	return triangleMesh;
 }
 
-std::optional<float> TriangleMesh::RayTrace(const glm::vec3 rayOrigin, const glm::vec3 rayDir, const glm::mat4& inverseModelMatrix)
+std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inverseModelMatrix) const
 {
-	const glm::vec3 rayOrigin_modelspace = inverseModelMatrix * glm::vec4(rayOrigin, 1.f);
-	const glm::vec3 rayDir_modelspace = inverseModelMatrix * glm::vec4(rayDir, 0.f);
+	const glm::vec3 rayOrigin_modelspace = inverseModelMatrix * glm::vec4(ray.origin, 1.f);
+	const glm::vec3 rayDir_modelspace = inverseModelMatrix * glm::vec4(ray.direction, 0.f);
 
-	const Ray ray_modelspace = Ray::FromOriginAndDirection(rayOrigin_modelspace, rayDir_modelspace);
+	const Ray ray_modelspace = Ray::FromOriginAndDirection(rayOrigin_modelspace, rayDir_modelspace, ray.distance);
 	const std::optional<float> boundingBoxRayTrace = m_modelBoundingBox.RayTrace(ray_modelspace);
 	if (!boundingBoxRayTrace.has_value())
 	{

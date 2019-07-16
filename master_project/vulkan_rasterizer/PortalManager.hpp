@@ -6,6 +6,8 @@
 #include "Portal.hpp"
 
 class MeshDataManager;
+class Ray;
+class TriangleMesh;
 
 
 struct DrawPortalsInfo
@@ -56,6 +58,8 @@ public:
 
 	int GetPortalIndexHelperElementCount(int maxRecursionCount);
 	int GetPortalCount() const { return m_portals.size() * 2; }
+
+	std::optional<glm::mat4> FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const;
 private:
 	std::vector<Portal> m_portals;
 };

@@ -65,10 +65,7 @@ namespace KdTreeTraverser
 
 				result = RayTraceResult{ rayTraceValue, index };
 			}
-			if (result)
-			{
-				return result;
-			}
+			return result;
 		}
 
 		// Handle non-leaf node

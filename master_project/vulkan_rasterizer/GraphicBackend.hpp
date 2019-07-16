@@ -23,6 +23,9 @@ public:
 	void Init(SDL_Window* window);
 	void Render(const Camera& camera);
 	void WaitIdle() { m_device->waitIdle(); }
+
+	gsl::span<const TriangleMesh> GetTriangleMeshes() const { return m_triangleMeshes; }
+	const PortalManager& GetPortalManager() const { return m_portalManager; }
 private:
 	static constexpr int MaxInFlightFrames = 2;	
 	static constexpr int maxVisiblePortalsForRecursion[] = {4,4,3};

@@ -18,7 +18,7 @@ public:
 
 	static constexpr int StorageBitCount = 2;
 
-	constexpr bool IsLeafNode() const { return *this == leafNode(); }
+	constexpr bool IsLeafNode() const { return internalValue == 3; }
 	constexpr InternalValue_t ToDim() const { assert(0 <= internalValue && internalValue <= 2); return internalValue; };
 	constexpr InternalValue_t GetInternalValue() const { return internalValue; }
 	constexpr SplitAxis NextAxis() const { return FromDim((internalValue + 1) % 3); }
