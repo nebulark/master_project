@@ -210,7 +210,7 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 
 	if (bestPortalId != invalidPortalId)
 	{
-		printf("port from portal %i from %s to %s",
+		printf("port from portal %i from %s to %s\n",
 			bestPortalId,
 			bestPortalType == PortalType::A ? "A" : "B",
 			bestPortalType == PortalType::A ? "B" : "A");

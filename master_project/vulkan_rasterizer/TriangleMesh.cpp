@@ -86,6 +86,8 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inv
 		return std::nullopt;
 	}
 
+	std::printf("Bounding box success %i\n", this);
+
 	KdTreeTraverser::RayTraceData raytraceData = {};
 	raytraceData.dataElements = gsl::make_span(m_triangles);
 	raytraceData.ray = ray_modelspace;
