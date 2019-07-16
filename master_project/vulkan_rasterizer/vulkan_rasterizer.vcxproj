@@ -199,6 +199,7 @@
     <ClCompile Include="KdTreeTraverser.cpp" />
     <ClCompile Include="KdTreeUtils.cpp" />
     <ClCompile Include="Key.cpp" />
+    <ClCompile Include="LineDrawer.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
@@ -260,6 +261,7 @@
     <ClInclude Include="KdTreeTraverser.hpp" />
     <ClInclude Include="KdTreeUtils.hpp" />
     <ClInclude Include="Key.hpp" />
+    <ClInclude Include="LineDrawer.hpp" />
     <ClInclude Include="Loader.hpp" />
     <ClInclude Include="MeshDataRef.hpp" />
     <ClInclude Include="NTree.hpp" />
@@ -370,6 +372,26 @@ $(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(
     <CopyFileToFolders Include="models\inverted_cube.obj">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="shaders\line.frag">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -o $(TargetDir)%(Filename)%(Extension).spv
+$(VK_SDK_PATH)\Bin32\glslangValidator.exe -V %(FullPath) -DSUBSEQUENT_PASS -o $(TargetDir)%(Filename)_subsequent%(Extension).spv</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(TargetDir)%(Filename)%(Extension).spv;$(TargetDir)%(Filename)_subsequent%(Extension).spv;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="shaders\line.vert">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

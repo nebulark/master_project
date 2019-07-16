@@ -30,6 +30,21 @@ namespace
 	return colorblend_override_arr4;
 
 	}();
+	
+	const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_lineList = vk::PipelineInputAssemblyStateCreateInfo(
+		vk::PipelineInputAssemblyStateCreateFlags(),
+		vk::PrimitiveTopology::eLineList,
+		false
+	);
+
+	const vk::PipelineVertexInputStateCreateInfo pipelineVertexState_lines = vk::PipelineVertexInputStateCreateInfo{}
+		.setVertexBindingDescriptionCount(0)
+		.setPVertexBindingDescriptions(nullptr)
+		.setVertexAttributeDescriptionCount(0)
+		.setPVertexAttributeDescriptions(nullptr)
+		;
+
+
 }
 
 const vk::PipelineColorBlendStateCreateInfo GraphicsPipeline::colorblendstate_override_1 = vk::PipelineColorBlendStateCreateInfo()
@@ -216,13 +231,24 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		;
 
 
+
+	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_linesInitial = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneInitial }
+		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_linesInitial))
+		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_linesInitial))
+		.setPInputAssemblyState(&inputAssembly_lineList)
+		.setLayout(createInfo.pipelineLayout_lines)
+		.setPVertexInputState(&pipelineVertexState_lines)
+		.setSubpass(1)
+		;
+
+
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalInitial = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
 		.setPDepthStencilState(&depthStencilStateCreateInfo_portalInitial)
 		.setPColorBlendState(&colorblendstate_override_3)
-		.setSubpass(1)
+		.setSubpass(2)
 		;
 
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_sceneSubsequent_prototype = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
@@ -243,32 +269,47 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		// and the possibility to get it to work without stencil export
 		;
 
-	// +1 one for last scene pass
-	const uint32_t pipelineCount = ((iterationCount + 1) * 2);
+	const int shaderCount = 3; // scene, lines, portals
+
+
+	const uint32_t pipelineCount = ((iterationCount + 1) * shaderCount);
 	std::unique_ptr<vk::GraphicsPipelineCreateInfo[]> pipelineCreateInfoStorage = std::make_unique<vk::GraphicsPipelineCreateInfo[]>(pipelineCount);
 	gsl::span<vk::GraphicsPipelineCreateInfo> pipelineCreateInfo = gsl::make_span(pipelineCreateInfoStorage.get(), pipelineCount);
 
 	const int firstScenePass = 0;
-	const int firstPortalPass = firstScenePass+ 1;
+	const int firstLinePass = firstScenePass + 1;
+	const int firstPortalPass = firstLinePass+ 1;
 
 	pipelineCreateInfo[firstScenePass] = graphicsPipelineCreateInfo_sceneInitial;
+	pipelineCreateInfo[firstLinePass] = graphicsPipelineCreateInfo_linesInitial;
 	pipelineCreateInfo[firstPortalPass] = graphicsPipelineCreateInfo_portalInitial;
 
 	if (optionalDebug)
 	{
 		optionalDebug->resize(pipelineCount);
 		(*optionalDebug)[firstScenePass] = "sceneInitial";
+		(*optionalDebug)[firstLinePass] = "linesInitial";
 		(*optionalDebug)[firstPortalPass] = "portalInitial";
 	}
 
 	for (uint32_t layer = 1; layer <= iterationCount ; ++layer)
 	{
-		const int renderSceneIdx = layer * 2;
-		const int renderPortalIdx = renderSceneIdx + 1;
+		const int renderSceneIdx = layer * shaderCount;
+		const int renderLinesIdx = renderSceneIdx + 1;
+		const int renderPortalIdx = renderLinesIdx + 1;
 
 		pipelineCreateInfo[renderSceneIdx] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneSubsequent_prototype }
 			.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
 			.setSubpass(renderSceneIdx);
+
+		pipelineCreateInfo[renderLinesIdx] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneSubsequent_prototype }
+			.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
+			.setPInputAssemblyState(&inputAssembly_lineList)
+			.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_linesSubsequent))
+			.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_linesSubsequent))
+			.setLayout(createInfo.pipelineLayout_lines)
+			.setPVertexInputState(&pipelineVertexState_lines)
+			.setSubpass(renderLinesIdx);
 
 		pipelineCreateInfo[renderPortalIdx] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalSubsequent_prototype }
 			.setPDepthStencilState(&depthStencilStateCreateInfo_portalSubsequent_dynamic_stencilRef_compareMask)
@@ -282,6 +323,10 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 			bytesWritten = std::sprintf(buff, "scene l%i dynamic", layer);
 			assert(bytesWritten < std::size(buff));
 			(*optionalDebug)[renderSceneIdx] = buff;
+
+			bytesWritten = std::sprintf(buff, "lines l%i dynamic", layer);
+			assert(bytesWritten < std::size(buff));
+			(*optionalDebug)[renderLinesIdx] = buff;
 
 			bytesWritten = std::sprintf(buff, "portal l%i dynamic", layer);
 			assert(bytesWritten < std::size(buff));

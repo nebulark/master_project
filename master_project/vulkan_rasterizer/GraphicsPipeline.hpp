@@ -14,10 +14,13 @@ namespace GraphicsPipeline
 			vk::Extent2D swapchainExtent;
 			vk::RenderPass renderpass;
 			vk::PipelineLayout pipelineLayout;
+			vk::PipelineLayout pipelineLayout_lines;
 
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_sceneInitial;
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_linesInitial;
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_portalInitial;
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_sceneSubsequent;
+			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_linesSubsequent;
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_portalSubsequent;
 
 		};

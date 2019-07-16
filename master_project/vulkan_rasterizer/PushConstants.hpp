@@ -32,3 +32,15 @@ struct PushConstant
 constexpr size_t PushConstant_Size = sizeof(PushConstant);
 
 static_assert(PushConstant_Size <= 128, "Push Constant must be small or equal to 128 Byte");
+
+
+struct PushConstant_lines
+{
+	glm::vec4 posA;
+	glm::vec4 posB;
+	glm::vec4 debugColorA;
+	glm::vec4 debugColorB;
+	int cameraIdx;
+};
+constexpr size_t PushConstant_lines_size = sizeof(PushConstant_lines);
+static_assert(PushConstant_lines_size <= 128, "Push Constant must be small or equal to 128 Byte");

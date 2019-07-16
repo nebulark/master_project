@@ -121,6 +121,9 @@
     <ClCompile Include="TriangleMesh.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="LineDrawer.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -243,6 +246,9 @@
     <ClInclude Include="Ray.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="LineDrawer.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -290,5 +296,13 @@
     </CopyFileToFolders>
     <CopyFileToFolders Include="models\halfSphere.obj" />
     <CopyFileToFolders Include="models\inverted_cube.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\line.frag">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shaders\line.vert">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

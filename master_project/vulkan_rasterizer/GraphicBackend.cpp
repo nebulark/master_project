@@ -480,6 +480,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule = VulkanUtils::CreateShaderModuleFromFile("shader.frag.spv", m_device.get());
 		m_fragShaderModule_subsequent = VulkanUtils::CreateShaderModuleFromFile("shader_subsequent.frag.spv", m_device.get());
 
+		m_vertShaderModule_lines = VulkanUtils::CreateShaderModuleFromFile("line.vert.spv", m_device.get());
+		m_fragShaderModule_lines = VulkanUtils::CreateShaderModuleFromFile("line.frag.spv", m_device.get());
+		m_fragShaderModule_lines_subsequent = VulkanUtils::CreateShaderModuleFromFile("line_subsequent.frag.spv", m_device.get());
+
 		m_vertShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.vert.spv", m_device.get());
 		m_fragShaderModule_portal = VulkanUtils::CreateShaderModuleFromFile("portal.frag.spv", m_device.get());
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
@@ -675,8 +679,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			m_descriptorSetLayout_rendered = m_device->createDescriptorSetLayoutUnique(descriptorSetLayoutInfo_rendered);
 		}
-		
-	
+
+
 	}
 
 	// create Descriptor pool
@@ -819,11 +823,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
 			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t),
-			vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
+			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t),vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
+			PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t), vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 
 		// write rendered Depth descriptor Set
@@ -852,7 +856,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 
 			m_device->updateDescriptorSets(writeDescriptorSet_inputAttachment, {});
-			
+
 			// stencil
 			for (size_t i = 0; i < std::size(imageInfos); ++i)
 			{
@@ -901,6 +905,29 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_pipelineLayout = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
 	}
 
+	{
+		vk::PushConstantRange pushConstantRange = vk::PushConstantRange{}
+			.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+			.setOffset(0)
+			.setSize(sizeof(PushConstant_lines));
+
+
+		vk::DescriptorSetLayout layouts[] = {
+			m_descriptorSetLayout_texture.get(),
+			m_descriptorSetLayout_ubo.get(),
+			m_descriptorSetLayout_cameraMat.get(),
+			m_descriptorSetLayout_rendered.get(),
+			m_descriptorSetLayout_cameraIndices.get(),
+			m_descriptorSetLayout_portalIndexHelper.get(),
+		};
+
+		vk::PipelineLayoutCreateInfo pipelineLayoutcreateInfo = vk::PipelineLayoutCreateInfo{}
+			.setSetLayoutCount(GetSizeUint32(layouts)).setPSetLayouts(layouts)
+			.setPushConstantRangeCount(1).setPPushConstantRanges(&pushConstantRange);
+
+		m_pipelineLayout_lines = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
+	}
+
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
 	const char* objsToLoad[ObjectIds::enum_size] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj", "inverted_cube.obj" };
@@ -913,6 +940,15 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
 	}
 
+	Line testLine = {};
+	testLine.pointA = glm::vec4(glm::vec3(0.f), 1.f);
+	testLine.pointB = glm::vec4(0.f, 100.f, 0.f, 1.f);
+
+	testLine.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
+	testLine.colorB = glm::vec4(0.f, 1.f, 0.f, 1.f);
+
+	m_lineDrawer.m_lines.push_back(testLine);
+		
 	// Init Scene
 	{
 
@@ -925,7 +961,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				glm::vec3(-6.f,10.f, -15.f),
 				glm::vec3(6.f, 10.f , 15.f),
 			};
-			
+
 			const glm::vec4 debugColors[] =
 			{
 				glm::vec4(1.f,1.f,1.f,1.f),
@@ -976,7 +1012,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 					glm::vec3(-3.f,10.f, -5.f),
 					glm::vec3(3.f, 10.f , 5.f),
 			};
-	
+
 			const glm::vec4 debugColors[] =
 			{
 				glm::vec4(1.f,0.33f,0.33f,1.f),
@@ -994,7 +1030,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 							glm::vec3(-7.f,13.f, -9.f),
 							glm::vec3(1.f, 10.f , -9.f),
 			};
-		
+
 			const glm::vec4 debugColors[] =
 			{
 				glm::vec4(.66f,0.33f,0.99f,1.f),
@@ -1031,7 +1067,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			const glm::vec3 baseTranslation = glm::vec3(0.f, 0.f, 50.f);
 			for (int i = 0; i < count; ++i)
 			{
-				const glm::vec3 trans = glm::rotate(glm::angleAxis(glm::radians( (360.f / 8) * i), glm::vec3(0.f, 1.f, 0.f)), baseTranslation);
+				const glm::vec3 trans = glm::rotate(glm::angleAxis(glm::radians((360.f / 8) * i), glm::vec3(0.f, 1.f, 0.f)), baseTranslation);
 
 
 				Transform transf(trans, glm::vec3(3.f, 10.f, 3.f), glm::identity<glm::quat>());
@@ -1094,6 +1130,22 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPSpecializationInfo(&setCameraMats),
 
 		};
+		vk::PipelineShaderStageCreateInfo shaderStage_lines_initial[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule_lines.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule_lines.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+		};
 		vk::PipelineShaderStageCreateInfo shaderStage_portal_initial[] =
 		{
 			vk::PipelineShaderStageCreateInfo{}
@@ -1124,6 +1176,23 @@ void GraphicsBackend::Init(SDL_Window* window)
 			.setPSpecializationInfo(&setCameraMats),
 
 		};
+
+		vk::PipelineShaderStageCreateInfo shaderStage_lines_subsequent[] =
+		{
+			vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eVertex)
+			.setModule(m_vertShaderModule_lines.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+
+
+		vk::PipelineShaderStageCreateInfo{}
+			.setStage(vk::ShaderStageFlagBits::eFragment)
+			.setModule(m_fragShaderModule_lines_subsequent.get())
+			.setPName("main")
+			.setPSpecializationInfo(&setCameraMats),
+		};
+
 		vk::PipelineShaderStageCreateInfo shaderStage_portal_subsequent[] =
 		{
 			vk::PipelineShaderStageCreateInfo{}
@@ -1144,11 +1213,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 		GraphicsPipeline::PipelinesCreateInfo createInfo;
 		createInfo.logicalDevice = m_device.get();
 		createInfo.pipelineLayout = m_pipelineLayout.get();
+		createInfo.pipelineLayout_lines = m_pipelineLayout_lines.get();
 		createInfo.renderpass = m_portalRenderPass.get();
 		createInfo.swapchainExtent = m_swapchain.extent;
 
 		createInfo.pipelineShaderStageCreationInfos_sceneInitial = shaderStage_scene_initial;
 		createInfo.pipelineShaderStageCreationInfos_sceneSubsequent = shaderStage_scene_subsequent;
+
+		createInfo.pipelineShaderStageCreationInfos_linesInitial = shaderStage_lines_initial;
+		createInfo.pipelineShaderStageCreationInfos_linesSubsequent = shaderStage_lines_subsequent;
+
 		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
@@ -1239,6 +1313,14 @@ void GraphicsBackend::Render(const Camera& camera)
 
 		// render pass
 		{
+			enum subpassOffset
+			{
+				sceneOffset = 0,
+				linesOffset,
+				portalOffset,
+				enum_size
+			};
+
 
 			// initial / iteration 0
 			{
@@ -1254,7 +1336,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
 						vk::SubpassContents::eInline);
 
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[0].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[sceneOffset].get());
 
 					std::array<vk::DescriptorSet, 6> descriptorSets = {
 						m_descriptorSet_texture,
@@ -1273,12 +1355,34 @@ void GraphicsBackend::Render(const Camera& camera)
 					m_scene->Draw(*m_meshData, m_pipelineLayout.get(), drawBuffer, cameraIndex, 0);
 				}
 
+				{
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[linesOffset].get());
+
+					// for now just bind it, we can use a different pipeline layout later
+					{
+						std::array<vk::DescriptorSet, 6> descriptorSets = {
+							m_descriptorSet_texture,
+							m_descriptorSet_ubo[m_currentframe],
+							m_descriptorSet_cameratMat[m_currentframe],
+							m_descriptorSet_rendered[renderedInputIdx],
+							m_descriptorSet_cameraIndices[m_currentframe],
+							m_descriptorSet_portalIndexHelper[m_currentframe],
+						};
+
+						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
+
+					
+						m_lineDrawer.Draw(m_pipelineLayout_lines.get(), drawBuffer, 0);
+					}
+				}
+
 
 				// First Portal Pass
 				{
 					constexpr int iterationElementIndex = 0;
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[1].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[portalOffset].get());
 
 					// for now just bind it, we can use a different pipeline layout later
 					{
@@ -1332,8 +1436,10 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 
-				const int drawScenePipelineIdx = (iteration + 1) * 2;
-				const int drawPortalPipelineIdx = drawScenePipelineIdx + 1;
+				const int basePipelineIndex =	(iteration + 1) * subpassOffset::enum_size;
+				const int drawScenePipelineIdx = basePipelineIndex + sceneOffset;
+				const int drawLinesPipelineIdx = basePipelineIndex + linesOffset;
+				const int drawPortalPipelineIdx = basePipelineIndex + portalOffset;
 
 
 				// last iteration draw all portals
@@ -1350,7 +1456,6 @@ void GraphicsBackend::Render(const Camera& camera)
 				{
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
-
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1402,6 +1507,34 @@ void GraphicsBackend::Render(const Camera& camera)
 					}
 				}
 
+				// draw lines
+				{
+					
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawLinesPipelineIdx].get());
+					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
+
+					{
+						std::array<vk::DescriptorSet, 6> descriptorSets = {
+								m_descriptorSet_texture,
+								m_descriptorSet_ubo[m_currentframe],
+								m_descriptorSet_cameratMat[m_currentframe],
+								m_descriptorSet_rendered[renderedInputIdx],
+								m_descriptorSet_cameraIndices[m_currentframe],
+								m_descriptorSet_portalIndexHelper[m_currentframe],
+						};
+
+						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
+					}
+
+					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
+					{
+						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
+
+						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
+						m_lineDrawer.Draw(m_pipelineLayout_lines.get(), drawBuffer, elementIdx);
+					}
+				}
 				// Draw Portals
 				{
 					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);

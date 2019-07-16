@@ -14,6 +14,7 @@
 #include "NTree.hpp"
 #include "StencilRefTree.hpp"
 #include "TriangleMesh.hpp"
+#include "LineDrawer.hpp"
 
 class Camera;
 
@@ -46,6 +47,10 @@ private:
 	vk::UniqueShaderModule m_vertShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule;
 	vk::UniqueShaderModule m_fragShaderModule_subsequent;
+
+	vk::UniqueShaderModule m_vertShaderModule_lines;
+	vk::UniqueShaderModule m_fragShaderModule_lines;
+	vk::UniqueShaderModule m_fragShaderModule_lines_subsequent;
 
 	vk::UniqueShaderModule m_vertShaderModule_portal;
 	vk::UniqueShaderModule m_fragShaderModule_portal;
@@ -96,6 +101,7 @@ private:
 	std::array<vk::DescriptorSet, 2> m_descriptorSet_rendered;
 
 	vk::UniquePipelineLayout m_pipelineLayout;
+	vk::UniquePipelineLayout m_pipelineLayout_lines;
 
 	std::array<vk::UniqueCommandPool, MaxInFlightFrames> m_graphicsPresentCommandPools;
 	std::array<vk::UniqueCommandBuffer, MaxInFlightFrames> m_graphicsPresentBuffer;
@@ -112,4 +118,5 @@ private:
 	std::vector<TriangleMesh> m_triangleMeshes;
 	std::unique_ptr<Scene> m_scene;
 	PortalManager m_portalManager;
+	LineDrawer m_lineDrawer;
 };
