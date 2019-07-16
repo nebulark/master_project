@@ -29,6 +29,7 @@ private:
 	
 	std::vector<SceneObject> m_objects;
 
+	// not used yet
 	UniqueVmaBuffer m_drawIndexedIndirectBuffer;
 	int m_drawIndexedIndirectBufferElementCount;
 	int m_drawIndexedIndirectBufferMaxElements;

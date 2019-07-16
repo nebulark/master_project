@@ -20,7 +20,7 @@ class Camera;
 class GraphicsBackend
 {
 public:
-	void Init(SDL_Window* window);
+	void Init(SDL_Window* window, int portalCount);
 	void Render(const Camera& camera);
 	void WaitIdle() { m_device->waitIdle(); }
 private:
@@ -105,6 +105,7 @@ private:
 	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
 	StencilRefTree m_stencilRefTree;
 
+	// the following can probably moved out of this class
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::vector<TriangleMesh> m_triangleMeshes;
 	std::unique_ptr<Scene> m_scene;

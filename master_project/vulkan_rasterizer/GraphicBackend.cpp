@@ -71,24 +71,11 @@ namespace
 
 	const vk::Format renderedStencilFormat = vk::Format::eR8Sint;
 
-	namespace ObjectIds
-	{
-		enum id
-		{
-			torusIdx = 0,
-			sphereIdx,
-			cubeIdx,
-			planeIdx,
-			halfSphereIdx,
-			invertedCubeIdx,
-			enum_size,
-		};
-	}
 
 }
 
 
-void GraphicsBackend::Init(SDL_Window* window)
+void GraphicsBackend::Init(SDL_Window* window, int portalCount)
 {
 	const char* enabledValidationLayers[] =
 	{
@@ -485,8 +472,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	const int expectedPortalCount = 4;
-	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
+	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, portalCount);
 
 	m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
 
@@ -524,7 +510,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			}
 			{
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
-					.setSize(PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t))
+					.setSize(PortalManager::GetPortalIndexHelperElementCount(recursionCount, portalCount) * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -814,7 +800,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write camera mat descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat,
-			PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+			PortalManager::GetCameraBufferElementCount(recursionCount, portalCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
 
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
@@ -823,7 +809,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t),vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
+			PortalManager::GetPortalIndexHelperElementCount(recursionCount, portalCount) * sizeof(uint32_t),vk::DescriptorType::eStorageBuffer,0 /*matches shader code*/);
 
 
 		// write rendered Depth descriptor Set

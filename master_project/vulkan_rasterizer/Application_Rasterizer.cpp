@@ -24,7 +24,7 @@ Application_Rasterizer::Application_Rasterizer()
 		)
 	};
 
-	m_graphcisBackend.Init(m_sdlWindow.get());
+	m_graphcisBackend.Init(m_sdlWindow.get(), TODO);
 
 	m_camera.SetPerspection( 0.1f, 1000.0f, glm::radians(45.f), glm::vec2(width, height));
 	m_camera.m_transform.translation =  glm::vec3(0.f, 0.05f, 3.f) * 20.f;
@@ -125,7 +125,10 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	rightInput *= DeltaSeconds * movementMultiplicator;
 	upInput *= DeltaSeconds * movementMultiplicator;
 	
+	const glm::vec3 oldCameraPos = m_camera.m_transform.translation;
 	m_camera.UpdateLocation(forwardInput, rightInput, upInput);
+
+	m_cameraDelta = m_camera.m_transform.translation - oldCameraPos;
 
 	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
 

@@ -243,6 +243,12 @@
     <ClInclude Include="Ray.hpp">
       <Filter>Code</Filter>
     </ClInclude>
+    <ClInclude Include="GameState.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshDefinitions.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis">
@@ -252,6 +258,9 @@
       <Filter>Natvis</Filter>
     </Natvis>
     <Natvis Include="..\external\glm\glm.natvis">
+      <Filter>Natvis</Filter>
+    </Natvis>
+    <Natvis Include="KdNode.natvis">
       <Filter>Natvis</Filter>
     </Natvis>
   </ItemGroup>

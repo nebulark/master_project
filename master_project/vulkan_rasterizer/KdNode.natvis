@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!--   <Type Name="KdNode">
+    <DisplayString>{{ invoke = {invoke_}, action = {f_} }}</DisplayString>
+    <Expand>
+      <Item Name="[AxisValue]">indexAndSplitAxis&lt;&lt;30</Item>
+      <Item Name="[IndexValue]">(indexAndSplitAxis) - (AxisValue &gt;&gt;30)</Item>
+      <Item Condition="AxisValue != 3" Name="[SplitValue]">f_</Item>
+    </Expand>
+  </Type>
+-->
+
+</AutoVisualizer>

@@ -253,6 +253,7 @@
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="CommandBufferUtils.hpp" />
     <ClInclude Include="DebugUtils.hpp" />
+    <ClInclude Include="GameState.hpp" />
     <ClInclude Include="GraphicBackend.hpp" />
     <ClInclude Include="GraphicsPipeline.hpp" />
     <ClInclude Include="InputManager.hpp" />
@@ -262,6 +263,7 @@
     <ClInclude Include="Key.hpp" />
     <ClInclude Include="Loader.hpp" />
     <ClInclude Include="MeshDataRef.hpp" />
+    <ClInclude Include="MeshDefinitions.hpp" />
     <ClInclude Include="NTree.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="GetSizeUint32.hpp" />
@@ -298,6 +300,7 @@
     <Natvis Include="..\external\glm\glm.natvis" />
     <Natvis Include="..\external\gsl\include\gsl\GSL.natvis" />
     <Natvis Include="..\external\VulkanMemoryAllocator\VulkanMemoryAllocator\vk_mem_alloc.natvis" />
+    <Natvis Include="KdNode.natvis" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="shaders\shader.frag">

@@ -26,4 +26,5 @@ private:
 	void HandleEvent(SDL_Event event);
 	void GameUpdate(float Seconds);
 	ClockType::time_point m_lastTime;
+
 };
