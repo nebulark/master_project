@@ -62,8 +62,8 @@ struct AABB
 		// https://tavianator.com/fast-branchless-raybounding-box-intersections/
 		// slab method
 
-		float tmin = 0.f;
-		float tmax = ray.distance;
+		float tmin = std::numeric_limits<float>::lowest();
+		float tmax = std::numeric_limits<float>::max();
 
 		{
 
@@ -107,7 +107,11 @@ struct AABB
 			tmax = std::min(tmax, tmaxz);
 		}
 
-		return tmax >= tmin;
+		if (tmax < tmin)
+		{
+			return std::nullopt;
+		}
+		return tmin;
 	}
 };
 
