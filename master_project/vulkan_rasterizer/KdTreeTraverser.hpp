@@ -69,7 +69,7 @@ namespace KdTreeTraverser
 		}
 
 		// Handle non-leaf node
-		const float currentPosInDim = rayTraceData.ray.origin[splitAxis.ToDim()] * tmin;
+		const float currentPosInDim = rayTraceData.ray.origin[splitAxis.ToDim()] + rayTraceData.ray.direction[splitAxis.ToDim()] * tmin;
 		const float currentSplitValue = node.GetSplitVal();
 
 		const NodePairIndex childIndexPair = node.GetChildNodeIndexPair();
@@ -79,8 +79,6 @@ namespace KdTreeTraverser
 		const int childIndexToTraverseSecond = childIndexToTraverseFirst ^ 1;
 
 		const KdNode& firstChildNodeToTraverse = tree.GetNode(childIndices[childIndexToTraverseFirst]);
-
-		std::optional<RayTraceResult> rayTraceResult = RayTrace(rayTraceData, firstChildNodeToTraverse, tmax, tmin);
 
 		// in such a case we can never pass the plane, so we don't need to check for triangle behind the plane
 		if (rayTraceData.ray.direction[splitAxis.ToDim()] == 0.f)

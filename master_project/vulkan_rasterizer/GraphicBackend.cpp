@@ -1355,7 +1355,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 
 			const auto lineDrawingFunction = [this, &extraLines](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
 			{
-				LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines);
+				//LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines);
 				LineDrawer::Draw(layout, drawBuffer, cameraIndex, extraLines);
 			};
 

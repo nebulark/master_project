@@ -102,6 +102,29 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 
 	constexpr float bigFloat = 1e10f;
 
+
+	// kd tree does not work, fall back to manually tracing all triangles for now
+#if 1
+	std::optional<float> bestresult;
+	for (const Triangle& tri : m_triangles)
+	{
+		std::optional<float> rt = raytraceData.intersectionFunction(raytraceData.ray, tri, nullptr);
+		if (rt.has_value() && (!bestresult.has_value() || *rt < *bestresult))
+		{
+			bestresult = rt;
+		}
+	}
+
+	if (bestresult)
+	{
+		*bestresult += bb_rt_result[0];
+	}
+
+	return  bestresult;
+#endif
+
+	// this does no work currently
+#if 0
 	std::optional<KdTreeTraverser::RayTraceResult> result = KdTreeTraverser::RayTrace(raytraceData, m_kdtree.GetRootNode(), raytraceData.ray.distance);
 	if (result)
 	{
@@ -109,4 +132,5 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 	}
 	
 	return std::nullopt;
+#endif
 }
