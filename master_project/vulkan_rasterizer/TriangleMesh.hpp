@@ -14,7 +14,7 @@ public:
 	static TriangleMesh FromTriangles(std::vector<Triangle>&& triangles);
 
 	// transforms ray into modelspace and performs intersection
-	std::optional<float> RayTrace(const Ray& ray, const glm::mat4& inverseModelMatrix) const;
+	std::optional<float> RayTrace(const Ray& ray) const;
 	const AABB& GetModelBoundingBox() const { return m_modelBoundingBox; }
 private:
 	std::vector<Triangle> m_triangles;

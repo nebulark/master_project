@@ -173,12 +173,11 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 		B,
 	};
 
-
 	constexpr int invalidPortalId = -1;
 	int bestPortalId = invalidPortalId;
 	PortalType bestPortalType = PortalType::A;
 	float bestPortalDistance = std::numeric_limits<float>::max();
-	
+
 
 	for (int portalId = 0; portalId < m_portals.size(); ++portalId)
 	{
@@ -187,7 +186,9 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 
 		{
 			const glm::mat4 inverseModel_a = glm::inverse(portal.a_transform);
-			const std::optional<float> rt_result = mesh.RayTrace(ray, inverseModel_a);
+			const glm::vec3 rayBegin_modelspace = inverseModel_a * glm::vec4(ray.origin, 1.f);
+			const glm::vec3 rayEnd_modelspace = inverseModel_a * glm::vec4(ray.CalcEndPoint(), 1.f);
+			const std::optional<float> rt_result = mesh.RayTrace(Ray::FromStartAndEndpoint(rayBegin_modelspace, rayEnd_modelspace));
 			if (rt_result.has_value() && *rt_result < bestPortalDistance)
 			{
 				bestPortalDistance = *rt_result;
@@ -198,7 +199,11 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 
 		{
 			const glm::mat4 inverseModel_b = glm::inverse(portal.b_transform);
-			const std::optional<float> rt_result = mesh.RayTrace(ray, inverseModel_b);
+
+			const glm::vec3 rayBegin_modelspace = inverseModel_b * glm::vec4(ray.origin, 1.f);
+			const glm::vec3 rayEnd_modelspace = inverseModel_b * glm::vec4(ray.CalcEndPoint(), 1.f);
+
+			const std::optional<float> rt_result = mesh.RayTrace(Ray::FromStartAndEndpoint(rayBegin_modelspace, rayEnd_modelspace));
 			if (rt_result.has_value() && *rt_result < bestPortalDistance)
 			{
 				bestPortalDistance = *rt_result;

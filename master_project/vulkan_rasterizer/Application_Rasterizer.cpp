@@ -131,18 +131,21 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		const glm::vec3 oldCameraPos = m_camera.m_transform.translation;
 		m_camera.UpdateLocation(forwardInput, rightInput, upInput);
 
-		gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
-
-		const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
-		const std::optional<glm::mat4> maybeTeleportMat = portalManager.FindHitPortalTeleportMatrix(
-			Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
-
-		if (maybeTeleportMat.has_value())
+		if (false)
 		{
-			const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
+			gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
 
-			m_camera.m_transform.translation = glm::vec3((*maybeTeleportMat) * cameraTranslation);
-			m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+			const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
+			const std::optional<glm::mat4> maybeTeleportMat = portalManager.FindHitPortalTeleportMatrix(
+				Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
+
+			if (maybeTeleportMat.has_value())
+			{
+				const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
+
+				m_camera.m_transform.translation = glm::vec3((*maybeTeleportMat) * cameraTranslation);
+				m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+			}
 		}
 	}
 
@@ -160,9 +163,9 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		float distanceTraveled = 0.f;
 		std::vector<Line> lines;
 
-		while (distanceTraveled < ray.distance)
+		//while (distanceTraveled < ray.distance)
 		{
-			float bestDistance = std::numeric_limits<float>::max();
+			float closestDistance = std::numeric_limits<float>::max();
 			glm::vec3 worldspaceBegin = ray.origin + ray.direction * distanceTraveled;
 			glm::vec3 worldspaceEnd = ray.CalcEndPoint();
 			float currentTraveldDistance =std::numeric_limits<float>::max();
@@ -173,7 +176,6 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 			{
 				
 				glm::mat4 modelMats[2] = { portal.a_transform, portal.b_transform };
-				//modelMats[0] = modelMats[1] = glm::mat4(1.f);// glm::translate(glm::vec3(0.f, 10.f, 0.f));
 				const glm::mat4 inverseModelMats[2] = { glm::inverse(modelMats[0]), glm::inverse(modelMats[1]) };
 				for (int i = 0; i < std::size(inverseModelMats); ++i)
 				{
@@ -182,24 +184,19 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 
 					const Ray modelRay = Ray::FromStartAndEndpoint(modelRayOrigin, modelRayEnd);
 
-					const AABB& bb =  triangleMeshes[portal.meshIndex].GetModelBoundingBox();
-					std::optional<std::array<float,2>> rt_result = bb.RayTrace(modelRay);
-					if (rt_result.has_value())
+					std::optional<float> rt_res = triangleMeshes[portal.meshIndex].RayTrace(modelRay);
+					
+					if (rt_res.has_value() && *rt_res < closestDistance)
 					{
-						float bla = rt_result.value()[0] > 0.1f ? rt_result.value()[0] : rt_result.value()[1];
-
-						if (bla > 0.1f)
-						{
-							bestDistance = bla;
-							worldspaceEnd = modelMats[i] * glm::vec4(modelRayOrigin + modelRay.direction * (bla), 1.f);
-							currentTraveldDistance = glm::distance(worldspaceBegin, worldspaceEnd);
-
-						}
-
+						closestDistance = *rt_res;
+						worldspaceEnd = modelMats[i] * glm::vec4(modelRayOrigin + modelRay.direction * (*rt_res), 1.f);
+						currentTraveldDistance = glm::distance(worldspaceBegin, worldspaceEnd);
 					}
-				}
 
+				}
 			}
+
+
 			distanceTraveled += currentTraveldDistance;
 			Line line;
 			line.pointA = glm::vec4(worldspaceBegin, 1.f);

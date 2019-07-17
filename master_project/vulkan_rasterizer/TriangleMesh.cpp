@@ -74,23 +74,23 @@ TriangleMesh TriangleMesh::FromTriangles(std::vector<Triangle>&& triangles)
 	return triangleMesh;
 }
 
-std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inverseModelMatrix) const
+std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 {
-	const glm::vec3 rayOrigin_modelspace = inverseModelMatrix * glm::vec4(ray.origin, 1.f);
-	const glm::vec3 rayEnd_modelspace = inverseModelMatrix * glm::vec4(ray.CalcEndPoint(), 1.f);
-
-	const Ray ray_modelspace = Ray::FromStartAndEndpoint(rayOrigin_modelspace, rayEnd_modelspace);
-	const std::optional<std::array<float,2>> boundingBoxRayTrace = m_modelBoundingBox.RayTrace(ray_modelspace);
+	const std::optional<std::array<float,2>> boundingBoxRayTrace = m_modelBoundingBox.RayTrace(ray);
 	if (!boundingBoxRayTrace.has_value())
 	{
 		return std::nullopt;
 	}
 
 	const std::array<float, 2> & bb_rt_result = boundingBoxRayTrace.value();
-	if (bb_rt_result[0] > ray_modelspace.distance || bb_rt_result[1] < 0.f)
+	if (bb_rt_result[0] > ray.distance || bb_rt_result[1] < 0.f)
 	{
 		return std::nullopt;
 	}
+
+	// currently only raytracing the bounding box works :(
+	return bb_rt_result[0];
+
 
 	std::printf("Bounding box success %i\n", this);
 
