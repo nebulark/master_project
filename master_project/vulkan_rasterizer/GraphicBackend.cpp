@@ -938,6 +938,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	{
 		m_triangleMeshes.emplace_back();
 		m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
+
 	}
 
 	Line testLine = {};
@@ -1008,21 +1009,21 @@ void GraphicsBackend::Init(SDL_Window* window)
 		}
 
 		{
-			const glm::vec3 spherePos[] = {
-					glm::vec3(-3.f,10.f, -5.f),
-					glm::vec3(3.f, 10.f , 5.f),
-			};
+		const glm::vec3 spherePos[] = {
+				glm::vec3(-3.f,10.f, -5.f),
+				glm::vec3(3.f, 10.f , 5.f),
+		};
 
-			const glm::vec4 debugColors[] =
-			{
-				glm::vec4(1.f,0.33f,0.33f,1.f),
-				glm::vec4(1.f,.66f,.66f,1.f),
-			};
+		const glm::vec4 debugColors[] =
+		{
+			glm::vec4(1.f,0.33f,0.33f,1.f),
+			glm::vec4(1.f,.66f,.66f,1.f),
+		};
 
-			for (int i = 0; i < std::size(spherePos); ++i)
-			{
-				m_scene->Add(ObjectIds::sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
-			}
+		for (int i = 0; i < std::size(spherePos); ++i)
+		{
+			m_scene->Add(ObjectIds::sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
+		}
 
 		}
 		{
@@ -1080,11 +1081,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 	{
-		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
+	const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
+	const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
+	m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
 	{
 		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
@@ -1093,6 +1094,34 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
+
+	{
+		const auto addLines = [this](AABBEdgePoints edgePoints, const glm::mat4& modelMat)
+		{
+			ApplyMatrix(edgePoints, modelMat);
+			const std::array<glm::vec3, 24> edgelines_a = CreateEdgeLines(edgePoints);
+			{
+				Line line = {};
+				line.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
+				line.colorB = glm::vec4(0.f, 0.f, 1.f, 1.f);
+				for (int i = 0; i < (std::size(edgelines_a) / 2); ++i)
+				{
+					line.pointA = glm::vec4(edgelines_a[i * 2 + 0], 1.f);
+					line.pointB = glm::vec4(edgelines_a[i * 2 + 1], 1.f);
+					m_lineDrawer.m_lines.push_back(line);
+				}
+			}
+		};
+
+		for (const Portal& portal : m_portalManager.GetPortals())
+		{
+			const AABB& box = m_triangleMeshes[portal.meshIndex].GetModelBoundingBox();
+			const AABBEdgePoints edgePoints = CreateEdgePoints(box);
+			addLines(edgePoints, portal.a_transform);
+			addLines(edgePoints, portal.b_transform);
+		}
+	}
+
 
 	// create Graphic pipelines
 	{
@@ -1372,7 +1401,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
 
-					
+
 						m_lineDrawer.Draw(m_pipelineLayout_lines.get(), drawBuffer, 0);
 					}
 				}
@@ -1436,7 +1465,7 @@ void GraphicsBackend::Render(const Camera& camera)
 					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 
-				const int basePipelineIndex =	(iteration + 1) * subpassOffset::enum_size;
+				const int basePipelineIndex = (iteration + 1) * subpassOffset::enum_size;
 				const int drawScenePipelineIdx = basePipelineIndex + sceneOffset;
 				const int drawLinesPipelineIdx = basePipelineIndex + linesOffset;
 				const int drawPortalPipelineIdx = basePipelineIndex + portalOffset;
@@ -1509,7 +1538,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 				// draw lines
 				{
-					
+
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawLinesPipelineIdx].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);

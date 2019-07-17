@@ -15,6 +15,7 @@ public:
 
 	// transforms ray into modelspace and performs intersection
 	std::optional<float> RayTrace(const Ray& ray, const glm::mat4& inverseModelMatrix) const;
+	const AABB& GetModelBoundingBox() const { return m_modelBoundingBox; }
 private:
 	std::vector<Triangle> m_triangles;
 	AABB m_modelBoundingBox;

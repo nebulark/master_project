@@ -128,3 +128,69 @@ constexpr bool operator!=(const AABB& lhs, const AABB& rhs) noexcept
 {
 	return !(lhs == rhs);
 }
+
+
+struct AABBEdgePoints
+{
+	std::array<glm::vec3, 4> mainVertices;
+	std::array<glm::vec3, 4> supportVertices;
+};
+
+inline constexpr AABBEdgePoints CreateEdgePoints(const AABB& aabb)
+{
+	auto createVertices = [](glm::vec3 firstVertex, glm::vec3  secondVertex)
+	{
+		std::array<glm::vec3, 4> result =
+		{
+			glm::vec3(firstVertex.x, firstVertex.y, firstVertex.z),
+			glm::vec3(firstVertex.x, secondVertex.y, secondVertex.z),
+			glm::vec3(secondVertex.x, firstVertex.y, secondVertex.z),
+			glm::vec3(secondVertex.x, secondVertex.y, firstVertex.z),
+		};
+		return result;
+	};
+
+	return AABBEdgePoints
+	{
+		createVertices(aabb.minBounds, aabb.maxBounds),
+		createVertices(aabb.maxBounds, aabb.minBounds),
+	};
+}
+
+inline void ApplyMatrix(AABBEdgePoints& edgePoints, const glm::mat4& matrix)
+{
+	assert(std::size(edgePoints.mainVertices) == std::size(edgePoints.supportVertices));
+	for (int i = 0; i < std::size(edgePoints.mainVertices); ++i)
+	{
+		edgePoints.mainVertices[i] = glm::vec3(matrix * glm::vec4(edgePoints.mainVertices[i], 1.f));
+		edgePoints.supportVertices[i] = glm::vec3(matrix * glm::vec4(edgePoints.supportVertices[i], 1.f));
+	}
+}
+
+inline std::array<glm::vec3, 24> CreateEdgeLines(const AABBEdgePoints& edgePoints)
+{
+	constexpr int lineCount = 12;
+
+	std::array<glm::vec3, lineCount * 2> result;
+	int resultIdx = 0;
+
+	for (int mainIdx = 0; mainIdx < std::size(edgePoints.mainVertices); ++mainIdx)
+	{
+		const glm::vec3 mainVertex = edgePoints.mainVertices[mainIdx];
+
+		for (
+			int supportIdx = (mainIdx + 1) % std::size(edgePoints.supportVertices);
+			supportIdx != mainIdx;
+			supportIdx = (supportIdx + 1) % std::size(edgePoints.supportVertices)
+			)
+		{
+			const glm::vec3 supportVertex = edgePoints.supportVertices[supportIdx];
+			result[resultIdx++] = mainVertex;
+			result[resultIdx++] = supportVertex;
+		}
+	}
+
+	assert(std::size(result) == resultIdx);
+	return result;
+}
+
