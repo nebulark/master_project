@@ -77,11 +77,17 @@ TriangleMesh TriangleMesh::FromTriangles(std::vector<Triangle>&& triangles)
 std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inverseModelMatrix) const
 {
 	const glm::vec3 rayOrigin_modelspace = inverseModelMatrix * glm::vec4(ray.origin, 1.f);
-	const glm::vec3 rayDir_modelspace = inverseModelMatrix * glm::vec4(ray.direction, 0.f);
+	const glm::vec3 rayEnd_modelspace = inverseModelMatrix * glm::vec4(ray.CalcEndPoint(), 1.f);
 
-	const Ray ray_modelspace = Ray::FromOriginAndDirection(rayOrigin_modelspace, rayDir_modelspace, ray.distance);
-	const std::optional<float> boundingBoxRayTrace = m_modelBoundingBox.RayTrace(ray_modelspace);
+	const Ray ray_modelspace = Ray::FromStartAndEndpoint(rayOrigin_modelspace, rayEnd_modelspace);
+	const std::optional<std::array<float,2>> boundingBoxRayTrace = m_modelBoundingBox.RayTrace(ray_modelspace);
 	if (!boundingBoxRayTrace.has_value())
+	{
+		return std::nullopt;
+	}
+
+	const std::array<float, 2> & bb_rt_result = boundingBoxRayTrace.value();
+	if (bb_rt_result[0] > ray_modelspace.distance || bb_rt_result[1] < 0.f)
 	{
 		return std::nullopt;
 	}
@@ -90,7 +96,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inv
 
 	KdTreeTraverser::RayTraceData raytraceData = {};
 	raytraceData.dataElements = gsl::make_span(m_triangles);
-	raytraceData.ray = ray_modelspace;
+	raytraceData.ray = Ray::FromStartAndEndpoint(ray.CalcPosition(bb_rt_result[0]), ray.CalcPosition(bb_rt_result[1]));
 	raytraceData.tree = &m_kdtree;
 	raytraceData.userData = nullptr;
 	raytraceData.intersectionFunction = [](const Ray& ray, const Triangle& triangle, void*)
@@ -100,7 +106,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray, const glm::mat4& inv
 
 	constexpr float bigFloat = 1e10f;
 
-	std::optional<KdTreeTraverser::RayTraceResult> result = KdTreeTraverser::RayTrace(raytraceData, m_kdtree.GetRootNode(), bigFloat);
+	std::optional<KdTreeTraverser::RayTraceResult> result = KdTreeTraverser::RayTrace(raytraceData, m_kdtree.GetRootNode(), raytraceData.ray.distance);
 	if (result)
 	{
 		return result->t;

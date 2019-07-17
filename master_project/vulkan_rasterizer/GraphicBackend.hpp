@@ -22,7 +22,7 @@ class GraphicsBackend
 {
 public:
 	void Init(SDL_Window* window);
-	void Render(const Camera& camera);
+	void Render(const Camera& camera, gsl::span<const Line> extraLines);
 	void WaitIdle() { m_device->waitIdle(); }
 
 	gsl::span<const TriangleMesh> GetTriangleMeshes() const { return m_triangleMeshes; }

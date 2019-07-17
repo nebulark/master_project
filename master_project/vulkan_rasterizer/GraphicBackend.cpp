@@ -1275,7 +1275,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	assert(m_portalManager.GetPortalCount() == expectedPortalCount);
 }
 
-void GraphicsBackend::Render(const Camera& camera)
+void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLines)
 {
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
@@ -1353,9 +1353,10 @@ void GraphicsBackend::Render(const Camera& camera)
 				enum_size
 			};
 
-			const auto lineDrawingFunction = [this](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
+			const auto lineDrawingFunction = [this, &extraLines](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
 			{
 				LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines);
+				LineDrawer::Draw(layout, drawBuffer, cameraIndex, extraLines);
 			};
 
 			// initial / iteration 0

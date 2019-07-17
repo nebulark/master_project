@@ -22,15 +22,26 @@ void Camera::UpdateFromMouse(float yawInput, float pitchInput)
 	m_transform.rotation = glm::normalize(yawRotation * m_transform.rotation * pitchRotation);
 }
 
+glm::vec3 Camera::CalcForwardVector() const 
+{
+	return m_transform.rotation * glm::vec3(0, 0, -1);
+}
+glm::vec3 Camera::CalcUpVector() const 
+{
+	return m_transform.rotation * glm::vec3(0, 1, 0);
+}
+glm::vec3 Camera::CalcRightVector() const 
+{
+	return m_transform.rotation * glm::vec3(1, 0, 0);
+}
+
+
+
 void Camera::UpdateLocation(float forwardInput, float rightInput, float upInput)
 {
-	const glm::vec3 forwardVector = m_transform.rotation * glm::vec3(0, 0, -1);
-	const glm::vec3 upVector = m_transform.rotation * glm::vec3(0, 1, 0);
-	const glm::vec3 rightVector = m_transform.rotation * glm::vec3(1, 0, 0);
-
-	m_transform.translation += forwardInput * forwardVector;
-	m_transform.translation += upInput * upVector;
-	m_transform.translation += rightInput * rightVector;
+	m_transform.translation += forwardInput * CalcForwardVector();
+	m_transform.translation += upInput * CalcUpVector();
+	m_transform.translation += rightInput * CalcRightVector();
 }
 
 void Camera::LookAt(glm::vec3 pos, glm::vec3 upDir)

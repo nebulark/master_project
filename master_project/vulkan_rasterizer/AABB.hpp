@@ -57,7 +57,7 @@ struct AABB
 		return widetstDim;
 	}
 
-	constexpr std::optional<float> RayTrace(const Ray& ray) const
+	constexpr std::optional<std::array<float,2>> RayTrace(const Ray& ray) const
 	{
 		// https://tavianator.com/fast-branchless-raybounding-box-intersections/
 		// slab method
@@ -69,7 +69,7 @@ struct AABB
 
 			// find tmin and tmax only considering x
 			const float tx1 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
-			const float tx2 = (minBounds.x - ray.origin.x) * ray.inverseDirection.x;
+			const float tx2 = (maxBounds.x - ray.origin.x) * ray.inverseDirection.x;
 
 			const float tminx = std::min(tx1, tx2);
 			const float tmaxx = std::max(tx1, tx2);
@@ -111,7 +111,8 @@ struct AABB
 		{
 			return std::nullopt;
 		}
-		return tmin;
+
+		return std::array<float,2>{ tmin, tmax };
 	}
 };
 

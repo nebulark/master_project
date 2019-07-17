@@ -50,7 +50,7 @@ bool Application_Rasterizer::Update()
 		HandleEvent(event);
 	}
 	GameUpdate(DeltaSeconds);
-	m_graphcisBackend.Render(m_camera);
+	m_graphcisBackend.Render(m_camera, m_extraLines);
 	SDL_UpdateWindowSurface(m_sdlWindow.get());
 	return true;
 }
@@ -145,6 +145,73 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 			m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
 		}
 	}
+
+	if (m_inputManager.GetKey(KeyCode::KEY_SPACE).GetNumPressed() > 0)
+	{
+		const Ray ray = Ray::FromOriginAndDirection(m_camera.m_transform.translation, m_camera.CalcForwardVector());
+		gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
+
+		const glm::vec4 colors[] =
+		{
+			glm::vec4(1.f,0.f,0.f,1.f),
+			glm::vec4(0.f,1.f,0.f,1.f)
+		};
+
+		float distanceTraveled = 0.f;
+		std::vector<Line> lines;
+
+		while (distanceTraveled < ray.distance)
+		{
+			float bestDistance = std::numeric_limits<float>::max();
+			glm::vec3 worldspaceBegin = ray.origin + ray.direction * distanceTraveled;
+			glm::vec3 worldspaceEnd = ray.CalcEndPoint();
+			float currentTraveldDistance =std::numeric_limits<float>::max();
+
+			//std::printf("ws begin (%f, %f, %f)\n", worldspaceBegin.x, worldspaceBegin.y, worldspaceBegin.z);
+
+			for (const Portal& portal : m_graphcisBackend.GetPortalManager().GetPortals())
+			{
+				
+				glm::mat4 modelMats[2] = { portal.a_transform, portal.b_transform };
+				//modelMats[0] = modelMats[1] = glm::mat4(1.f);// glm::translate(glm::vec3(0.f, 10.f, 0.f));
+				const glm::mat4 inverseModelMats[2] = { glm::inverse(modelMats[0]), glm::inverse(modelMats[1]) };
+				for (int i = 0; i < std::size(inverseModelMats); ++i)
+				{
+					const glm::vec3 modelRayOrigin = glm::vec3(inverseModelMats[i] * glm::vec4(worldspaceBegin, 1.f));
+					const glm::vec3 modelRayEnd = glm::vec3(inverseModelMats[i] * glm::vec4(ray.CalcEndPoint(), 1.f));
+
+					const Ray modelRay = Ray::FromStartAndEndpoint(modelRayOrigin, modelRayEnd);
+
+					const AABB& bb =  triangleMeshes[portal.meshIndex].GetModelBoundingBox();
+					std::optional<std::array<float,2>> rt_result = bb.RayTrace(modelRay);
+					if (rt_result.has_value())
+					{
+						float bla = rt_result.value()[0] > 0.1f ? rt_result.value()[0] : rt_result.value()[1];
+
+						if (bla > 0.1f)
+						{
+							bestDistance = bla;
+							worldspaceEnd = modelMats[i] * glm::vec4(modelRayOrigin + modelRay.direction * (bla), 1.f);
+							currentTraveldDistance = glm::distance(worldspaceBegin, worldspaceEnd);
+
+						}
+
+					}
+				}
+
+			}
+			distanceTraveled += currentTraveldDistance;
+			Line line;
+			line.pointA = glm::vec4(worldspaceBegin, 1.f);
+			line.pointB = glm::vec4(worldspaceEnd, 1.f);
+
+			line.colorA = line.colorB = colors[lines.size() % std::size(colors)];
+			lines.push_back(line);
+		}
+		m_extraLines.insert(m_extraLines.end(), lines.begin(), lines.end());
+	}
+
+
 
 	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
 

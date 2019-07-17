@@ -6,6 +6,7 @@
 #include "GraphicBackend.hpp"
 #include "Camera.hpp"
 #include "InputManager.hpp"
+#include "LineDrawer.hpp"
 
 class Application_Rasterizer
 {
@@ -26,4 +27,5 @@ private:
 	void HandleEvent(SDL_Event event);
 	void GameUpdate(float Seconds);
 	ClockType::time_point m_lastTime;
+	std::vector<Line> m_extraLines;
 };
