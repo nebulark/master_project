@@ -88,15 +88,11 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 		return std::nullopt;
 	}
 
-	// currently only raytracing the bounding box works :(
-	return bb_rt_result[0];
-
-
 	std::printf("Bounding box success %i\n", this);
 
 	KdTreeTraverser::RayTraceData raytraceData = {};
 	raytraceData.dataElements = gsl::make_span(m_triangles);
-	raytraceData.ray = Ray::FromStartAndEndpoint(ray.CalcPosition(bb_rt_result[0]), ray.CalcPosition(bb_rt_result[1]));
+	raytraceData.ray = Ray::FromStartAndEndpoint(ray.CalcPosition(bb_rt_result[0]), ray.CalcPosition(bb_rt_result[1]+0.0001));
 	raytraceData.tree = &m_kdtree;
 	raytraceData.userData = nullptr;
 	raytraceData.intersectionFunction = [](const Ray& ray, const Triangle& triangle, void*)
@@ -109,7 +105,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 	std::optional<KdTreeTraverser::RayTraceResult> result = KdTreeTraverser::RayTrace(raytraceData, m_kdtree.GetRootNode(), raytraceData.ray.distance);
 	if (result)
 	{
-		return result->t;
+		return result->t + bb_rt_result[0];
 	}
 	
 	return std::nullopt;
