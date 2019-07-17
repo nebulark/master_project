@@ -118,5 +118,5 @@ private:
 	std::vector<TriangleMesh> m_triangleMeshes;
 	std::unique_ptr<Scene> m_scene;
 	PortalManager m_portalManager;
-	LineDrawer m_lineDrawer;
+	std::vector<Line> m_portalAABBLines;
 };

@@ -948,8 +948,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 	testLine.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
 	testLine.colorB = glm::vec4(0.f, 1.f, 0.f, 1.f);
 
-	m_lineDrawer.m_lines.push_back(testLine);
-		
 	// Init Scene
 	{
 
@@ -1096,19 +1094,24 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 	{
-		const auto addLines = [this](AABBEdgePoints edgePoints, const glm::mat4& modelMat)
+		const auto addLines = [](
+			std::vector<Line>& lineContainer,
+			AABBEdgePoints edgePoints,
+			const glm::mat4& modelMat,
+			const glm::vec4& colorA,
+			const glm::vec4& colorB)
 		{
 			ApplyMatrix(edgePoints, modelMat);
 			const std::array<glm::vec3, 24> edgelines_a = CreateEdgeLines(edgePoints);
 			{
 				Line line = {};
-				line.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
-				line.colorB = glm::vec4(0.f, 0.f, 1.f, 1.f);
+				line.colorA = colorA;
+				line.colorB = colorB;
 				for (int i = 0; i < (std::size(edgelines_a) / 2); ++i)
 				{
 					line.pointA = glm::vec4(edgelines_a[i * 2 + 0], 1.f);
 					line.pointB = glm::vec4(edgelines_a[i * 2 + 1], 1.f);
-					m_lineDrawer.m_lines.push_back(line);
+					lineContainer.push_back(line);
 				}
 			}
 		};
@@ -1117,8 +1120,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 		{
 			const AABB& box = m_triangleMeshes[portal.meshIndex].GetModelBoundingBox();
 			const AABBEdgePoints edgePoints = CreateEdgePoints(box);
-			addLines(edgePoints, portal.a_transform);
-			addLines(edgePoints, portal.b_transform);
+			addLines(m_portalAABBLines, edgePoints, portal.a_transform, glm::vec4(1.f,1.f,0.f,1.f), glm::vec4(1.f,0.f,0.f,1.f));
+			addLines(m_portalAABBLines, edgePoints, portal.b_transform, glm::vec4(0.f,1.f,1.f,1.f), glm::vec4(0.f,0.f,1.f,1.f));
 		}
 	}
 
@@ -1350,6 +1353,10 @@ void GraphicsBackend::Render(const Camera& camera)
 				enum_size
 			};
 
+			const auto lineDrawingFunction = [this](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
+			{
+				LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines);
+			};
 
 			// initial / iteration 0
 			{
@@ -1401,8 +1408,7 @@ void GraphicsBackend::Render(const Camera& camera)
 
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
 
-
-						m_lineDrawer.Draw(m_pipelineLayout_lines.get(), drawBuffer, 0);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, 0);
 					}
 				}
 
@@ -1561,7 +1567,7 @@ void GraphicsBackend::Render(const Camera& camera)
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
-						m_lineDrawer.Draw(m_pipelineLayout_lines.get(), drawBuffer, elementIdx);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx);
 					}
 				}
 				// Draw Portals

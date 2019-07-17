@@ -17,8 +17,6 @@ class LineDrawer
 public:
 
 
-	void Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx) const;
-
-	std::vector<Line> m_lines;
+	static void Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, gsl::span<const Line> lines);
 };
 

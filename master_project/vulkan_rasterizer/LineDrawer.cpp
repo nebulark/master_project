@@ -2,9 +2,10 @@
 #include "LineDrawer.hpp"
 #include "PushConstants.hpp"
 
-void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx) const
+
+void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, gsl::span<const Line> lines)
 {
-	for (const Line& line : m_lines)
+	for (const Line& line : lines)
 	{
 
 		PushConstant_lines pushConstant = {};
@@ -21,3 +22,4 @@ void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawC
 	}
 
 }
+
