@@ -86,7 +86,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 
 
 	// kd tree does not work, fall back to manually tracing all triangles for now
-#if 1
+#if 0
 	constexpr float invalidBestResult = std::numeric_limits<float>::max();
 	float bestresult = invalidBestResult;
 	for (const Triangle& tri : m_triangles)
@@ -122,7 +122,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 	std::optional<KdTreeTraverser::RayTraceResult> result = KdTreeTraverser::RayTrace(raytraceData, m_kdtree.GetRootNode(), raytraceData.ray.distance);
 	if (result)
 	{
-		return result->t + bb_rt_result[0];
+		return result->t + tmin;
 	}
 	
 	return std::nullopt;

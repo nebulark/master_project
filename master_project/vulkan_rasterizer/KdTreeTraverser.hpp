@@ -56,6 +56,10 @@ namespace KdTreeTraverser
 				}
 
 				const float rayTraceValue = rayTrace.value();
+				if (rayTraceValue < tmin || rayTraceValue > tmax)
+				{
+					continue;
+				}
 
 				// result is better as current ray trace, ignore ray trace
 				if (result.has_value() && (result->t <= rayTraceValue))
@@ -94,7 +98,7 @@ namespace KdTreeTraverser
 			return RayTrace(rayTraceData, firstChildNodeToTraverse, tmin, tmax);
 		}
 
-		
+
 		std::optional<RayTraceResult> firstTraceResult = RayTrace(rayTraceData, firstChildNodeToTraverse, tIntersection, tmin);
 
 		// if successful we can skip early
