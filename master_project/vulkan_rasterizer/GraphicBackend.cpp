@@ -1299,7 +1299,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 		std::vector<glm::mat4> cameraViewMats;
 		cameraViewMats.resize(cameraBufferElementCount);
 
-		m_portalManager.CreateCameraMats(camera.m_transform.ToMat(), recursionCount, cameraViewMats);
+		m_portalManager.CreateCameraMats(camera.CalcMat(), recursionCount, cameraViewMats);
 		std::transform(std::begin(cameraViewMats), std::end(cameraViewMats), std::begin(cameraViewMats), [](const glm::mat4& e)
 			{
 				return glm::inverse(e);
@@ -1528,18 +1528,17 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 							const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
 
 							PushConstant pushConstant = {};
-							Transform cameraTransform = camera.m_transform;
-							pushConstant.model = cameraTransform.ToMat();
+							pushConstant.model = camera.CalcMat();
 							pushConstant.cameraIdx = elementIdx;
 
 							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
-
+#if 0
 							cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
 							pushConstant.model = cameraTransform.ToMat();
 							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
-
+#endif
 #endif
 						}
 

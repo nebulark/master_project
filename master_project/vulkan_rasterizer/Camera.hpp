@@ -3,10 +3,11 @@
 #include "gtc/quaternion.hpp"
 #include "Transform.hpp"
 
+
 class Camera
 {
 public:
-
+	Camera();
 	void SetPerspection(float nearPlane, float farPlane, float fieldOfViewRadians, glm::vec2 aspectRatio);
 	const glm::mat4& GetProjectionMatrix() const;
 
@@ -18,9 +19,16 @@ public:
 	void LookAt(glm::vec3 pos, glm::vec3 upDir);
 	void LookDir(glm::vec3 dir, glm::vec3 upDir);
 
-	Transform m_transform;
+	glm::mat4 m_coordinateSystem;
+
+	glm::mat4 CalcMat() const;
+	glm::vec3 CalcPosition() const;
+	void SetPosition(const glm::vec3 pos);
 private:
 
+	
+
+	Transform m_transform;
 	glm::mat4 m_perspectionMatrix;
 };
 

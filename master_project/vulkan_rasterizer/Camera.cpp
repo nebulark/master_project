@@ -1,6 +1,12 @@
 #include "pch.hpp"
 #include "Camera.hpp"
 
+
+Camera::Camera()
+{
+	m_coordinateSystem = glm::mat4(1.f);
+}
+
 void Camera::SetPerspection(float nearPlane, float farPlane, float fieldOfView, glm::vec2 aspectRatio)
 {
 	m_perspectionMatrix = glm::perspectiveFov(fieldOfView, aspectRatio.x, aspectRatio.y, nearPlane, farPlane);
@@ -16,10 +22,10 @@ const glm::mat4& Camera::GetProjectionMatrix() const
 
 void Camera::UpdateFromMouse(float yawInput, float pitchInput)
 {
-	const glm::quat yawRotation = glm::angleAxis(yawInput, glm::vec3(0, -1, 0));
-	const glm::quat pitchRotation = glm::angleAxis(pitchInput, glm::vec3(-1, 0, 0));
+	const glm::quat yawRotation = glm::angleAxis(-yawInput, glm::vec3(0, 1, 0));
+	const glm::quat pitchRotation = glm::angleAxis(-pitchInput, glm::vec3(1, 0, 0));
 
-	m_transform.rotation = glm::normalize(yawRotation * m_transform.rotation * pitchRotation);
+	m_transform.rotation = glm::normalize(m_transform.rotation * pitchRotation * yawRotation);
 }
 
 glm::vec3 Camera::CalcForwardVector() const 
@@ -52,4 +58,19 @@ void Camera::LookAt(glm::vec3 pos, glm::vec3 upDir)
 void Camera::LookDir(glm::vec3 dir, glm::vec3 upDir)
 {
 	m_transform.rotation = glm::quatLookAt(dir, upDir);
+}
+
+glm::mat4 Camera::CalcMat() const
+{
+	return m_coordinateSystem * m_transform.ToMat();
+}
+
+glm::vec3 Camera::CalcPosition() const
+{
+	return glm::vec3(m_coordinateSystem * glm::vec4(m_transform.translation, 1.f));
+}
+
+void Camera::SetPosition(const glm::vec3 pos)
+{
+	m_transform.translation =glm::vec3( glm::inverse(m_coordinateSystem) * glm::vec4(pos,1.f));
 }

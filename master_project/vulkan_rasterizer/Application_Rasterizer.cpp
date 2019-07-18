@@ -27,7 +27,7 @@ Application_Rasterizer::Application_Rasterizer()
 	m_graphcisBackend.Init(m_sdlWindow.get());
 
 	m_camera.SetPerspection( 0.1f, 1000.0f, glm::radians(45.f), glm::vec2(width, height));
-	m_camera.m_transform.translation =  glm::vec3(0.f, 0.05f, 3.f) * 20.f;
+	m_camera.SetPosition(glm::vec3(0.f, 0.05f, 3.f) * 20.f);
 	m_camera.LookDir( glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_lastTime = ClockType::now();
 }
@@ -128,7 +128,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	if (forwardInput != 0.f || rightInput != 0.f || upInput != 0.f)
 	{
 
-		const glm::vec3 oldCameraPos = m_camera.m_transform.translation;
+		const glm::vec3 oldCameraPos = m_camera.CalcPosition();
 		m_camera.UpdateLocation(forwardInput, rightInput, upInput);
 
 		if (true)
@@ -137,18 +137,15 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 
 			const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
 			std::optional<PortalManager::RayTraceResult> maybeRtResult =
-				portalManager.RayTrace(Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
+				portalManager.RayTrace(Ray::FromStartAndEndpoint(oldCameraPos, m_camera.CalcPosition()), triangleMeshes);
 			
 			if (maybeRtResult.has_value())
 			{
 				const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
 
-				const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
-
 				const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.endpoint];
 
-				m_camera.m_transform.translation = glm::vec3((teleportMat) * cameraTranslation);
-				//m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+				m_camera.m_coordinateSystem = teleportMat * m_camera.m_coordinateSystem;
 
 			}
 		}
