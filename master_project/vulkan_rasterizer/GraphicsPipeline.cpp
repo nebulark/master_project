@@ -214,7 +214,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		nullptr, // depthStencilState info nees to be set!
 		nullptr, // color blend state needs to be set!
 		nullptr, // dynamic device state
-		createInfo.pipelineLayout,
+		createInfo.pipelineLayout_portal,
 		createInfo.renderpass,
 		-1, // subpass needs to be set!
 		vk::Pipeline(),
@@ -226,6 +226,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_sceneInitial))
 		.setPRasterizationState(&rasterizationStateCreateInfo_scene)
 		.setPDepthStencilState(&depthStencilStateCreateInfo_onlyDepthTest)
+		.setLayout(createInfo.pipelineLayout_scene)
 		.setPColorBlendState(&colorblendstate_override_1)
 		.setSubpass(0)
 		;
@@ -257,6 +258,7 @@ std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> GraphicsPi
 		.setPRasterizationState(&rasterizationStateCreateInfo_scene)
 		.setPColorBlendState(&colorblendstate_override_1)
 		.setPDynamicState(&dynamicStateCreateInfo)
+		.setLayout(createInfo.pipelineLayout_scene)
 		;
 
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalSubsequent_prototype = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }

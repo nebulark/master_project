@@ -1,7 +1,7 @@
 #pragma once
 #include "glm.hpp"
 
-struct PushConstant
+struct PushConstant_portal
 {
 	alignas(16) glm::mat4 model;
 	glm::vec4 debugColor;
@@ -29,7 +29,7 @@ struct PushConstant
 
 };
 
-constexpr size_t PushConstant_Size = sizeof(PushConstant);
+constexpr size_t PushConstant_Size = sizeof(PushConstant_portal);
 
 static_assert(PushConstant_Size <= 128, "Push Constant must be small or equal to 128 Byte");
 
@@ -44,3 +44,12 @@ struct PushConstant_lines
 };
 constexpr size_t PushConstant_lines_size = sizeof(PushConstant_lines);
 static_assert(PushConstant_lines_size <= 128, "Push Constant must be small or equal to 128 Byte");
+
+struct PushConstant_sceneObject
+{
+	alignas(16) glm::mat4 model;
+	glm::vec4 debugColor;
+	int32_t cameraIdx;
+	uint32_t layerStencilVal;
+};
+

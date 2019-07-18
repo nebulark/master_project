@@ -56,7 +56,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
-		PushConstant pushConstant = {};
+		PushConstant_portal pushConstant = {};
 		pushConstant.cameraIdx = info.iterationElementIndex;
 		pushConstant.layerStencilVal = info.stencilRef;
 		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
@@ -75,7 +75,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 			pushConstant.currentHelperIndex = childNum + indexHelper_firstChildIndex;
 
 			pushConstant.model = m_portals[i].transform[endPoint];
-			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+			drawBuffer.pushConstants<PushConstant_portal>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
 			drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,

@@ -100,7 +100,8 @@ private:
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_portalIndexHelper;
 	std::array<vk::DescriptorSet, 2> m_descriptorSet_rendered;
 
-	vk::UniquePipelineLayout m_pipelineLayout;
+	vk::UniquePipelineLayout m_pipelineLayout_portal;
+	vk::UniquePipelineLayout m_pipelineLayout_scene;
 	vk::UniquePipelineLayout m_pipelineLayout_lines;
 
 	std::array<vk::UniqueCommandPool, MaxInFlightFrames> m_graphicsPresentCommandPools;

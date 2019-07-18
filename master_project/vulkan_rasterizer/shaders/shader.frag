@@ -15,28 +15,10 @@ layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput i
 const vec3 directionalLightDir = normalize(vec3(1.0,1.0,1.0));
 
 layout(push_constant) uniform PushConstant {
-    mat4 model;
+ 	mat4 model;
 	vec4 debugColor;
 	int cameraIdx;
-
-	// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
-	int firstHelperIndex;
-	// our index in  PortalIndexHelper
-	int currentHelperIndex;
-
-	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
-	int firstCameraIndicesIndex;
-
-	// the stencil value of the layer
 	uint layerStencilVal;
-
-	// the index we need to write into CameraIndices
-	int portalCameraIndex;
-
-	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
-	int numOfBitsToShiftChildStencilVal;
-
-	int maxVisiblePortalCountForRecursion;
 } pc;
 
 void main() {

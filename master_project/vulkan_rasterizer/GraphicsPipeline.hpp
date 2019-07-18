@@ -13,8 +13,9 @@ namespace GraphicsPipeline
 			vk::Device logicalDevice;
 			vk::Extent2D swapchainExtent;
 			vk::RenderPass renderpass;
-			vk::PipelineLayout pipelineLayout;
+			vk::PipelineLayout pipelineLayout_portal;
 			vk::PipelineLayout pipelineLayout_lines;
+			vk::PipelineLayout pipelineLayout_scene;
 
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_sceneInitial;
 			gsl::span<const vk::PipelineShaderStageCreateInfo> pipelineShaderStageCreationInfos_linesInitial;
