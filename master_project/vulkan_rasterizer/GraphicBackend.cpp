@@ -446,7 +446,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
-		m_depthFormat, renderedDepthFormat, renderedStencilFormat, recursionCount, &debugRenderpass);
+		m_depthFormat, renderedDepthFormat, renderedStencilFormat, recursionCount);
 
 	// create Framebuffer
 	{
@@ -1284,9 +1284,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
-		std::vector<std::string> debugPipelines;
-		m_graphicPipelines = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
-			createInfo, recursionCount, &debugPipelines);
+		GraphicsPipeline::PipelinesCreateResult result  = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
+			createInfo, recursionCount);
+
+		m_pipelines.scenePass.scene = std::move(result.scenePassPipelines.scene);
+		m_pipelines.scenePass.line = std::move(result.scenePassPipelines.lines);
+		m_pipelines.portalPass.portal = std::move(result.portalPassPipelines.regularPortal);
 
 	}
 
@@ -1371,13 +1374,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 		// render pass
 		{
-			enum subpassOffset
-			{
-				sceneOffset = 0,
-				linesOffset,
-				portalOffset,
-				enum_size
-			};
 
 			const auto lineDrawingFunction = [this, &extraLines](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
 			{
@@ -1389,6 +1385,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 			{
 
 				const int renderedInputIdx = 1;
+				constexpr int initialPipelineIndex = 0;
 				// render Scene Subpass
 				{
 					drawBuffer.beginRenderPass(
@@ -1399,7 +1396,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						.setClearValueCount(GetSizeUint32(clearValues)).setPClearValues(clearValues),
 						vk::SubpassContents::eInline);
 
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[sceneOffset].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.scene[initialPipelineIndex].get());
 
 					std::array<vk::DescriptorSet, 6> descriptorSets = {
 						m_descriptorSet_texture,
@@ -1419,8 +1416,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				}
 
 				{
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[linesOffset].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.line[initialPipelineIndex].get());
 
 					// for now just bind it, we can use a different pipeline layout later
 					{
@@ -1444,7 +1440,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				{
 					constexpr int iterationElementIndex = 0;
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[portalOffset].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[initialPipelineIndex].get());
 
 					// for now just bind it, we can use a different pipeline layout later
 					{
@@ -1482,6 +1478,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 			{
 				const int renderedInputIdx = iteration % 2;
 				const bool isLastIteration = (iteration == (recursionCount - 1));
+				const int pipelineIndex = iteration + 1;
 
 				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 
@@ -1498,12 +1495,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 
-				const int basePipelineIndex = (iteration + 1) * subpassOffset::enum_size;
-				const int drawScenePipelineIdx = basePipelineIndex + sceneOffset;
-				const int drawLinesPipelineIdx = basePipelineIndex + linesOffset;
-				const int drawPortalPipelineIdx = basePipelineIndex + portalOffset;
-
-
 				// last iteration draw all portals
 				const int numVisiblePortalsforLayer = (iteration == recursionCount - 1)
 					? m_portalManager.GetPortalCount()
@@ -1516,7 +1507,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 				//draw Scene
 				{
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawScenePipelineIdx].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.scene[pipelineIndex].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
@@ -1571,8 +1562,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				// draw lines
 				{
 
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawLinesPipelineIdx].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.line[pipelineIndex].get());
 					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
@@ -1598,15 +1588,16 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				}
 				// Draw Portals
 				{
+					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[pipelineIndex].get());
+
 					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
 
 					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : m_stencilRefTree.CalcLayerStartIndex(iteration + 1);
 
 					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
 
-					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicPipelines[drawPortalPipelineIdx].get());
-					{
+										{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
 								m_descriptorSet_texture,
 								m_descriptorSet_ubo[m_currentframe],

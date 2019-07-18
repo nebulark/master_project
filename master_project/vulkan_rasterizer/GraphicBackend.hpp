@@ -100,6 +100,8 @@ private:
 	std::array<vk::DescriptorSet, MaxInFlightFrames> m_descriptorSet_portalIndexHelper;
 	std::array<vk::DescriptorSet, 2> m_descriptorSet_rendered;
 
+	
+
 	vk::UniquePipelineLayout m_pipelineLayout_portal;
 	vk::UniquePipelineLayout m_pipelineLayout_scene;
 	vk::UniquePipelineLayout m_pipelineLayout_lines;
@@ -112,7 +114,29 @@ private:
 	std::array<vk::UniqueSemaphore, MaxInFlightFrames> m_renderFinishedSem;
 	int m_currentframe = 0;
 
-	std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> m_graphicPipelines;
+
+	struct ScenePassPipelines
+	{
+
+		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> scene;
+		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> line;
+	};
+
+	struct PortalPassPipelines
+	{
+		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> portal;
+	};
+
+	struct Pipelines
+	{
+
+		ScenePassPipelines scenePass;
+		PortalPassPipelines portalPass;
+	};
+
+	Pipelines m_pipelines;
+
+
 	StencilRefTree m_stencilRefTree;
 
 	std::unique_ptr<MeshDataManager> m_meshData;

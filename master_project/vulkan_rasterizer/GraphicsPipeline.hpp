@@ -8,6 +8,25 @@ namespace GraphicsPipeline
 		extern const vk::PipelineMultisampleStateCreateInfo multisampleState_noMultisampling;
 		extern const vk::PipelineInputAssemblyStateCreateInfo inputAssembly_triangleList;
 
+	
+		struct ScenePassPipelines
+		{
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> scene;
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> lines;
+		};
+
+		struct PortalPassPipelines
+		{
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> regularPortal;
+		};
+
+
+		struct PipelinesCreateResult
+		{
+			ScenePassPipelines scenePassPipelines;
+			PortalPassPipelines portalPassPipelines;
+		};
+
 		struct PipelinesCreateInfo
 		{
 			vk::Device logicalDevice;
@@ -26,5 +45,5 @@ namespace GraphicsPipeline
 
 		};
 
-		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount, std::vector<std::string>* optionalDebug = nullptr);
+		PipelinesCreateResult CreateGraphicPipelines_dynamicState(const PipelinesCreateInfo& createInfo, uint32_t iterationCount);
 }
