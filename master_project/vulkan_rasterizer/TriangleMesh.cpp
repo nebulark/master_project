@@ -51,25 +51,6 @@ TriangleMesh TriangleMesh::FromTriangles(std::vector<Triangle>&& triangles)
 	triangleMesh.m_triangles = std::move(triangles);
 
 	triangleMesh.m_modelBoundingBox = Triangle::CreateAABB(triangleMesh.m_triangles);
-#if 0
-	// find model AABB that works no matter how the model is rotated
-	// look for the farthes extent, this defines our bounding sphere, with its origin at the models center
-	// enclose the bounding sphere with AABB
-	float maxExtentSquared = 0.f;
-	for (const Triangle& tri : triangleMesh.m_triangles)
-	{
-		for (const glm::vec3 vertex : tri.vertices)
-		{
-			maxExtentSquared = std::max(maxExtentSquared, glm::dot(vertex, vertex));
-		}
-	}
-
-
-	const float maxExtentFromOrigin = std::sqrt(maxExtentSquared);
-	triangleMesh.m_modelBoundingBox.minBounds = glm::vec3(-maxExtentFromOrigin);
-	triangleMesh.m_modelBoundingBox.maxBounds = glm::vec3(maxExtentFromOrigin);
-#endif
-
 	triangleMesh.m_kdtree.Init(triangleMesh.m_triangles, triangleMesh.m_modelBoundingBox);
 	return triangleMesh;
 }

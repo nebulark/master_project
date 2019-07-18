@@ -52,9 +52,8 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
-		const int a_childNum = i * 2;
-		const int b_childNum = a_childNum + 1;
-
+		const int baseChildNum = i;
+	
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
 		PushConstant pushConstant = {};
@@ -68,34 +67,20 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 		
 		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
 
+		for(auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
 		{
-			pushConstant.portalCameraIndex = a_childNum;
+			pushConstant.portalCameraIndex = baseChildNum + endPoint;
 
-			pushConstant.currentHelperIndex = a_childNum + indexHelper_firstChildIndex;
+			pushConstant.currentHelperIndex = baseChildNum + indexHelper_firstChildIndex;
 			
-			pushConstant.model = m_portals[i].a_transform;
+			pushConstant.model = m_portals[i].transform[endPoint];
 			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
-		}
 
-		drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
+				drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
 			vk::DependencyFlags{}, {}, {}, {});
 
-		{
-			pushConstant.portalCameraIndex = b_childNum;
-		
-			pushConstant.currentHelperIndex = b_childNum + indexHelper_firstChildIndex;
-
-			pushConstant.model = m_portals[i].b_transform;
-			drawBuffer.pushConstants<PushConstant>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);	
-			
-		
 		}
-
-	drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
-			vk::DependencyFlags{}, {}, {}, {});
-
 	}
 }
 
@@ -135,8 +120,8 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);
 
-				outCameraTransforms[childIdx0] = m_portals[i].a_to_b * outCameraTransforms[parentIdx];
-				outCameraTransforms[childIdx1] = m_portals[i].b_to_a * outCameraTransforms[parentIdx];				
+				outCameraTransforms[childIdx0] = m_portals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::A)] * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx1] = m_portals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::B)] * outCameraTransforms[parentIdx];				
 			}
 		}
 	}
@@ -165,17 +150,11 @@ int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount)
 	return GetPortalIndexHelperElementCount(maxRecursionCount, GetPortalCount());
 }
 
-std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
+std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
 {
-	enum class PortalType
-	{
-		A,
-		B,
-	};
-
 	constexpr int invalidPortalId = -1;
 	int bestPortalId = invalidPortalId;
-	PortalType bestPortalType = PortalType::A;
+	PortalEndpointIndex bestPortalEndpoint(PortalEndpoint::A);
 	float bestPortalDistance = std::numeric_limits<float>::max();
 
 
@@ -184,43 +163,38 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 		const Portal& portal = m_portals[portalId];
 		const TriangleMesh& mesh = portalMeshes[portal.meshIndex];
 
+		for(auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
 		{
-			const glm::mat4 inverseModel_a = glm::inverse(portal.a_transform);
-			const glm::vec3 rayBegin_modelspace = inverseModel_a * glm::vec4(ray.origin, 1.f);
-			const glm::vec3 rayEnd_modelspace = inverseModel_a * glm::vec4(ray.CalcEndPoint(), 1.f);
+			const glm::mat4 inverseModel = glm::inverse(portal.transform[endPoint]);
+			const glm::vec3 rayBegin_modelspace = inverseModel * glm::vec4(ray.origin, 1.f);
+			const glm::vec3 rayEnd_modelspace = inverseModel * glm::vec4(ray.CalcEndPoint(), 1.f);
 			const std::optional<float> rt_result = mesh.RayTrace(Ray::FromStartAndEndpoint(rayBegin_modelspace, rayEnd_modelspace));
 			if (rt_result.has_value() && *rt_result < bestPortalDistance)
 			{
 				bestPortalDistance = *rt_result;
 				bestPortalId = portalId;
-				bestPortalType = PortalType::A;
+				bestPortalEndpoint = endPoint;
 			}
 		}
 
-		{
-			const glm::mat4 inverseModel_b = glm::inverse(portal.b_transform);
-
-			const glm::vec3 rayBegin_modelspace = inverseModel_b * glm::vec4(ray.origin, 1.f);
-			const glm::vec3 rayEnd_modelspace = inverseModel_b * glm::vec4(ray.CalcEndPoint(), 1.f);
-
-			const std::optional<float> rt_result = mesh.RayTrace(Ray::FromStartAndEndpoint(rayBegin_modelspace, rayEnd_modelspace));
-			if (rt_result.has_value() && *rt_result < bestPortalDistance)
-			{
-				bestPortalDistance = *rt_result;
-				bestPortalId = portalId;
-				bestPortalType = PortalType::B;
-			}
-		}
 	}
 
 	if (bestPortalId != invalidPortalId)
 	{
-		printf("port from portal %i from %s to %s\n",
-			bestPortalId,
-			bestPortalType == PortalType::A ? "A" : "B",
-			bestPortalType == PortalType::A ? "B" : "A");
+		return RayTraceResult{ bestPortalDistance, bestPortalId, bestPortalEndpoint };
+	}
 
-		return  bestPortalType == PortalType::A ? m_portals[bestPortalId].a_to_b : m_portals[bestPortalId].b_to_a;
+	return std::nullopt;
+
+}
+
+std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
+{
+	std::optional<RayTraceResult> rt = RayTrace(ray, portalMeshes);
+
+	if (rt.has_value())
+	{
+		return m_portals[rt->portalIndex].toOtherEndpoint[rt->endpoint];
 	}
 
 	return std::nullopt;

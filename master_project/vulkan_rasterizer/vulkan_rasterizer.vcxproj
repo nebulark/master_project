@@ -236,6 +236,7 @@
     <ClCompile Include="Transform.cpp" />
     <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="TriangleMesh.cpp" />
+    <ClCompile Include="EnumIndex.cpp" />
     <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="VmaAllocationsPool.cpp" />
     <ClCompile Include="UniqueVmaMemoryMap.cpp" />
@@ -283,6 +284,7 @@
     <ClInclude Include="Triangle.hpp" />
     <ClInclude Include="TriangleMesh.hpp" />
     <ClInclude Include="UniformBufferObjects.hpp" />
+    <ClInclude Include="EnumIndex.hpp" />
     <ClInclude Include="Vertex.hpp" />
     <ClInclude Include="VmaAllocationsPool.hpp" />
     <ClInclude Include="UniqueVmaMemoryMap.hpp" />

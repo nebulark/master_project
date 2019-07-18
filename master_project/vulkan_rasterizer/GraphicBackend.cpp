@@ -1120,8 +1120,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 		{
 			const AABB& box = m_triangleMeshes[portal.meshIndex].GetModelBoundingBox();
 			const AABBEdgePoints edgePoints = CreateEdgePoints(box);
-			addLines(m_portalAABBLines, edgePoints, portal.a_transform, glm::vec4(1.f,1.f,0.f,1.f), glm::vec4(1.f,0.f,0.f,1.f));
-			addLines(m_portalAABBLines, edgePoints, portal.b_transform, glm::vec4(0.f,1.f,1.f,1.f), glm::vec4(0.f,0.f,1.f,1.f));
+			addLines(m_portalAABBLines, edgePoints, portal.transform[PortalEndpointIndex(PortalEndpoint::A)],
+				glm::vec4(1.f,1.f,0.f,1.f), glm::vec4(1.f,0.f,0.f,1.f));
+
+			addLines(m_portalAABBLines, edgePoints,portal.transform[PortalEndpointIndex(PortalEndpoint::B)],
+				glm::vec4(0.f,1.f,1.f,1.f), glm::vec4(0.f,0.f,1.f,1.f));
 		}
 	}
 

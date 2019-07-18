@@ -36,6 +36,7 @@ struct DrawPortalsInfo
 };
 
 
+
 class PortalManager
 {
 public:
@@ -59,6 +60,15 @@ public:
 	int GetPortalIndexHelperElementCount(int maxRecursionCount);
 	int GetPortalCount() const { return m_portals.size() * 2; }
 
+	struct RayTraceResult
+	{
+		float t;
+		int portalIndex;
+		PortalEndpointIndex endpoint;
+	};
+
+
+	std::optional<RayTraceResult> RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const;
 	std::optional<glm::mat4> FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const;
 private:
 	std::vector<Portal> m_portals;

@@ -131,25 +131,27 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		const glm::vec3 oldCameraPos = m_camera.m_transform.translation;
 		m_camera.UpdateLocation(forwardInput, rightInput, upInput);
 
-		if (false)
+		if (true)
 		{
 			gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
 
 			const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
-			const std::optional<glm::mat4> maybeTeleportMat = portalManager.FindHitPortalTeleportMatrix(
-				Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
-
-			if (maybeTeleportMat.has_value())
+			std::optional<PortalManager::RayTraceResult> maybeRtResult =
+				portalManager.RayTrace(Ray::FromStartAndEndpoint(oldCameraPos, m_camera.m_transform.translation), triangleMeshes);
+			
+			if (maybeRtResult.has_value())
 			{
+				const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
 				const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
+				const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.portalIndex];
 
-				m_camera.m_transform.translation = glm::vec3((*maybeTeleportMat) * cameraTranslation);
-				m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+				m_camera.m_transform.translation = glm::vec3((teleportMat) * cameraTranslation);
+				//m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
 			}
 		}
 	}
-
-	if (m_inputManager.GetKey(KeyCode::KEY_SPACE).GetNumPressed() > 0)
+#if 0
+	if (false && m_inputManager.GetKey(KeyCode::KEY_SPACE).GetNumPressed() > 0)
 	{
 		const Ray ray = Ray::FromOriginAndDirection(m_camera.m_transform.translation, m_camera.CalcForwardVector());
 		gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
@@ -172,6 +174,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 
 			//std::printf("ws begin (%f, %f, %f)\n", worldspaceBegin.x, worldspaceBegin.y, worldspaceBegin.z);
 
+			//m_graphcisBackend.GetPortalManager().FindHitPortalTeleportMatrix(ray, triangleMeshes);
 			for (const Portal& portal : m_graphcisBackend.GetPortalManager().GetPortals())
 			{
 				
@@ -207,7 +210,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		}
 		m_extraLines.insert(m_extraLines.end(), lines.begin(), lines.end());
 	}
-
+#endif
 
 
 	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
