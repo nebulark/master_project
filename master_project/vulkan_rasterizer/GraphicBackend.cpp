@@ -1105,14 +1105,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.AddTranslationPortal(TranslationPortal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
 	{
 		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 
 		const Transform portal_b = Transform(glm::vec3(35.f, 15.f, 20.f), 10.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.AddTranslationPortal(TranslationPortal::CreateWithPortalTransforms(ObjectIds::planeIdx, portal_a.ToMat(), portal_b.ToMat()));
 	}
 
 	{
@@ -1138,7 +1138,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 			}
 		};
 
-		for (const Portal& portal : m_portalManager.GetPortals())
+		for (const TranslationPortal& portal : m_portalManager.GetPortals())
 		{
 			const AABB& box = m_triangleMeshes[portal.meshIndex].GetModelBoundingBox();
 			const AABBEdgePoints edgePoints = CreateEdgePoints(box);
@@ -1289,8 +1289,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_pipelines.scenePass.scene = std::move(result.scenePassPipelines.scene);
 		m_pipelines.scenePass.line = std::move(result.scenePassPipelines.lines);
-		m_pipelines.portalPass.portal = std::move(result.portalPassPipelines.regularPortal);
-
+		m_pipelines.portalPass.twoSided = std::move(result.portalPassPipelines.twoSided);
+		m_pipelines.portalPass.onlyFront = std::move(result.portalPassPipelines.onlyFront);
+		m_pipelines.portalPass.onlyBack = std::move(result.portalPassPipelines.onlyBack);
 	}
 
 	for (int i = 0; i < MaxInFlightFrames; ++i)
@@ -1301,7 +1302,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-	assert(m_portalManager.GetPortalCount() == expectedPortalCount);
+	assert(m_portalManager.GetEffectivePortalCount() == expectedPortalCount);
 }
 
 void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraLines)
@@ -1440,7 +1441,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				{
 					constexpr int iterationElementIndex = 0;
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[initialPipelineIndex].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.twoSided[initialPipelineIndex].get());
 
 					// for now just bind it, we can use a different pipeline layout later
 					{
@@ -1469,7 +1470,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						info.stencilRef = 0;
 
 
-						m_portalManager.DrawPortals(info);
+						m_portalManager.DrawTwoSidedPortals(info);
 					}
 				}
 			}
@@ -1497,7 +1498,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 				// last iteration draw all portals
 				const int numVisiblePortalsforLayer = (iteration == recursionCount - 1)
-					? m_portalManager.GetPortalCount()
+					? m_portalManager.GetEffectivePortalCount()
 					: m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
 
 				const int layerStartIndex = m_stencilRefTree.CalcLayerStartIndex(iteration);
@@ -1589,7 +1590,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				// Draw Portals
 				{
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
-					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[pipelineIndex].get());
+					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.twoSided[pipelineIndex].get());
 
 					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
 
@@ -1634,7 +1635,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						info.numBitsToShiftStencil = numRightShifts;
 						info.stencilRef = stencilRef;
 
-						m_portalManager.DrawPortals(info);
+						m_portalManager.DrawTwoSidedPortals(info);
 					}
 				}
 			}

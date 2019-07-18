@@ -5,9 +5,14 @@
 #include "NTree.hpp"
 #include "TriangleMesh.hpp"
 
-void PortalManager::Add(const Portal& portal)
+void PortalManager::AddTranslationPortal(const TranslationPortal& portal)
 {
-	m_portals.push_back(portal);
+	m_translationPortals.push_back(portal);
+}
+
+void PortalManager::AddDistortionPortal(const TranslationPortal& portal)
+{
+	m_distortionPortals.push_back(portal);
 }
 
 namespace {
@@ -34,9 +39,9 @@ namespace {
 
 }
 
-void PortalManager::DrawPortals(const DrawPortalsInfo& info)
+void PortalManager::DrawTwoSidedPortals(const DrawPortalsInfo& info)
 {
-	const uint32_t actualPortalCount = GetSizeUint32(m_portals) * 2;
+	const uint32_t actualPortalCount = GetSizeUint32(m_translationPortals) * 2;
 	assert(info.meshDataManager);
 	MeshDataManager& meshDataManager = *info.meshDataManager;
 
@@ -44,17 +49,16 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 	info.drawBuffer.bindIndexBuffer(meshDataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 
-
 	vk::DeviceSize vertexBufferOffset = 0;
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
 	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.iterationElementIndex, 0);
 
-	for (int i = 0; i < m_portals.size(); ++i)
+	for (int i = 0; i < m_translationPortals.size(); ++i)
 	{
 		const int baseChildNum = i * 2;
 
-		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
+		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_translationPortals[i].meshIndex];
 
 		PushConstant_portal pushConstant = {};
 		pushConstant.cameraIdx = info.iterationElementIndex;
@@ -74,7 +78,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 			pushConstant.portalCameraIndex = childNum;
 			pushConstant.currentHelperIndex = childNum + indexHelper_firstChildIndex;
 
-			pushConstant.model = m_portals[i].transform[endPoint];
+			pushConstant.model = m_translationPortals[i].transform[endPoint];
 			drawBuffer.pushConstants<PushConstant_portal>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
 
@@ -85,6 +89,61 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 	}
 }
 
+
+void PortalManager::DrawFrontFacePortals(const DrawPortalsInfo& info)
+{
+	const uint32_t actualPortalCount = GetSizeUint32(m_translationPortals) * 2;
+	assert(info.meshDataManager);
+	MeshDataManager& meshDataManager = *info.meshDataManager;
+
+	vk::CommandBuffer drawBuffer = info.drawBuffer;
+
+	info.drawBuffer.bindIndexBuffer(meshDataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+
+	vk::DeviceSize vertexBufferOffset = 0;
+	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
+
+	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.iterationElementIndex, 0);
+
+	for (int i = 0; i < m_translationPortals.size(); ++i)
+	{
+		const int baseChildNum = i * 2;
+
+		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_translationPortals[i].meshIndex];
+
+		PushConstant_portal pushConstant = {};
+		pushConstant.cameraIdx = info.iterationElementIndex;
+		pushConstant.layerStencilVal = info.stencilRef;
+		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
+		pushConstant.firstCameraIndicesIndex = info.firstCameraIndicesIndex;
+		pushConstant.maxVisiblePortalCountForRecursion = info.maxVisiblePortalCount;
+		pushConstant.numOfBitsToShiftChildStencilVal = info.numBitsToShiftStencil;
+
+
+		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
+
+		for (auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
+		{
+			const int childNum = baseChildNum + endPoint;
+
+			pushConstant.portalCameraIndex = childNum;
+			pushConstant.currentHelperIndex = childNum + indexHelper_firstChildIndex;
+
+			pushConstant.model = m_translationPortals[i].transform[endPoint];
+			drawBuffer.pushConstants<PushConstant_portal>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+
+			drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
+				vk::DependencyFlags{}, {}, {}, {});
+
+		}
+	}
+}
+
+void PortalManager::DrawBackFacePortals(const DrawPortalsInfo& info)
+{
+
+}
 
 void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount, gsl::span<glm::mat4> outCameraTransforms) const
 {
@@ -99,30 +158,48 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
 
-	const int portalCount = m_portals.size() * 2;
-	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
+	const int effectivePortalCount = GetEffectivePortalCount();
+	const uint32_t matrixCount = NTree::CalcTotalElements(effectivePortalCount, maxRecursionCount + 1);
 	assert(outCameraTransforms.size() >= matrixCount);
 
 	outCameraTransforms[0] = cameraMat;
 	for (int cameraTreeLayer = 1; cameraTreeLayer <= maxRecursionCount; ++cameraTreeLayer)
 	{
-		const uint32_t previousLayerStartIndex = NTree::CalcFirstLayerIndex(portalCount, cameraTreeLayer - 1);
-		const uint32_t layerStartIndex = NTree::CalcFirstLayerIndex(portalCount, cameraTreeLayer);
+		const uint32_t previousLayerStartIndex = NTree::CalcFirstLayerIndex(effectivePortalCount, cameraTreeLayer - 1);
+		const uint32_t layerStartIndex = NTree::CalcFirstLayerIndex(effectivePortalCount, cameraTreeLayer);
 
 		// for each parent we iterate over all portals
 		for (uint32_t parentIdx = previousLayerStartIndex; parentIdx < layerStartIndex; ++parentIdx)
 		{
 			// we are iterating over 2 elements at once, so the actual portals are 2*i and 2*i +1!
-			for (uint32_t i = 0; i < m_portals.size(); ++i)
+			for (uint32_t i = 0; i < m_translationPortals.size(); ++i)
 			{
-				const uint32_t childIdx0 = NTree::GetChildElementIdx(portalCount, parentIdx, 2 * i);
+				const uint32_t baseIdx = i;
+				const uint32_t childIdx0 = NTree::GetChildElementIdx(effectivePortalCount, parentIdx, 2 * baseIdx);
 				const uint32_t childIdx1 = childIdx0 + 1;
 
 				// validate that we don't got out of range
 				assert(childIdx1 < matrixCount);
 
-				outCameraTransforms[childIdx0] = m_portals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::A)] * outCameraTransforms[parentIdx];
-				outCameraTransforms[childIdx1] = m_portals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::B)] * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx0] = m_translationPortals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::A)] * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx1] = m_translationPortals[i].toOtherEndpoint[PortalEndpointIndex(PortalEndpoint::B)] * outCameraTransforms[parentIdx];
+			}
+		
+			const uint32_t translationPortalCount = m_translationPortals.size();
+			for (uint32_t i = 0; i < m_distortionPortals.size(); ++i)
+			{
+				// need to add previous portals translation portals, we are no starting at 0!
+				const uint32_t baseIdx = i + translationPortalCount;
+				const uint32_t childIdx0 = NTree::GetChildElementIdx(effectivePortalCount, parentIdx, 2 * baseIdx);
+				const uint32_t childIdx1 = childIdx0 + 1;
+
+				// validate that we don't got out of range
+				assert(childIdx1 < matrixCount);
+
+				outCameraTransforms[childIdx0] = 
+					m_distortionPortals[i].distortionMatrix[PortalSideIndex(PortalSide::outside)] * outCameraTransforms[parentIdx];
+				outCameraTransforms[childIdx1] = 
+					m_distortionPortals[i].distortionMatrix[PortalSideIndex(PortalSide::inside)] * outCameraTransforms[parentIdx];
 			}
 		}
 	}
@@ -131,7 +208,7 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 
 int PortalManager::GetCameraBufferElementCount(int maxRecursionCount) const
 {
-	const int portalCount = m_portals.size() * 2;
+	const int portalCount = m_translationPortals.size() * 2;
 	return GetCameraBufferElementCount(maxRecursionCount, portalCount);
 }
 
@@ -148,7 +225,7 @@ int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount, int p
 
 int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount)
 {
-	return GetPortalIndexHelperElementCount(maxRecursionCount, GetPortalCount());
+	return GetPortalIndexHelperElementCount(maxRecursionCount, GetEffectivePortalCount());
 }
 
 std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
@@ -159,9 +236,9 @@ std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& 
 	float bestPortalDistance = std::numeric_limits<float>::max();
 
 
-	for (int portalId = 0; portalId < m_portals.size(); ++portalId)
+	for (int portalId = 0; portalId < m_translationPortals.size(); ++portalId)
 	{
-		const Portal& portal = m_portals[portalId];
+		const TranslationPortal& portal = m_translationPortals[portalId];
 		const TriangleMesh& mesh = portalMeshes[portal.meshIndex];
 
 		for (auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
@@ -195,7 +272,7 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 
 	if (rt.has_value())
 	{
-		return m_portals[rt->portalIndex].toOtherEndpoint[rt->endpoint];
+		return m_translationPortals[rt->portalIndex].toOtherEndpoint[rt->endpoint];
 	}
 
 	return std::nullopt;

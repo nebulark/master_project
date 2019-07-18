@@ -40,10 +40,14 @@ struct DrawPortalsInfo
 class PortalManager
 {
 public:
-	void Add(const Portal& portal);
+	void AddTranslationPortal(const TranslationPortal& portal);
+	void AddDistortionPortal(const TranslationPortal& portal);
 
-	void DrawPortals(const DrawPortalsInfo& info);
-	gsl::span<const Portal> GetPortals() const { return m_portals; }
+	void DrawTwoSidedPortals(const DrawPortalsInfo& info);
+	void DrawFrontFacePortals(const DrawPortalsInfo& info);
+	void DrawBackFacePortals(const DrawPortalsInfo& info);
+
+	gsl::span<const TranslationPortal> GetPortals() const { return m_translationPortals; }
 
 	void CreateCameraMats(
 		glm::mat4 cameraMat,
@@ -58,7 +62,7 @@ public:
 
 
 	int GetPortalIndexHelperElementCount(int maxRecursionCount);
-	int GetPortalCount() const { return m_portals.size() * 2; }
+	int GetEffectivePortalCount() const { return (m_translationPortals.size() + m_distortionPortals.size()) * 2; }
 
 	struct RayTraceResult
 	{
@@ -70,8 +74,10 @@ public:
 
 	std::optional<RayTraceResult> RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const;
 	std::optional<glm::mat4> FindHitPortalTeleportMatrix(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const;
+
 private:
-	std::vector<Portal> m_portals;
+	std::vector<TranslationPortal> m_translationPortals;
+	std::vector<DistortionPortal> m_distortionPortals;
 };
 
 

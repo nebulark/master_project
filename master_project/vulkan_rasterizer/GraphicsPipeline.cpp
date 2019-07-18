@@ -122,7 +122,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
 		;
-	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal = vk::PipelineRasterizationStateCreateInfo{}
+	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal_twoSided = vk::PipelineRasterizationStateCreateInfo{}
 		.setDepthClampEnable(false)
 		.setRasterizerDiscardEnable(false)
 		.setPolygonMode(vk::PolygonMode::eFill)
@@ -133,6 +133,15 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthBiasConstantFactor(0.f)
 		.setDepthBiasClamp(0.f)
 		.setDepthBiasSlopeFactor(0.f);
+
+
+	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal_onlyFront =
+		vk::PipelineRasterizationStateCreateInfo{rasterizationStateCreateInfo_portal_twoSided}
+		.setCullMode(vk::CullModeFlagBits::eBack);
+
+		const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal_onlyBack =
+			vk::PipelineRasterizationStateCreateInfo{ rasterizationStateCreateInfo_portal_twoSided }
+		.setCullMode(vk::CullModeFlagBits::eFront);
 
 
 	const vk::StencilOpState stencilOpState_writeReference = vk::StencilOpState{}
@@ -267,7 +276,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_portalInitial = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_prototype }
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalInitial))
-		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
+		.setPRasterizationState(&rasterizationStateCreateInfo_portal_twoSided)
 		.setPDepthStencilState(&depthStencilStateCreateInfo_portalInitial)
 		.setLayout(createInfo.pipelineLayout_portal)
 		.setPColorBlendState(&colorblendstate_override_3)
@@ -292,6 +301,8 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		graphicsPipelineCreateInfo_sceneInitial,
 		graphicsPipelineCreateInfo_linesInitial,
 		graphicsPipelineCreateInfo_portalInitial,
+		vk::GraphicsPipelineCreateInfo{graphicsPipelineCreateInfo_portalInitial}.setPRasterizationState(&rasterizationStateCreateInfo_portal_onlyFront),
+		vk::GraphicsPipelineCreateInfo{graphicsPipelineCreateInfo_portalInitial}.setPRasterizationState(&rasterizationStateCreateInfo_portal_onlyBack),
 	};
 
 
@@ -303,11 +314,15 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 	PipelinesCreateResult result;
 	result.scenePassPipelines.scene.push_back(std::move(intialPipelines[0]));
 	result.scenePassPipelines.lines.push_back(std::move(intialPipelines[1]));
-	result.portalPassPipelines.regularPortal.push_back(std::move(intialPipelines[2]));
+	result.portalPassPipelines.twoSided.push_back(std::move(intialPipelines[2]));
+	result.portalPassPipelines.onlyFront.push_back(std::move(intialPipelines[3]));
+	result.portalPassPipelines.onlyBack.push_back(std::move(intialPipelines[4]));
 
 	std::vector<vk::GraphicsPipelineCreateInfo> scenePipelineCreateInfos(iterationCount);
 	std::vector<vk::GraphicsPipelineCreateInfo> linePipelineCreateInfoss(iterationCount);
 	std::vector<vk::GraphicsPipelineCreateInfo> portalPipelineCreateInfos(iterationCount);
+	std::vector<vk::GraphicsPipelineCreateInfo> portalPipelineCreateInfos_onlyFront(iterationCount);
+	std::vector<vk::GraphicsPipelineCreateInfo> portalPipelineCreateInfos_onlyBack(iterationCount);
 
 	for (uint32_t layer = 1; layer <= iterationCount ; ++layer)
 	{
@@ -323,11 +338,21 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 
 		portalPipelineCreateInfos[creationInfoIndex] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalSubsequent_prototype }
 			.setSubpass(portalSubpassIndex);
+
+		portalPipelineCreateInfos_onlyFront[creationInfoIndex] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalSubsequent_prototype }
+			.setPRasterizationState(&rasterizationStateCreateInfo_portal_onlyFront)
+			.setSubpass(portalSubpassIndex);
+
+		portalPipelineCreateInfos_onlyBack[creationInfoIndex] = vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalSubsequent_prototype }
+			.setPRasterizationState(&rasterizationStateCreateInfo_portal_onlyBack)
+			.setSubpass(portalSubpassIndex);
 	}
 
 	auto scenePipes = createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, scenePipelineCreateInfos);
 	auto linePipes = createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, linePipelineCreateInfoss);
 	auto portalPipes = createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, portalPipelineCreateInfos);
+	auto portalPipes_onlyFront = createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, portalPipelineCreateInfos_onlyFront);
+	auto portalPipes_onlyBack = createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, portalPipelineCreateInfos_onlyBack);
 
 	const auto append = [](
 		std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>>& base,
@@ -338,7 +363,10 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 
 	append(result.scenePassPipelines.scene, std::move(scenePipes));
 	append(result.scenePassPipelines.lines, std::move(linePipes));
-	append(result.portalPassPipelines.regularPortal, std::move(portalPipes));
+	append(result.portalPassPipelines.twoSided, std::move(portalPipes));
+	append(result.portalPassPipelines.onlyFront, std::move(portalPipes_onlyFront));
+	append(result.portalPassPipelines.onlyBack, std::move(portalPipes_onlyBack));
+
 	return result;
 }
 

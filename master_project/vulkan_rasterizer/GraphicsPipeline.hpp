@@ -17,7 +17,9 @@ namespace GraphicsPipeline
 
 		struct PortalPassPipelines
 		{
-			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> regularPortal;
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> twoSided;
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> onlyFront;
+			std::vector<vk::UniqueHandle<vk::Pipeline, vk::DispatchLoaderStatic>> onlyBack;
 		};
 
 
