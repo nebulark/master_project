@@ -142,14 +142,18 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 			if (maybeRtResult.has_value())
 			{
 				const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
+
 				const glm::vec4 cameraTranslation(m_camera.m_transform.translation, 1.f);
-				const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.portalIndex];
+
+				const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.endpoint];
 
 				m_camera.m_transform.translation = glm::vec3((teleportMat) * cameraTranslation);
 				//m_camera.m_transform.rotation *= glm::quat_cast(*maybeTeleportMat) * m_camera.m_transform.rotation;
+
 			}
 		}
 	}
+
 #if 0
 	if (false && m_inputManager.GetKey(KeyCode::KEY_SPACE).GetNumPressed() > 0)
 	{
@@ -170,14 +174,14 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 			float closestDistance = std::numeric_limits<float>::max();
 			glm::vec3 worldspaceBegin = ray.origin + ray.direction * distanceTraveled;
 			glm::vec3 worldspaceEnd = ray.CalcEndPoint();
-			float currentTraveldDistance =std::numeric_limits<float>::max();
+			float currentTraveldDistance = std::numeric_limits<float>::max();
 
 			//std::printf("ws begin (%f, %f, %f)\n", worldspaceBegin.x, worldspaceBegin.y, worldspaceBegin.z);
 
 			//m_graphcisBackend.GetPortalManager().FindHitPortalTeleportMatrix(ray, triangleMeshes);
 			for (const Portal& portal : m_graphcisBackend.GetPortalManager().GetPortals())
 			{
-				
+
 				glm::mat4 modelMats[2] = { portal.a_transform, portal.b_transform };
 				const glm::mat4 inverseModelMats[2] = { glm::inverse(modelMats[0]), glm::inverse(modelMats[1]) };
 				for (int i = 0; i < std::size(inverseModelMats); ++i)
@@ -188,7 +192,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 					const Ray modelRay = Ray::FromStartAndEndpoint(modelRayOrigin, modelRayEnd);
 
 					std::optional<float> rt_res = triangleMeshes[portal.meshIndex].RayTrace(modelRay);
-					
+
 					if (rt_res.has_value() && *rt_res < closestDistance)
 					{
 						closestDistance = *rt_res;
