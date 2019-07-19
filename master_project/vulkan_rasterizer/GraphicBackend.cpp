@@ -1522,35 +1522,32 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, layerStartIndex, layerEndIndex);
 
-					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
+					// draw Camera
 					{
-						// draw Camera
-						{
 
 #if 1
-							drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
-							vk::DeviceSize vertexBufferOffset = 0;
-							drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
+						drawBuffer.bindIndexBuffer(m_meshData->GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
+						vk::DeviceSize vertexBufferOffset = 0;
+						drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
 
-							const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
-							const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
+						const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
 
-							PushConstant_sceneObject pushConstant = {};
-							pushConstant.model = camera.CalcMat();
-							pushConstant.layerStartIndex = elementIdx;
+						PushConstant_sceneObject pushConstant = {};
+						pushConstant.model = camera.CalcMat();
+						pushConstant.layerStartIndex = layerStartIndex;
 
-							drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
+						drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+						drawBuffer.drawIndexed(cameraMeshRef.indexCount, layerEndIndex - layerStartIndex, cameraMeshRef.firstIndex, 0, 0);
 #if 0
-							cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
-							pushConstant.model = cameraTransform.ToMat();
-							drawBuffer.pushConstants<PushConstant>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-							drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
+						cameraTransform.translation += glm::vec3(0.f, 1.f, 0.f);
+						pushConstant.model = cameraTransform.ToMat();
+						drawBuffer.pushConstants<PushConstant>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
+						drawBuffer.drawIndexed(cameraMeshRef2.indexCount, 1, cameraMeshRef2.firstIndex, 0, 1);
 #endif
 #endif
-						}
-
 					}
+
 				}
 
 				// draw lines
@@ -1585,7 +1582,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : maxVisiblePortalsForRecursion[iteration + 1];
 
-										{
+					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
 								m_descriptorSet_texture,
 								m_descriptorSet_ubo[m_currentframe],
@@ -1634,24 +1631,24 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 			}
 
 			drawBuffer.endRenderPass();
-		}
+					}
 
-		drawBuffer.end();
+					drawBuffer.end();
 
 
-		vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
-		m_graphicsPresentQueues.submit(vk::SubmitInfo{}
-			.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
-			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
-			.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-			, m_frameFence[m_currentframe].get());
+					vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+					m_graphicsPresentQueues.submit(vk::SubmitInfo{}
+						.setCommandBufferCount(1).setPCommandBuffers(&drawBuffer)
+						.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_imageAvailableSem[m_currentframe].get())).setPWaitDstStageMask(waitStages)
+						.setSignalSemaphoreCount(1).setPSignalSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+						, m_frameFence[m_currentframe].get());
 
-		m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
-			.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
-			.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
-		);
-		m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
+					m_graphicsPresentQueues.presentKHR(vk::PresentInfoKHR{}
+						.setWaitSemaphoreCount(1).setPWaitSemaphores(&(m_renderFinishedSem[m_currentframe].get()))
+						.setSwapchainCount(1).setPSwapchains(&(m_swapchain.swapchain.get())).setPImageIndices(&imageIndex)
+					);
+					m_currentframe = (m_currentframe + 1) % MaxInFlightFrames;
 
-	}
+				}
 
-}
+				}
