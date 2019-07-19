@@ -18,14 +18,13 @@ const vec3 directionalLightDir = normalize(vec3(1.0,1.0,1.0));
 layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
-	int cameraIdx;
-	uint compareStencilVal;
+	int cameraIndexAndStencilCompare;
 } pc;
 
 void main() {
 
 #ifdef SUBSEQUENT_PASS
-	if(pc.compareStencilVal != subpassLoad(inputStencil).r)
+	if(pc.cameraIndexAndStencilCompare != subpassLoad(inputStencil).r)
 	{
 		discard;
 	}

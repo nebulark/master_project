@@ -3,9 +3,9 @@
 
 
 layout(push_constant) uniform PushConstant {
-    mat4 model;
+	mat4 model;
 	vec4 debugColor;
-	int cameraIdx;
+	int cameraIndexAndStencilCompare;
 
 	// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
 	int firstHelperIndex;
@@ -13,16 +13,10 @@ layout(push_constant) uniform PushConstant {
 	int currentHelperIndex;
 
 	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
-	int firstCameraIndicesIndex;
-
-	// the stencil value of the layer
-	uint compareStencilVal;
+	int firstCameraIndicesIndexAndStencilWrite;
 
 	// the index we need to write into CameraIndices
 	int portalCameraIndex;
-
-	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
-	int numOfBitsToShiftChildStencilVal;
 
 	int maxVisiblePortalCountForRecursion;
 } pc;
@@ -51,8 +45,7 @@ layout(location = 1) out vec2 fragTexCoord;
 const uint invalid_matIndex = ~0;
 
 void main() {
-	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
-	//viewMatIndex = pc.cameraIdx;
+	uint viewMatIndex = pc.cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[pc.cameraIndexAndStencilCompare];
 
 	if(viewMatIndex != invalid_matIndex)
 	{

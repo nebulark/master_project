@@ -4,8 +4,7 @@
 layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
-	int cameraIdx;
-	uint compareStencilVal;
+	int cameraIndexAndStencilCompare;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
@@ -36,8 +35,7 @@ const uint invalid_matIndex = ~0;
 
 void main() {
 
-	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
-	//viewMatIndex = pc.cameraIdx;
+	uint viewMatIndex = pc.cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[pc.cameraIndexAndStencilCompare];
 
 	if(viewMatIndex != invalid_matIndex)
 	{

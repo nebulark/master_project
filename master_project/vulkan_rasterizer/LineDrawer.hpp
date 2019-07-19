@@ -30,6 +30,6 @@ class LineDrawer
 public:
 
 
-	static void Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, gsl::span<const Line> lines, uint32_t stencilCompareVal);
+	static void Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, gsl::span<const Line> lines, uint32_t cameraIndexAndStencilCompare);
 };
 

@@ -33,7 +33,7 @@ void Scene::Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor /*=
 	m_objects.push_back(SceneObject{ modelmat, MeshIdx, debugColor });
 }
 
-void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, uint8_t stencil) const
+void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraIndexAndStencilCompare) const
 {
 	drawCommandBuffer.bindIndexBuffer(meshdataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 	vk::DeviceSize vertexBufferOffset = 0;
@@ -46,8 +46,7 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 
 		PushConstant_sceneObject pushConstant = {};
 		pushConstant.model = object.modelMat;
-		pushConstant.cameraIdx = cameraMatIdx;
-		pushConstant.compareStencilVal = stencil;
+		pushConstant.cameraIndexAndStencilCompare = cameraIndexAndStencilCompare;
 
 		pushConstant.debugColor = object.debugColor;
 

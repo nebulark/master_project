@@ -57,13 +57,10 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
 		PushConstant_portal pushConstant = {};
-		pushConstant.cameraIdx = info.cameraAndStencil;
-		pushConstant.compareStencilVal = info.cameraAndStencil;
+		pushConstant.cameraIndexAndStencilCompare = info.cameraAndStencil;
 		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
-		pushConstant.firstCameraIndicesIndex = info.firstCameraIndicesIndex;
+		pushConstant.firstCameraIndicesIndexAndStencilWrite = info.firstCameraIndicesIndex;
 		pushConstant.maxVisiblePortalCountForRecursion = info.maxVisiblePortalCount;
-		pushConstant.numOfBitsToShiftChildStencilVal = info.numBitsToShiftStencil;
-
 
 		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
 

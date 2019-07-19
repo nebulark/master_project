@@ -15,8 +15,7 @@ layout(push_constant) uniform PushConstant {
 	vec4 posB;
 	vec4 debugColorA;
 	vec4 debugColorB;
-	int cameraIdx;
-	uint compareStencilVal;
+	int cameraIndexAndStencilCompare;
 } pc;
 
 layout(location = 0) out vec4 outColor;
@@ -25,7 +24,7 @@ void main()
 	
 #ifdef SUBSEQUENT_PASS
 
-	if(pc.compareStencilVal != subpassLoad(inputStencil).r)
+	if(pc.cameraIndexAndStencilCompare != subpassLoad(inputStencil).r)
 	{
 		discard;
 	}

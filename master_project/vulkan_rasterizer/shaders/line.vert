@@ -6,8 +6,7 @@ layout(push_constant) uniform PushConstant {
 	vec4 posB;
 	vec4 debugColorA;
 	vec4 debugColorB;
-	int cameraIdx;
-	uint compareStencilVal;
+	int cameraIndexAndStencilCompare;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
@@ -37,7 +36,7 @@ void main() {
 	outcolor = gl_VertexIndex == 0 ? pc.debugColorA : pc.debugColorB;
 
 
-	uint viewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
+	uint viewMatIndex = pc.cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[pc.cameraIndexAndStencilCompare];
 
 	if(viewMatIndex != invalid_matIndex)
 	{

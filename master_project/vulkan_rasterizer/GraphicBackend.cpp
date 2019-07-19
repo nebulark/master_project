@@ -1379,7 +1379,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 			(vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex, uint32_t stencilCompareVal)
 			{
 				//LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines, stencilCompareVal);
-				LineDrawer::Draw(layout, drawBuffer, cameraIndex, extraLines, stencilCompareVal);
+				LineDrawer::Draw(layout, drawBuffer, extraLines, stencilCompareVal);
 			};
 
 			// initial / iteration 0
@@ -1413,7 +1413,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_scene.get(), 0, descriptorSets, {});
 
 
-					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndexAndStencilCompare, cameraIndexAndStencilCompare);
+					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndexAndStencilCompare);
 				}
 
 				{
@@ -1522,7 +1522,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx, elementIdx);
+						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx);
 
 						// draw Camera
 						{
@@ -1537,8 +1537,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 							PushConstant_sceneObject pushConstant = {};
 							pushConstant.model = camera.CalcMat();
-							pushConstant.cameraIdx = elementIdx;
-							pushConstant.compareStencilVal = elementIdx;
+							pushConstant.cameraIndexAndStencilCompare = elementIdx;
 
 							drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);

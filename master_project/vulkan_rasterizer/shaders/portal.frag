@@ -18,9 +18,9 @@ layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput 
 #endif
 
 layout(push_constant) uniform PushConstant {
-    mat4 model;
+	mat4 model;
 	vec4 debugColor;
-	int cameraIdx;
+	int cameraIndexAndStencilCompare;
 
 	// the index of the first element in PortalIndexHelper we need to consider to calculate our childnum
 	int firstHelperIndex;
@@ -28,16 +28,10 @@ layout(push_constant) uniform PushConstant {
 	int currentHelperIndex;
 
 	// this + our childnum gets us the index for the cameraindices Buffer element to write our camera index into
-	int firstCameraIndicesIndex;
-
-	// the stencil value of the layer
-	uint compareStencilVal;
+	int firstCameraIndicesIndexAndStencilWrite;
 
 	// the index we need to write into CameraIndices
 	int portalCameraIndex;
-
-	// number of bits we need to shift our stencil val before ORing it with the layerStencilVal
-	int numOfBitsToShiftChildStencilVal;
 
 	int maxVisiblePortalCountForRecursion;
 } pc;
@@ -60,10 +54,8 @@ layout(set = 4, binding = 0) buffer CameraIndices {
 void main() 
 {
 	
-	int stencilVal = int(pc.compareStencilVal);
-
 #ifdef SUBSEQUENT_PASS
-	if(stencilVal != subpassLoad(inputStencil).r)
+	if(pc.cameraIndexAndStencilCompare != subpassLoad(inputStencil).r)
 	{
 		discard;
 	}
@@ -74,7 +66,7 @@ void main()
 	}
 #endif
 
-	int currentViewMatIndex = pc.cameraIdx == 0 ? 0 :  ci.cIndices[pc.cameraIdx];
+	int currentViewMatIndex = pc.cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[pc.cameraIndexAndStencilCompare];
 
 	int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
 	int currentPortalCameraIndex = firstPortalCameraIndex + pc.portalCameraIndex;
@@ -106,14 +98,10 @@ void main()
 	// skip zero to avoid ambiguities
 	uint myStencilVal = childNum+1;
 
-	uint stencilRef_ui = (pc.compareStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
-	int stencilRef_i = int(stencilRef_ui);
-	gl_FragStencilRefARB = stencilRef_i;
-
-	outRenderedStencil = pc.firstCameraIndicesIndex + childNum;
+	outRenderedStencil = pc.firstCameraIndicesIndexAndStencilWrite + childNum;
 
 	// write our camera index into camera index buffer
-	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;
+	ci.cIndices[pc.firstCameraIndicesIndexAndStencilWrite + childNum] =  currentPortalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;
 
 	outColor =pc.debugColor;
