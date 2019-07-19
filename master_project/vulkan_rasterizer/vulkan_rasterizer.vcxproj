@@ -225,7 +225,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="StencilRefTree.cpp" />
+    <ClCompile Include="RecursionTree.cpp" />
     <ClCompile Include="Swapchain.cpp" />
     <ClCompile Include="tinyObj_implementation.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -278,7 +278,7 @@
     <ClInclude Include="Scene.hpp" />
     <ClInclude Include="ShaderSpecialisation.hpp" />
     <ClInclude Include="SplitAxis.hpp" />
-    <ClInclude Include="StencilRefTree.hpp" />
+    <ClInclude Include="RecursionTree.hpp" />
     <ClInclude Include="Swapchain.hpp" />
     <ClInclude Include="Transform.hpp" />
     <ClInclude Include="Triangle.hpp" />

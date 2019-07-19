@@ -16,6 +16,7 @@
 #include "ShaderSpecialisation.hpp"
 #include "UniqueVmaMemoryMap.hpp"
 #include "RenderHelper.hpp"
+#include "RecursionTree.hpp"
 
 namespace
 {
@@ -492,8 +493,6 @@ void GraphicsBackend::Init(SDL_Window* window)
 	const int expectedPortalCount = 4;
 	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
 
-	m_stencilRefTree.RecalcTree(maxVisiblePortalsForRecursion);
-
 	// Creating Descriptor Set Buffers
 	{
 
@@ -516,7 +515,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 			{
 				const vk::BufferCreateInfo cameraIndexBufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t))
+					.setSize(RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -822,7 +821,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
-			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t),
+			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t),
 			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 		// write portal index helper descriptor set
@@ -1370,7 +1369,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
 		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
-			m_stencilRefTree.GetCameraIndexBufferElementCount() * sizeof(uint32_t), ~(uint32_t(0)));
+			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t), ~(uint32_t(0)));
 
 		// render pass
 		{
@@ -1463,7 +1462,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.layout = m_pipelineLayout_portal.get();
-						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
+						info.maxVisiblePortalCount = maxVisiblePortalsForRecursion[0];
 						info.meshDataManager = m_meshData.get();
 						info.layerStartIndex = layerStartIndex;
 						info.nextLayerStartIndex = layerEndIndex;
@@ -1499,12 +1498,10 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				// last iteration draw all portals
 				const int numVisiblePortalsforLayer = (iteration == recursionCount - 1)
 					? m_portalManager.GetPortalCount()
-					: m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
+					: maxVisiblePortalsForRecursion[iteration + 1];
 
-				const int layerStartIndex = m_stencilRefTree.CalcLayerStartIndex(iteration);
-				const int layerEndIndex = layerStartIndex + m_stencilRefTree.CalcLayerElementCount(iteration);
-
-				const uint8_t layerComparMask = m_stencilRefTree.GetLayerCompareMask(iteration);
+				const int layerStartIndex = RecursionTree::CalcLayerStartIndex(iteration, maxVisiblePortalsForRecursion);
+				const int layerEndIndex = layerStartIndex + RecursionTree::CalcLayerElementCount(iteration, maxVisiblePortalsForRecursion);
 
 				//draw Scene
 				{
@@ -1584,9 +1581,9 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[pipelineIndex].get());
 
-					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : m_stencilRefTree.CalcLayerStartIndex(iteration + 1);
+					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : RecursionTree::CalcLayerStartIndex(iteration + 1, maxVisiblePortalsForRecursion);
 
-					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
+					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : maxVisiblePortalsForRecursion[iteration + 1];
 
 										{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1605,7 +1602,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					DrawPortalsInfo info = {};
 					info.drawBuffer = drawBuffer;
 					info.layout = m_pipelineLayout_portal.get();
-					info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
+					info.maxVisiblePortalCount = maxVisiblePortalsForRecursion[0];
 					info.meshDataManager = m_meshData.get();
 					info.layerStartIndex = layerStartIndex;
 					info.nextLayerStartIndex = layerEndIndex;

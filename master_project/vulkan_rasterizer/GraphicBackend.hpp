@@ -12,7 +12,6 @@
 #include "UniqueVmaObject.hpp"
 #include "PortalManager.hpp"
 #include "NTree.hpp"
-#include "StencilRefTree.hpp"
 #include "TriangleMesh.hpp"
 #include "LineDrawer.hpp"
 
@@ -136,8 +135,6 @@ private:
 
 	Pipelines m_pipelines;
 
-
-	StencilRefTree m_stencilRefTree;
 
 	std::unique_ptr<MeshDataManager> m_meshData;
 	std::vector<TriangleMesh> m_triangleMeshes;

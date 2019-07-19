@@ -100,9 +100,6 @@
     <ClCompile Include="PortalManager.cpp">
       <Filter>Code</Filter>
     </ClCompile>
-    <ClCompile Include="StencilRefTree.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
     <ClCompile Include="AABB.cpp">
       <Filter>Code</Filter>
     </ClCompile>
@@ -125,6 +122,9 @@
       <Filter>Code</Filter>
     </ClCompile>
     <ClCompile Include="EnumIndex.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
+    <ClCompile Include="RecursionTree.cpp">
       <Filter>Code</Filter>
     </ClCompile>
   </ItemGroup>
@@ -222,9 +222,6 @@
     <ClInclude Include="PortalManager.hpp">
       <Filter>Code</Filter>
     </ClInclude>
-    <ClInclude Include="StencilRefTree.hpp">
-      <Filter>Code</Filter>
-    </ClInclude>
     <ClInclude Include="AABB.hpp">
       <Filter>Code</Filter>
     </ClInclude>
@@ -253,6 +250,9 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="EnumIndex.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="RecursionTree.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>
