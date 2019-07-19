@@ -26,9 +26,10 @@ Application_Rasterizer::Application_Rasterizer()
 
 	m_graphcisBackend.Init(m_sdlWindow.get());
 
-	m_camera.SetPerspection( 0.1f, 1000.0f, glm::radians(45.f), glm::vec2(width, height));
+	m_camera.SetPerspection( 0.01f, 1000.0f, glm::radians(45.f), glm::vec2(width, height));
 	m_camera.SetPosition(glm::vec3(0.f, 0.05f, 3.f) * 20.f);
 	m_camera.LookDir( glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_oldCameraPos = m_camera.CalcPosition();
 	m_lastTime = ClockType::now();
 }
 
@@ -125,97 +126,104 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	rightInput *= DeltaSeconds * movementMultiplicator;
 	upInput *= DeltaSeconds * movementMultiplicator;
 	
-	if (forwardInput != 0.f || rightInput != 0.f || upInput != 0.f)
+	// update location and teleport if neccessary
 	{
 
-		const glm::vec3 oldCameraPos = m_camera.CalcPosition();
 		m_camera.UpdateLocation(forwardInput, rightInput, upInput);
 
-		if (true)
-		{
-			gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
+		//const float raytraceBias = 0.1f;
 
-			const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
-			std::optional<PortalManager::RayTraceResult> maybeRtResult =
-				portalManager.RayTrace(Ray::FromStartAndEndpoint(oldCameraPos, m_camera.CalcPosition()), triangleMeshes);
+		const glm::vec3 newCameraPos = m_camera.CalcPosition();
 			
-			if (maybeRtResult.has_value())
-			{
-				const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
 
-				const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.endpoint];
-
-				m_camera.m_coordinateSystem = teleportMat * m_camera.m_coordinateSystem;
-
-			}
-		}
-	}
-
-#if 0
-	if (false && m_inputManager.GetKey(KeyCode::KEY_SPACE).GetNumPressed() > 0)
-	{
-		const Ray ray = Ray::FromOriginAndDirection(m_camera.m_transform.translation, m_camera.CalcForwardVector());
 		gsl::span<const TriangleMesh> triangleMeshes = m_graphcisBackend.GetTriangleMeshes();
 
-		const glm::vec4 colors[] =
+
+		const PortalManager& portalManager = m_graphcisBackend.GetPortalManager();
+		const Ray cameraMoveRay = Ray::FromStartAndEndpoint(
+			m_oldCameraPos, 
+			newCameraPos  /* + m_camera.CalcForwardVector() * raytraceBias*/
+		);
+
+		m_oldCameraPos = newCameraPos;
+
+		std::optional<PortalManager::RayTraceResult> maybeRtResult =
+			portalManager.RayTrace(cameraMoveRay, triangleMeshes);
+
+
+
+		if (maybeRtResult.has_value())
 		{
-			glm::vec4(1.f,0.f,0.f,1.f),
-			glm::vec4(0.f,1.f,0.f,1.f)
-		};
+			const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
 
-		float distanceTraveled = 0.f;
-		std::vector<Line> lines;
+			std::printf("teleport pid %i ped %i \n", rtResult.portalIndex, rtResult.endpoint);
 
-		//while (distanceTraveled < ray.distance)
-		{
-			float closestDistance = std::numeric_limits<float>::max();
-			glm::vec3 worldspaceBegin = ray.origin + ray.direction * distanceTraveled;
-			glm::vec3 worldspaceEnd = ray.CalcEndPoint();
-			float currentTraveldDistance = std::numeric_limits<float>::max();
+			const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.endpoint];
 
-			//std::printf("ws begin (%f, %f, %f)\n", worldspaceBegin.x, worldspaceBegin.y, worldspaceBegin.z);
+			m_camera.m_coordinateSystem = teleportMat * m_camera.m_coordinateSystem;
 
-			//m_graphcisBackend.GetPortalManager().FindHitPortalTeleportMatrix(ray, triangleMeshes);
-			for (const Portal& portal : m_graphcisBackend.GetPortalManager().GetPortals())
-			{
+			// update old post so it fits in the same coordinate system
+			m_oldCameraPos = m_camera.CalcPosition();
+			//	m_oldCameraPos += m_camera.CalcForwardVector() * raytraceBias;
 
-				glm::mat4 modelMats[2] = { portal.a_transform, portal.b_transform };
-				const glm::mat4 inverseModelMats[2] = { glm::inverse(modelMats[0]), glm::inverse(modelMats[1]) };
-				for (int i = 0; i < std::size(inverseModelMats); ++i)
-				{
-					const glm::vec3 modelRayOrigin = glm::vec3(inverseModelMats[i] * glm::vec4(worldspaceBegin, 1.f));
-					const glm::vec3 modelRayEnd = glm::vec3(inverseModelMats[i] * glm::vec4(ray.CalcEndPoint(), 1.f));
-
-					const Ray modelRay = Ray::FromStartAndEndpoint(modelRayOrigin, modelRayEnd);
-
-					std::optional<float> rt_res = triangleMeshes[portal.meshIndex].RayTrace(modelRay);
-
-					if (rt_res.has_value() && *rt_res < closestDistance)
-					{
-						closestDistance = *rt_res;
-						worldspaceEnd = modelMats[i] * glm::vec4(modelRayOrigin + modelRay.direction * (*rt_res), 1.f);
-						currentTraveldDistance = glm::distance(worldspaceBegin, worldspaceEnd);
-					}
-
-				}
-			}
-
-
-			distanceTraveled += currentTraveldDistance;
-			Line line;
-			line.pointA = glm::vec4(worldspaceBegin, 1.f);
-			line.pointB = glm::vec4(worldspaceEnd, 1.f);
-
-			line.colorA = line.colorB = colors[lines.size() % std::size(colors)];
-			lines.push_back(line);
 		}
-		m_extraLines.insert(m_extraLines.end(), lines.begin(), lines.end());
 	}
-#endif
+
+
+	if (m_inputManager.GetKey(KeyCode::KEY_P).GetNumPressed() > 0)
+	{
+		std::puts("     --- Seperation -----        ");
+	}
+	if (m_inputManager.GetKey(KeyCode::KEY_1).GetNumPressed() > 0)
+	{
+		m_savedLocation = m_camera.CalcPosition();
+	}
+
+
+	if (m_inputManager.GetKey(KeyCode::KEY_2).GetNumPressed() > 0)
+	{
+		const glm::vec3 currentLocation = m_camera.CalcPosition();
+
+		const PortalManager& portalmanger = m_graphcisBackend.GetPortalManager();
+
+		m_extraLines.push_back(Line(glm::vec4(m_savedLocation, 1.f), glm::vec4(currentLocation, 1.f)));
+
+		const Ray ray = Ray::FromStartAndEndpoint(m_savedLocation, currentLocation);
+
+		std::optional<PortalManager::RayTraceResult> maybeResult =
+			portalmanger.RayTrace(ray, m_graphcisBackend.GetTriangleMeshes());
+
+		if (maybeResult.has_value())
+		{
+			const glm::vec3 hitPos = maybeResult->hitLocation;
+			m_extraLines.push_back(Line(glm::vec4(hitPos.x, -100.f, hitPos.z, 1.f), glm::vec4(hitPos.x, +100.f, hitPos.z, 1.f)));
+		}
+
+
+	}
+
+	// useful for testing raytracing
+	if (m_inputManager.GetKey(KeyCode::KEY_R).GetNumPressed() > 0)
+	{
+		const PortalManager& portalmanger = m_graphcisBackend.GetPortalManager();
+
+		const glm::vec4 missedA(21.4760914, 12.6429110, 23.1454220, 1.00000000);
+		const glm::vec4 missedB(5.09701300, 11.9839067, 27.4304352, 1.00000000);
+
+		const Ray ray = Ray::FromStartAndEndpoint(missedA, missedB);
+
+		std::optional<PortalManager::RayTraceResult> maybeResult =
+			portalmanger.RayTrace(ray, m_graphcisBackend.GetTriangleMeshes());
+
+		if (!maybeResult.has_value())
+		{
+			m_extraLines.push_back(Line(missedA, missedB));
+		}
+
+		const bool b = maybeResult.has_value();
+	}
 
 
 	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
-
-
 }
 

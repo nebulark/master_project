@@ -28,4 +28,6 @@ private:
 	void GameUpdate(float Seconds);
 	ClockType::time_point m_lastTime;
 	std::vector<Line> m_extraLines;
+	glm::vec3 m_savedLocation;
+	glm::vec3 m_oldCameraPos;
 };
