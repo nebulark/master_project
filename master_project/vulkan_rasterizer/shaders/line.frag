@@ -7,7 +7,7 @@ out int gl_FragStencilRefARB;
 
 #ifdef SUBSEQUENT_PASS
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
-layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput inputStencil;
+layout (input_attachment_index = 1, set = 3, binding = 1) uniform usubpassInput inputStencil;
 #endif
 
 layout(push_constant) uniform PushConstant {

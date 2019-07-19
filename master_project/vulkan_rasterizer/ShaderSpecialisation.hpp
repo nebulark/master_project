@@ -6,7 +6,7 @@
 
 namespace ShaderSpecialisation
 {
-	template<int Count>
+	template<typename dataType, int Count>
 	class MultiBytes
 	{
 		static_assert(Count > 0);
@@ -23,7 +23,7 @@ namespace ShaderSpecialisation
 			}
 
 		}
-		std::array<uint8_t, Count> data;
+		std::array<dataType, Count> data;
 		const std::array<vk::SpecializationMapEntry, Count>& GetMapEntries() const { return mapEntries; }
 	private:
 		std::array<vk::SpecializationMapEntry, Count> mapEntries;	
@@ -31,8 +31,8 @@ namespace ShaderSpecialisation
 	};
 
 	// The result is only valid as long as multibytes is alive!!!
-	template<int Count>
-	vk::SpecializationInfo ReferenceMultibytes(const MultiBytes<Count>& multibytes)
+	template<typename dataType, int Count>
+	vk::SpecializationInfo ReferenceMultibytes(const MultiBytes<dataType,Count>& multibytes)
 	{
 		return vk::SpecializationInfo{}
 			.setDataSize(sizeof(multibytes.data[0]) * multibytes.data.size())

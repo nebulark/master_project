@@ -70,7 +70,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
-	const vk::Format renderedStencilFormat = vk::Format::eR8Sint;
+	constexpr vk::Format renderedStencilFormat = vk::Format::eR8Uint;
 
 	namespace ObjectIds
 	{
@@ -1164,10 +1164,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 		};
 
 
-		const ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes_camerMats = [this, expectedPortalCount]() {
-			ShaderSpecialisation::MultiBytes<enum_size_specialisationId> multibytes{};
+		const ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes_camerMats = [this, expectedPortalCount]() {
+			ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes{};
 			multibytes.data[max_portal_count_cid] = expectedPortalCount;// gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
-			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint8_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
+			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
 			return multibytes;
 		}();
 
@@ -1304,6 +1304,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 	assert(m_portalManager.GetPortalCount() == expectedPortalCount);
+
+	constexpr int maxStencilValue =  RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
+
+	static_assert(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255);
 }
 
 void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraLines)

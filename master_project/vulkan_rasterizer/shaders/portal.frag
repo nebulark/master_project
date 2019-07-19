@@ -7,12 +7,12 @@ layout(location = 0) in flat int inInstanceIndex;
 
 layout(location = 0) out float outRenderedDepth;
 layout(location = 1) out vec4 outColor;
-layout(location = 2) out int outRenderedStencil;
+layout(location = 2) out uint outRenderedStencil;
 
 
 #ifdef SUBSEQUENT_PASS
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
-layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput inputStencil;
+layout (input_attachment_index = 1, set = 3, binding = 1) uniform usubpassInput inputStencil;
 #endif
 
 layout(constant_id = 0) const int maxPortalCount = 4;
