@@ -24,10 +24,13 @@ public:
 	glm::mat4 CalcMat() const;
 	glm::vec3 CalcPosition() const;
 	void SetPosition(const glm::vec3 pos);
+	float GetNearClipping() const { return m_nearClipping; };
+	float GetFarClipping() const { return m_farClipping; }
 private:
 
 	
-
+	float m_nearClipping;
+	float m_farClipping;
 	Transform m_transform;
 	glm::mat4 m_perspectionMatrix;
 };

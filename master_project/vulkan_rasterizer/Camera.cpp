@@ -9,6 +9,8 @@ Camera::Camera()
 
 void Camera::SetPerspection(float nearPlane, float farPlane, float fieldOfView, glm::vec2 aspectRatio)
 {
+	m_nearClipping = nearPlane;
+	m_farClipping = farPlane;
 	m_perspectionMatrix = glm::perspectiveFov(fieldOfView, aspectRatio.x, aspectRatio.y, nearPlane, farPlane);
 
 	// Need to flip Y, it is different in Vulkan compared to OpenGL
