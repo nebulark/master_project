@@ -7,7 +7,6 @@ public:
 	void RecalcTree(gsl::span<const int> visiblePortalCountForLayer);
 
 	gsl::span<const uint8_t> GetStencilRefsForLayer(int layerNum) const;
-	uint8_t GetStencilRef(int elementIndex) const { return elementIndex;/* m_stencilRefs[elementIndex];*/ }
 	uint8_t GetLayerCompareMask(int layerNum) const { return m_compareMaskForLayer[layerNum]; }
 	int GetVisiblePortalCountForLayer(int layerNum) const { return m_visiblePortalCountForLayer[layerNum]; }
 

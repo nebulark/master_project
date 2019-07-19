@@ -156,8 +156,6 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		{
 			const PortalManager::RayTraceResult& rtResult = *maybeRtResult;
 
-			std::printf("teleport pid %i ped %i \n", rtResult.portalIndex, rtResult.endpoint);
-
 			const glm::mat4& teleportMat = portalManager.GetPortals()[rtResult.portalIndex].toOtherEndpoint[rtResult.endpoint];
 
 			m_camera.m_coordinateSystem = teleportMat * m_camera.m_coordinateSystem;

@@ -1387,8 +1387,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 				const int renderedInputIdx = 1;
 				constexpr int initialPipelineIndex = 0;
-				constexpr uint32_t stencilCompareVal = 0;
-				constexpr int cameraIndex = 0;
+				constexpr int cameraIndexAndStencilCompare = 0;
 				// render Scene Subpass
 				{
 					drawBuffer.beginRenderPass(
@@ -1414,7 +1413,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_scene.get(), 0, descriptorSets, {});
 
 
-					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndex, stencilCompareVal);
+					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndexAndStencilCompare, cameraIndexAndStencilCompare);
 				}
 
 				{
@@ -1433,7 +1432,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
 
-						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, cameraIndex, stencilCompareVal);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, cameraIndexAndStencilCompare, cameraIndexAndStencilCompare);
 					}
 				}
 
@@ -1462,13 +1461,11 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.firstCameraIndicesIndex = 1;
-						info.cameraIndex = cameraIndex;
+						info.cameraAndStencil = cameraIndexAndStencilCompare;
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
 						info.numBitsToShiftStencil = 0;
-						info.stencilCompareValue = 0;
-
 
 						m_portalManager.DrawPortals(info);
 					}
@@ -1525,9 +1522,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
-
-						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx, stencilRef);
+						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx, elementIdx);
 
 						// draw Camera
 						{
@@ -1543,7 +1538,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 							PushConstant_sceneObject pushConstant = {};
 							pushConstant.model = camera.CalcMat();
 							pushConstant.cameraIdx = elementIdx;
-							pushConstant.compareStencilVal = stencilRef;
+							pushConstant.compareStencilVal = elementIdx;
 
 							drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
@@ -1579,9 +1574,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
-
-						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx, stencilRef);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx, elementIdx);
 					}
 				}
 				// Draw Portals
@@ -1614,18 +1607,14 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						int childnum = elementIdx - layerStartIndex;
 						int firstCameraIndex = cameraIndicesLayerStartIndex + childnum * firstCameraIndicesOffsetForLayer;
 
-
-						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
-
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.firstCameraIndicesIndex = firstCameraIndex;
-						info.cameraIndex = elementIdx;
+						info.cameraAndStencil = elementIdx;
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
 						info.numBitsToShiftStencil = numRightShifts;
-						info.stencilCompareValue = stencilRef;
 
 						m_portalManager.DrawPortals(info);
 					}
