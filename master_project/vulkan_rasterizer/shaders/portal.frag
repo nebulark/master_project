@@ -110,7 +110,7 @@ void main()
 	int stencilRef_i = int(stencilRef_ui);
 	gl_FragStencilRefARB = stencilRef_i;
 
-	outRenderedStencil = stencilRef_i;
+	outRenderedStencil = pc.firstCameraIndicesIndex + childNum;
 
 	// write our camera index into camera index buffer
 	ci.cIndices[pc.firstCameraIndicesIndex + childNum] =  currentPortalCameraIndex;
