@@ -22,7 +22,7 @@ public:
 	Scene(VmaAllocator allocator);
 
 	void Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor = glm::vec4(0.f));
-	void Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraIndexAndStencilCompare) const;
+	void Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t layerStartIndex, uint32_t layerEndIndex) const;
 
 
 private:

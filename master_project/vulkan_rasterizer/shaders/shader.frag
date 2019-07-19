@@ -5,6 +5,7 @@ layout(set = 0, binding = 0) uniform sampler2D texSampler;
 
 layout(location = 0) in vec3 fragNormal;
 layout(location = 1) in vec2 fragTexCoord;
+layout(location = 2) in flat int inInstanceIndex;
 
 layout(location = 0) out vec4 outColor;
 
@@ -18,13 +19,14 @@ const vec3 directionalLightDir = normalize(vec3(1.0,1.0,1.0));
 layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
-	int cameraIndexAndStencilCompare;
+	int layerStartIndex;
 } pc;
 
 void main() {
 
+	int stencilCompareValue = inInstanceIndex + pc.layerStartIndex;
 #ifdef SUBSEQUENT_PASS
-	if(pc.cameraIndexAndStencilCompare != subpassLoad(inputStencil).r)
+	if(stencilCompareValue != subpassLoad(inputStencil).r)
 	{
 		discard;
 	}

@@ -4,7 +4,7 @@
 layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
-	int cameraIndexAndStencilCompare;
+	int layerStartIndex;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
@@ -24,6 +24,7 @@ layout(location = 2) in vec2 inTexCoord;
 
 layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
+layout(location = 2) out flat int outInstanceIndex;
 
 layout(constant_id = 0) const int maxPortalCount = 4;
 
@@ -35,7 +36,10 @@ const uint invalid_matIndex = ~0;
 
 void main() {
 
-	uint viewMatIndex = pc.cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[pc.cameraIndexAndStencilCompare];
+	int cameraIndicesIndex = gl_InstanceIndex + pc.layerStartIndex;
+	outInstanceIndex = gl_InstanceIndex;
+
+	uint viewMatIndex = cameraIndicesIndex == 0 ? 0 :  ci.cIndices[cameraIndicesIndex];
 
 	if(viewMatIndex != invalid_matIndex)
 	{

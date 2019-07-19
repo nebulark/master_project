@@ -1388,6 +1388,8 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				const int renderedInputIdx = 1;
 				constexpr int initialPipelineIndex = 0;
 				constexpr int cameraIndexAndStencilCompare = 0;
+				constexpr int layerStartIndex = 0;
+				constexpr int layerEndIndex = 1;
 				// render Scene Subpass
 				{
 					drawBuffer.beginRenderPass(
@@ -1413,7 +1415,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_scene.get(), 0, descriptorSets, {});
 
 
-					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndexAndStencilCompare);
+					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, layerStartIndex, layerEndIndex);
 				}
 
 				{
@@ -1463,8 +1465,8 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
-						info.layerStartIndex = 0;
-						info.nextLayerStartIndex = 1;
+						info.layerStartIndex = layerStartIndex;
+						info.nextLayerStartIndex = layerEndIndex;
 
 					
 						m_portalManager.DrawPortals(info);
@@ -1521,10 +1523,10 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_scene.get(), 0, descriptorSets, {});
 					}
 
+					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, layerStartIndex, layerEndIndex);
+
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
-						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx);
-
 						// draw Camera
 						{
 
@@ -1538,7 +1540,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 							PushConstant_sceneObject pushConstant = {};
 							pushConstant.model = camera.CalcMat();
-							pushConstant.cameraIndexAndStencilCompare = elementIdx;
+							pushConstant.layerStartIndex = elementIdx;
 
 							drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);

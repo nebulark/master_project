@@ -31,6 +31,6 @@ struct PushConstant_sceneObject
 {
 	alignas(16) glm::mat4 model;
 	glm::vec4 debugColor;
-	int32_t cameraIndexAndStencilCompare;
+	int32_t layerStartIndex;
 };
 

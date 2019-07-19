@@ -33,7 +33,7 @@ void Scene::Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor /*=
 	m_objects.push_back(SceneObject{ modelmat, MeshIdx, debugColor });
 }
 
-void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraIndexAndStencilCompare) const
+void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t layerStartIndex, uint32_t layerEndIndex) const
 {
 	drawCommandBuffer.bindIndexBuffer(meshdataManager.GetIndexBuffer(), 0, MeshDataManager::IndexBufferIndexType);
 	vk::DeviceSize vertexBufferOffset = 0;
@@ -41,17 +41,18 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 
 	gsl::span<const MeshDataRef> meshDataRefs = meshdataManager.GetMeshes();
 
+	const int instanceCount = layerEndIndex - layerStartIndex;
+
 	for (const SceneObject& object : m_objects)
 	{
 
 		PushConstant_sceneObject pushConstant = {};
 		pushConstant.model = object.modelMat;
-		pushConstant.cameraIndexAndStencilCompare = cameraIndexAndStencilCompare;
-
+		pushConstant.layerStartIndex = layerStartIndex;
 		pushConstant.debugColor = object.debugColor;
 
 		drawCommandBuffer.pushConstants<PushConstant_sceneObject>(pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		const MeshDataRef& portalMeshRef = meshDataRefs[object.meshIdx];
-		drawCommandBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+		drawCommandBuffer.drawIndexed(portalMeshRef.indexCount, instanceCount, portalMeshRef.firstIndex, 0, 0);
 	}
 }
