@@ -139,16 +139,6 @@ int PortalManager::GetCameraBufferElementCount(int maxRecursionCount, int portal
 	return cameraBufferElementCount;
 }
 
-int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount, int portalCount)
-{
-	return GetCameraBufferElementCount(maxRecursionCount, portalCount);
-}
-
-int PortalManager::GetPortalIndexHelperElementCount(int maxRecursionCount)
-{
-	return GetPortalIndexHelperElementCount(maxRecursionCount, GetPortalCount());
-}
-
 std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
 {
 	constexpr int invalidPortalId = -1;

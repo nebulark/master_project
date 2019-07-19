@@ -47,10 +47,8 @@ public:
 	int GetCameraBufferElementCount(int maxRecursionCount) const;
 
 	static int GetCameraBufferElementCount(int maxRecursionCount, int portalCount);
-	static int GetPortalIndexHelperElementCount(int maxRecursionCount, int portalCount);
 
 
-	int GetPortalIndexHelperElementCount(int maxRecursionCount);
 	int GetPortalCount() const { return m_portals.size() * 2; }
 
 	struct RayTraceResult

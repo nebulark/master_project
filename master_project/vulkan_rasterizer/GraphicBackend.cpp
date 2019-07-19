@@ -526,8 +526,11 @@ void GraphicsBackend::Init(SDL_Window* window)
 				VulkanDebug::SetObjectName(m_device.get(), m_cameraIndexBuffer[i].Get(), (std::string("camera index") + indexAsString).c_str());
 			}
 			{
+				const int indexhelperBufferElementCount = 
+					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * expectedPortalCount;
+
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
-					.setSize(PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t))
+					.setSize(indexhelperBufferElementCount * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -826,7 +829,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			PortalManager::GetPortalIndexHelperElementCount(recursionCount, expectedPortalCount) * sizeof(uint32_t), vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
+			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * expectedPortalCount * sizeof(uint32_t), vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 
 		// write rendered Depth descriptor Set
@@ -1363,9 +1366,11 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
+		const int indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
+
 		// clear the helper buffer
 		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0,
-			m_portalManager.GetPortalIndexHelperElementCount(recursionCount) * sizeof(uint32_t), 0);
+			indexhelperBufferElementCount * sizeof(uint32_t), 0);
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
 		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
