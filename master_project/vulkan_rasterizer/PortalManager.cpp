@@ -48,7 +48,6 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 	vk::DeviceSize vertexBufferOffset = 0;
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
-	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.cameraAndStencil, 0);
 
 	PushConstant_portal pushConstant = {};
 	pushConstant.layerStartIndex = info.layerStartIndex;

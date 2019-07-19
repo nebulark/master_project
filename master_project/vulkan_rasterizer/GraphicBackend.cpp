@@ -1460,13 +1460,15 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					{
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
-						info.firstCameraIndicesIndex = 1;
-						info.cameraAndStencil = cameraIndexAndStencilCompare;
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
+						info.layerStartIndex = 0;
+						info.nextLayerStartIndex = 1;
 
+					
 						m_portalManager.DrawPortals(info);
+
 					}
 				}
 			}
@@ -1600,15 +1602,11 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 #if 1
 					DrawPortalsInfo info = {};
 					info.drawBuffer = drawBuffer;
-					info.firstCameraIndicesIndex = 0;
-					info.cameraAndStencil = 0;
 					info.layout = m_pipelineLayout_portal.get();
 					info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 					info.meshDataManager = m_meshData.get();
 					info.layerStartIndex = layerStartIndex;
 					info.nextLayerStartIndex = layerEndIndex;
-					info.cameraIndicesLayerStartIndex = cameraIndicesLayerStartIndex;
-					info.firstCamceraIndicesOffsetForLayer = firstCameraIndicesOffsetForLayer;
 
 					m_portalManager.DrawPortals(info);
 #else
