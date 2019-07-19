@@ -65,6 +65,7 @@ public:
 		float t;
 		int portalIndex;
 		PortalEndpointIndex endpoint;
+		glm::vec3 hitLocation;
 	};
 
 
