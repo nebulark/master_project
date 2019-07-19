@@ -5,10 +5,10 @@ struct PushConstant_portal
 {
 	alignas(16) glm::mat4 model;
 	glm::vec4 debugColor;
-	int layerStartIndex;
-	int nextLayerStartIndex;
-	int portalIndex;
-	int maxVisiblePortalCount;
+	int32_t layerStartIndex;
+	int32_t nextLayerStartIndex;
+	int32_t portalIndex;
+	int32_t maxVisiblePortalCount;
 };
 
 constexpr size_t PushConstant_Size = sizeof(PushConstant_portal);

@@ -15,7 +15,6 @@
 #include "UniformBufferObjects.hpp"
 #include "ShaderSpecialisation.hpp"
 #include "UniqueVmaMemoryMap.hpp"
-#include "RenderHelper.hpp"
 #include "RecursionTree.hpp"
 
 namespace
@@ -1370,7 +1369,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-		const int indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
+		const gsl::index indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
 
 		// clear the helper buffer
 		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0,
@@ -1505,9 +1504,9 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				}
 
 				// last iteration draw all portals
-				const int numVisiblePortalsforLayer = (iteration == recursionCount - 1)
+				const int numVisiblePortalsforLayer = gsl::narrow<int>((iteration == recursionCount - 1)
 					? m_portalManager.GetPortalCount()
-					: maxVisiblePortalsForRecursion[iteration + 1];
+					: maxVisiblePortalsForRecursion[iteration + 1]);
 
 				const int layerStartIndex = RecursionTree::CalcLayerStartIndex(iteration, maxVisiblePortalsForRecursion);
 				const int layerEndIndex = layerStartIndex + RecursionTree::CalcLayerElementCount(iteration, maxVisiblePortalsForRecursion);

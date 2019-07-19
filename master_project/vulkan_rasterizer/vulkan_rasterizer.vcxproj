@@ -215,7 +215,6 @@
     </ClCompile>
     <ClCompile Include="Portal.cpp" />
     <ClCompile Include="PortalManager.cpp" />
-    <ClCompile Include="RenderHelper.cpp" />
     <ClCompile Include="Renderpass.cpp" />
     <ClCompile Include="MeshDataManager.cpp" />
     <ClCompile Include="Scene.cpp" />
@@ -272,7 +271,6 @@
     <ClInclude Include="PortalManager.hpp" />
     <ClInclude Include="PushConstants.hpp" />
     <ClInclude Include="Ray.hpp" />
-    <ClInclude Include="RenderHelper.hpp" />
     <ClInclude Include="Renderpass.hpp" />
     <ClInclude Include="MeshDataManager.hpp" />
     <ClInclude Include="Scene.hpp" />

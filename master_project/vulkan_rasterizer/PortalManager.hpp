@@ -49,7 +49,7 @@ public:
 	static int GetCameraBufferElementCount(int maxRecursionCount, int portalCount);
 
 
-	int GetPortalCount() const { return m_portals.size() * 2; }
+	gsl::index GetPortalCount() const { return m_portals.size() * 2; }
 
 	struct RayTraceResult
 	{

@@ -48,7 +48,7 @@ public:
 		// maybe there is a sum equation for this?
 		uint32_t result = 0;
 
-		for (int i = 0; i < layerNum;++i)
+		for (uint32_t i = 0; i < layerNum;++i)
 		{
 			result = result * n + 1;
 		}

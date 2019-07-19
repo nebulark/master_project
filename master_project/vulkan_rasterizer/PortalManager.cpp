@@ -56,15 +56,17 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 	const int instanceCount = info.nextLayerStartIndex - info.layerStartIndex;
 
-	for (int i = 0; i < m_portals.size(); ++i)
+	const int32_t portalElementCount = gsl::narrow<int32_t>(m_portals.size());
+
+	for (int32_t i = 0; i < portalElementCount; ++i)
 	{
-		const int baseChildNum = i * 2;
+		const int32_t baseChildNum = i * 2;
 
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
 		for (auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
 		{
-			const int childNum = baseChildNum + endPoint;
+			const int32_t childNum = baseChildNum + gsl::narrow<int32_t>(endPoint.ToIndex());
 
 			pushConstant.portalIndex = childNum;
 			pushConstant.model = m_portals[i].transform[endPoint];
@@ -97,7 +99,7 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
 
-	const int portalCount = m_portals.size() * 2;
+	const uint32_t portalCount = gsl::narrow<uint32_t>(m_portals.size() * 2);
 	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
 	assert(outCameraTransforms.size() >= matrixCount);
 
@@ -129,7 +131,7 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 
 int PortalManager::GetCameraBufferElementCount(int maxRecursionCount) const
 {
-	const int portalCount = m_portals.size() * 2;
+	const int portalCount = gsl::narrow<int>(m_portals.size() * 2);
 	return GetCameraBufferElementCount(maxRecursionCount, portalCount);
 }
 

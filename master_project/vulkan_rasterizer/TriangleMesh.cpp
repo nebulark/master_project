@@ -98,7 +98,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 		}
 
 		const float& rtResult = *maybeRtResult;
-		constexpr float tolerance = 1e-7;
+		constexpr float tolerance = 1e-7f;
 		if (rtResult < -tolerance || rtResult > ray.distance + tolerance)
 		{
 			continue;

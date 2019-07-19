@@ -29,7 +29,7 @@ public:
 private:
 	static constexpr int MaxInFlightFrames = 2;	
 	static constexpr int maxVisiblePortalsForRecursion[] = {4,4,3};
-	static constexpr int recursionCount = std::size(maxVisiblePortalsForRecursion);
+	static constexpr int recursionCount = gsl::narrow<int>(std::size(maxVisiblePortalsForRecursion));
 
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;

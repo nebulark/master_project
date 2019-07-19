@@ -21,7 +21,8 @@ public:
 
 	static constexpr gsl::index GetRange() { return static_cast<gsl::index>(internal_last) - static_cast<gsl::index>(internal_first) + 1; }
 
-	operator gsl::index() const { return static_cast<gsl::index>(internal_value); }
+	gsl::index ToIndex() const { return static_cast<gsl::index>(internal_value); }
+	operator gsl::index() const { return ToIndex(); }
 	operator enum_type() const { return static_cast<enum_type>(internal_value); }
 
 	EnumIndex& operator++();

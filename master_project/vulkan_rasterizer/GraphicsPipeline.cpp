@@ -225,7 +225,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 	std::vector<vk::GraphicsPipelineCreateInfo> linePipelineCreateInfos;
 
 	auto intialPipelines =
-		createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, { std::size(intitialCreateInfos), std::data(intitialCreateInfos) });
+		createInfo.logicalDevice.createGraphicsPipelinesUnique(cache, { GetSizeUint32(intitialCreateInfos), std::data(intitialCreateInfos) });
 
 	PipelinesCreateResult result;
 	result.scenePassPipelines.scene.push_back(std::move(intialPipelines[0]));

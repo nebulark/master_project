@@ -32,6 +32,6 @@ constexpr uint32_t GetSizeUint32(const std::array<innerType, Size>& Container) n
 template<typename T, size_t Size>
 constexpr uint32_t GetSizeUint32(const T(&array)[Size]) noexcept
 {
-	return gsl::narrow_cast<uint32_t>(Size);
+	return gsl::narrow<uint32_t>(Size);
 }
 

@@ -94,9 +94,6 @@
     <ClCompile Include="Transform.cpp">
       <Filter>Code</Filter>
     </ClCompile>
-    <ClCompile Include="RenderHelper.cpp">
-      <Filter>Code</Filter>
-    </ClCompile>
     <ClCompile Include="PortalManager.cpp">
       <Filter>Code</Filter>
     </ClCompile>
@@ -214,9 +211,6 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="Transform.hpp">
-      <Filter>Code</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderHelper.hpp">
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="PortalManager.hpp">

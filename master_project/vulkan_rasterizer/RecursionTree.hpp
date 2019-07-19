@@ -5,10 +5,10 @@ class RecursionTree
 {
 public:
 
-	constexpr static int CalcLayerElementCount(int layerNum, gsl::span<const int> visiblePortalCountForLayer)
+	constexpr static int CalcLayerElementCount(gsl::index layerNum, gsl::span<const int> visiblePortalCountForLayer)
 	{
 		int result = 1;
-		for (int i = 0; i <= layerNum; ++i)
+		for (gsl::index i = 0; i <= layerNum; ++i)
 		{
 			result *= visiblePortalCountForLayer[i];
 		}
@@ -17,10 +17,10 @@ public:
 	}
 
 
-	static constexpr int CalcLayerStartIndex(int layerNum, gsl::span<const int> visiblePortalCountForLayer)
+	static constexpr int CalcLayerStartIndex(gsl::index layerNum, gsl::span<const int> visiblePortalCountForLayer)
 	{
 		int result = 1;
-		for (int i = 0; i < layerNum; ++i)
+		for (gsl::index i = 0; i < layerNum; ++i)
 		{
 			result += CalcLayerElementCount(i, visiblePortalCountForLayer);
 		}

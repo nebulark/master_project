@@ -12,28 +12,29 @@ class KdTree
 {
 public:
 	static constexpr int MaxIndicesPerNode = 8;
+	using DataIndex_t = uint32_t;
 
 	void Init(gsl::span<const Triangle> data, const AABB& triangleBoundingBox = InvalidAABB);
 
 	const KdNode& GetRootNode() const { return m_firstNode; }
 	const KdNode& GetNode(NodeIndex nodeIndex) const { return m_nodeMemory.Get(nodeIndex); }
 
-	gsl::span<const int> GetDataIndices(DataIndicesIndexView indicesView) const;
+	gsl::span<const DataIndex_t> GetDataIndices(DataIndicesIndexView indicesView) const;
 private:
 
-	KdNode CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<int>&& indices);
+	KdNode CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<DataIndex_t>&& indices);
 
 	KdNode m_firstNode;
 	KdNodeMemory m_nodeMemory;
 
-	std::vector<int> m_dataIndices;
+	std::vector<DataIndex_t> m_dataIndices;
 };
 
 namespace DetailKdTree
 {
 
 
-	inline float FindSplitValue(SplitAxis axis, std::vector<int>& elementIndices, gsl::span<const Triangle> dataElements)
+	inline float FindSplitValue(SplitAxis axis, std::vector<KdTree::DataIndex_t>& elementIndices, gsl::span<const Triangle> dataElements)
 	{
 		const int dim = axis.ToDim();
 
@@ -47,7 +48,7 @@ namespace DetailKdTree
 		const auto median = begin + (std::size(elementIndices) / 2);
 		const auto end = std::end(elementIndices);
 
-		std::nth_element(begin, median, end, [dataElements, &GetCentroid](int a_index, int b_index)
+		std::nth_element(begin, median, end, [dataElements, &GetCentroid](KdTree::DataIndex_t a_index, KdTree::DataIndex_t b_index)
 			{
 				const Triangle& tri_a = dataElements[a_index];
 				const Triangle& tri_b = dataElements[b_index];
@@ -63,7 +64,7 @@ namespace DetailKdTree
 		return splitValue;
 	}
 
-	inline std::optional<float> FindSplitValue_SAH(SplitAxis axis, float minSplit, float maxSplit, float minSAH, std::vector<int>& elementIndices, gsl::span<const Triangle> dataElements)
+	inline std::optional<float> FindSplitValue_SAH(SplitAxis axis, float minSplit, float maxSplit, float minSAH, std::vector<KdTree::DataIndex_t>& elementIndices, gsl::span<const Triangle> dataElements)
 	{
 		const int dim = axis.ToDim();
 		constexpr int sampleCount = 8;
@@ -135,11 +136,11 @@ namespace DetailKdTree
 
 	struct SplitResult
 	{
-		std::vector<int> firstDataIndices;
-		std::vector<int> secondDataIndices;
+		std::vector<uint32_t> firstDataIndices;
+		std::vector<uint32_t> secondDataIndices;
 	};
 
-	inline SplitResult Split(SplitAxis axis, float splitValue, std::vector<int>&& elementIndices, gsl::span<const Triangle> dataElements)
+	inline SplitResult Split(SplitAxis axis, float splitValue, std::vector<KdTree::DataIndex_t>&& elementIndices, gsl::span<const Triangle> dataElements)
 	{
 		const int dim = axis.ToDim();
 
@@ -178,7 +179,7 @@ namespace DetailKdTree
 
 inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triangleBoundingBox /*= InvalidAABB*/)
 {
-	const uint32_t elementCount = triangles.size();
+	const DataIndex_t elementCount = gsl::narrow<DataIndex_t>(triangles.size());
 
 	AABB totalBoundingBox(triangleBoundingBox);
 	if (totalBoundingBox == InvalidAABB)
@@ -186,9 +187,9 @@ inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triang
 		totalBoundingBox = Triangle::CreateAABB(triangles);
 	}
 
-	std::vector<int> initialDataIndices;
+	std::vector<DataIndex_t> initialDataIndices;
 	initialDataIndices.resize(elementCount);
-	for (int i = 0; i < elementCount; ++i)
+	for (DataIndex_t i = 0; i < elementCount; ++i)
 	{
 		initialDataIndices[i] = i;
 	}
@@ -200,7 +201,7 @@ inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triang
 	m_firstNode = CreateNodeRecursive(totalBoundingBox, triangles, splitAxis, lastSplitAxis, std::move(initialDataIndices));
 }
 
-inline KdNode KdTree::CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<int>&& indices)
+inline KdNode KdTree::CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<DataIndex_t>&& indices)
 {
 	if (indices.size() == 0)
 	{
@@ -208,9 +209,8 @@ inline KdNode KdTree::CreateNodeRecursive(const AABB& boundingBox, gsl::span<con
 	}
 
 
-	const uint32_t indicesSize = indices.size();
+	const DataIndex_t indicesSize = gsl::narrow< DataIndex_t>(indices.size());
 
-test_label:
 	std::optional<float> bestSplitPos =	DetailKdTree::FindSplitValue_SAH(
 		currentSplitAxis, boundingBox.minBounds[currentSplitAxis.ToDim()], boundingBox.maxBounds[currentSplitAxis.ToDim()], 12.f, indices, dataElements);
 
@@ -219,7 +219,7 @@ test_label:
 		// this means that we failed to split every axis -> Abort
 		if (currentSplitAxis == lastSplitAxis)
 		{
-			const uint32_t firstIndicesIndex = m_dataIndices.size();
+			const DataIndex_t firstIndicesIndex = gsl::narrow<DataIndex_t>(m_dataIndices.size());
 			m_dataIndices.insert(m_dataIndices.end(), std::begin(indices), std::end(indices));
 
 			assert(m_dataIndices.size() == firstIndicesIndex + indicesSize);
@@ -229,9 +229,7 @@ test_label:
 		else
 		{
 			// Try again with other split axis
-			currentSplitAxis = currentSplitAxis.NextAxis();
-			goto test_label;
-			//return CreateNodeRecursive(boundingBox, dataElements, currentSplitAxis.NextAxis(), lastSplitAxis, std::move(indices));
+			return CreateNodeRecursive(boundingBox, dataElements, currentSplitAxis.NextAxis(), lastSplitAxis, std::move(indices));
 		}
 	}
 
@@ -258,9 +256,9 @@ test_label:
 	return KdNode::CreateNode(childIndexPair, currentSplitAxis, splitPos);
 }
 
-inline gsl::span<const int> KdTree::GetDataIndices(DataIndicesIndexView indicesView) const
+inline gsl::span<const KdTree::DataIndex_t> KdTree::GetDataIndices(DataIndicesIndexView indicesView) const
 {
 	assert(m_dataIndices.size() >= indicesView.firstIndex.internalIndex + indicesView.size);
-	return gsl::span<const int>(&(m_dataIndices[indicesView.firstIndex.internalIndex]), indicesView.size);
+	return gsl::span<const DataIndex_t>(&(m_dataIndices[indicesView.firstIndex.internalIndex]), indicesView.size);
 }
 
