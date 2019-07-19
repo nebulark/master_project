@@ -16,7 +16,7 @@ struct PushConstant_portal
 	int32_t firstCameraIndicesIndex;
 
 	// the stencil value of the layer
-	uint32_t layerStencilVal;
+	uint32_t compareStencilVal;
 
 	// the index we need to write into CameraIndices
 	int32_t portalCameraIndex;
@@ -41,6 +41,7 @@ struct PushConstant_lines
 	glm::vec4 debugColorA;
 	glm::vec4 debugColorB;
 	int cameraIdx;
+	uint32_t compareStencilVal;
 };
 constexpr size_t PushConstant_lines_size = sizeof(PushConstant_lines);
 static_assert(PushConstant_lines_size <= 128, "Push Constant must be small or equal to 128 Byte");
@@ -50,6 +51,6 @@ struct PushConstant_sceneObject
 	alignas(16) glm::mat4 model;
 	glm::vec4 debugColor;
 	int32_t cameraIdx;
-	uint32_t layerStencilVal;
+	uint32_t compareStencilVal;
 };
 

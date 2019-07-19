@@ -10,6 +10,7 @@ layout(location = 0) out vec4 outColor;
 
 #ifdef SUBSEQUENT_PASS
 layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput inputDepth;
+layout (input_attachment_index = 1, set = 3, binding = 1) uniform isubpassInput inputStencil;
 #endif
 
 const vec3 directionalLightDir = normalize(vec3(1.0,1.0,1.0));
@@ -18,12 +19,17 @@ layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
 	int cameraIdx;
-	uint layerStencilVal;
+	uint compareStencilVal;
 } pc;
 
 void main() {
 
 #ifdef SUBSEQUENT_PASS
+	if(pc.compareStencilVal != subpassLoad(inputStencil).r)
+	{
+		discard;
+	}
+
 	if(gl_FragCoord.z <= subpassLoad(inputDepth).r) 
 	{
 		discard;

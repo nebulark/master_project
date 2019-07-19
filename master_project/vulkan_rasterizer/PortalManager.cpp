@@ -58,7 +58,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 		PushConstant_portal pushConstant = {};
 		pushConstant.cameraIdx = info.iterationElementIndex;
-		pushConstant.layerStencilVal = info.stencilRef;
+		pushConstant.compareStencilVal = info.stencilRef;
 		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
 		pushConstant.firstCameraIndicesIndex = info.firstCameraIndicesIndex;
 		pushConstant.maxVisiblePortalCountForRecursion = info.maxVisiblePortalCount;

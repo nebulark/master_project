@@ -16,7 +16,7 @@ layout(push_constant) uniform PushConstant {
 	int firstCameraIndicesIndex;
 
 	// the stencil value of the layer
-	uint layerStencilVal;
+	uint compareStencilVal;
 
 	// the index we need to write into CameraIndices
 	int portalCameraIndex;

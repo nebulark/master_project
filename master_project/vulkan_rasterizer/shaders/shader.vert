@@ -5,7 +5,7 @@ layout(push_constant) uniform PushConstant {
  	mat4 model;
 	vec4 debugColor;
 	int cameraIdx;
-	uint layerStencilVal;
+	uint compareStencilVal;
 } pc;
 
 layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {

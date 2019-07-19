@@ -16,6 +16,7 @@ void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawC
 		pushConstant.debugColorA = line.colorA;
 		pushConstant.debugColorB = line.colorB;
 
+		pushConstant.compareStencilVal;
 		drawCommandBuffer.pushConstants<PushConstant_lines>(
 			pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawCommandBuffer.draw(2, 1, 0,0);

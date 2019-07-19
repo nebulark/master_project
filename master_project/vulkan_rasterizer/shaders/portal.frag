@@ -31,7 +31,7 @@ layout(push_constant) uniform PushConstant {
 	int firstCameraIndicesIndex;
 
 	// the stencil value of the layer
-	uint layerStencilVal;
+	uint compareStencilVal;
 
 	// the index we need to write into CameraIndices
 	int portalCameraIndex;
@@ -60,7 +60,7 @@ layout(set = 4, binding = 0) buffer CameraIndices {
 void main() 
 {
 	
-	int stencilVal = int(pc.layerStencilVal);
+	int stencilVal = int(pc.compareStencilVal);
 
 #ifdef SUBSEQUENT_PASS
 	if(stencilVal != subpassLoad(inputStencil).r)
@@ -106,7 +106,7 @@ void main()
 	// skip zero to avoid ambiguities
 	uint myStencilVal = childNum+1;
 
-	uint stencilRef_ui = (pc.layerStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
+	uint stencilRef_ui = (pc.compareStencilVal | (myStencilVal << pc.numOfBitsToShiftChildStencilVal));
 	int stencilRef_i = int(stencilRef_ui);
 	gl_FragStencilRefARB = stencilRef_i;
 

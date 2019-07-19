@@ -47,7 +47,7 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 		PushConstant_sceneObject pushConstant = {};
 		pushConstant.model = object.modelMat;
 		pushConstant.cameraIdx = cameraMatIdx;
-		pushConstant.layerStencilVal = stencil;
+		pushConstant.compareStencilVal = stencil;
 
 		pushConstant.debugColor = object.debugColor;
 
