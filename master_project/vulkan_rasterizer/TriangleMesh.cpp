@@ -74,7 +74,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 
 	KdTreeTraverser::RayTraceData raytraceData = {};
 	raytraceData.dataElements = gsl::make_span(m_triangles);
-	raytraceData.ray = Ray::FromStartAndEndpoint(ray.CalcPosition(tmin), ray.CalcPosition(tmax+0.0001));
+	raytraceData.ray = Ray::FromOriginAndDirection(ray.CalcPosition(tmin), ray.direction, tmax - tmin);
 	raytraceData.tree = &m_kdtree;
 	raytraceData.userData = nullptr;
 	raytraceData.intersectionFunction = [](const Ray& ray, const Triangle& triangle, void*)
@@ -86,7 +86,7 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 
 
 	// kd tree does not work, fall back to manually tracing all triangles for now
-#if 0
+#if 1
 	constexpr float invalidBestResult = std::numeric_limits<float>::max();
 	float bestresult = invalidBestResult;
 	for (const Triangle& tri : m_triangles)
@@ -98,7 +98,8 @@ std::optional<float> TriangleMesh::RayTrace(const Ray& ray) const
 		}
 
 		const float& rtResult = *maybeRtResult;
-		if (rtResult < -0.f || rtResult > ray.distance)
+		constexpr float tolerance = 1e-7;
+		if (rtResult < -tolerance || rtResult > ray.distance + tolerance)
 		{
 			continue;
 		}

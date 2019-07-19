@@ -56,7 +56,8 @@ namespace KdTreeTraverser
 				}
 
 				const float rayTraceValue = rayTrace.value();
-				if (rayTraceValue < tmin || rayTraceValue > tmax)
+				constexpr float tolerance = 1e-7;
+				if (rayTraceValue < tmin - tolerance || rayTraceValue > tmax + tolerance)
 				{
 					continue;
 				}
