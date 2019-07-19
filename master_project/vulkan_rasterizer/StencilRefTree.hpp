@@ -13,9 +13,6 @@ public:
 	int CalcLayerStartIndex(int layerNum) const;
 	int CalcLayerElementCount(int layerNum) const;
 
-	// Calculates the number of right shifts need on the child stencil ref, so that it won't overwrite its parent stencil ref
-	int CalcStencilShiftBitsForLayer(int layerNum) const;
-
 	int GetCameraIndexBufferElementCount() const {  return m_stencilRefs.size(); }
 private:
 	std::vector<int> m_visiblePortalCountForLayer;

@@ -50,30 +50,33 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 
 	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.cameraAndStencil, 0);
 
+	PushConstant_portal pushConstant = {};
+	pushConstant.layerStartIndex = info.layerStartIndex;
+	pushConstant.nextLayerStartIndex = info.nextLayerStartIndex;
+	pushConstant.maxVisiblePortalCount = info.maxVisiblePortalCount;
+
+	const int instanceCount = info.nextLayerStartIndex - info.layerStartIndex;
+
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
 		const int baseChildNum = i * 2;
 
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
-		PushConstant_portal pushConstant = {};
-		pushConstant.cameraIndexAndStencilCompare = info.cameraAndStencil;
-		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
-		pushConstant.firstCameraIndicesIndexAndStencilWrite = info.firstCameraIndicesIndex;
-		pushConstant.maxVisiblePortalCountForRecursion = info.maxVisiblePortalCount;
-
-		pushConstant.debugColor = debugColors[i % std::size(debugColors)];
-
 		for (auto endPoint = PortalEndpointIndex::First(); endPoint <= PortalEndpointIndex::Last(); ++endPoint)
 		{
 			const int childNum = baseChildNum + endPoint;
 
-			pushConstant.portalCameraIndex = childNum;
-			pushConstant.currentHelperIndex = childNum + indexHelper_firstChildIndex;
-
+			pushConstant.portalIndex = childNum;
 			pushConstant.model = m_portals[i].transform[endPoint];
-			drawBuffer.pushConstants<PushConstant_portal>(info.layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
-			drawBuffer.drawIndexed(portalMeshRef.indexCount, 1, portalMeshRef.firstIndex, 0, 1);
+			pushConstant.debugColor = debugColors[(childNum + info.layerStartIndex) % std::size(debugColors)];
+			drawBuffer.pushConstants<PushConstant_portal>(
+				info.layout,
+				vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+				0,
+				pushConstant);
+			
+			drawBuffer.drawIndexed(portalMeshRef.indexCount, instanceCount, portalMeshRef.firstIndex, 0, 0);
 
 			drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
 				vk::DependencyFlags{}, {}, {}, {});
@@ -81,7 +84,6 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 		}
 	}
 }
-
 
 void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount, gsl::span<glm::mat4> outCameraTransforms) const
 {
@@ -187,7 +189,7 @@ std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& 
 			glm::distance(ray.origin, worldspaceHitlocation),
 			bestPortalId,
 			bestPortalEndpoint,
-			worldspaceHitlocation 
+			worldspaceHitlocation
 		};
 	}
 
@@ -206,4 +208,5 @@ std::optional<glm::mat4> PortalManager::FindHitPortalTeleportMatrix(const Ray& r
 
 	return std::nullopt;
 }
+
 

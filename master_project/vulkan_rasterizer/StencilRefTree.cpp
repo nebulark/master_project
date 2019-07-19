@@ -114,13 +114,3 @@ int StencilRefTree::CalcLayerElementCount(int layerNum) const
 		;
 }
 
-int StencilRefTree::CalcStencilShiftBitsForLayer(int layerNum) const
-{
-	int numBitsToShift = 0;
-	for (int i = 0; i < layerNum; ++i)
-	{
-		numBitsToShift += GetNumBitsToStoreValue(m_visiblePortalCountForLayer[i] + 1);
-	}
-
-	return numBitsToShift;
-}

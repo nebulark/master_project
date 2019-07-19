@@ -1465,7 +1465,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
-						info.numBitsToShiftStencil = 0;
 
 						m_portalManager.DrawPortals(info);
 					}
@@ -1581,8 +1580,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[pipelineIndex].get());
 
-					const int numRightShifts = m_stencilRefTree.CalcStencilShiftBitsForLayer(iteration + 1);
-
 					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : m_stencilRefTree.CalcLayerStartIndex(iteration + 1);
 
 					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : m_stencilRefTree.GetVisiblePortalCountForLayer(iteration + 1);
@@ -1600,6 +1597,21 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_portal.get(), 0, descriptorSets, {});
 					}
 
+#if 1
+					DrawPortalsInfo info = {};
+					info.drawBuffer = drawBuffer;
+					info.firstCameraIndicesIndex = 0;
+					info.cameraAndStencil = 0;
+					info.layout = m_pipelineLayout_portal.get();
+					info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
+					info.meshDataManager = m_meshData.get();
+					info.layerStartIndex = layerStartIndex;
+					info.nextLayerStartIndex = layerEndIndex;
+					info.cameraIndicesLayerStartIndex = cameraIndicesLayerStartIndex;
+					info.firstCamceraIndicesOffsetForLayer = firstCameraIndicesOffsetForLayer;
+
+					m_portalManager.DrawPortals(info);
+#else
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
 
@@ -1613,10 +1625,14 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
-						info.numBitsToShiftStencil = numRightShifts;
+						info.layerStartIndex = layerStartIndex;
+						info.nextLayerStartIndex = layerEndIndex;
+						info.cameraIndicesLayerStartIndex = cameraIndicesLayerStartIndex;
+						info.firstCamceraIndicesOffsetForLayer = firstCameraIndicesOffsetForLayer;
 
 						m_portalManager.DrawPortals(info);
 					}
+#endif
 				}
 			}
 

@@ -22,14 +22,15 @@ struct DrawPortalsInfo
 	vk::PipelineLayout layout;
 	int cameraAndStencil;
 
-	// number of bits we would need to shift a value, so that it won't overwrite important stencil Ref bits
-	int numBitsToShiftStencil;
-
 	// the maximum number of visible portals, may be different for each iteration
 	int maxVisiblePortalCount;
 
 	// the first index in the camera indices array, that should be written by the portals
 	int firstCameraIndicesIndex;
+	int layerStartIndex;
+	int nextLayerStartIndex;
+	int firstCamceraIndicesOffsetForLayer;
+	int cameraIndicesLayerStartIndex;
 };
 
 
