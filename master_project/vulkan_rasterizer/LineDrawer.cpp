@@ -3,7 +3,7 @@
 #include "PushConstants.hpp"
 
 
-void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, gsl::span<const Line> lines)
+void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t cameraMatIdx, gsl::span<const Line> lines, uint32_t stencilCompareVal)
 {
 	for (const Line& line : lines)
 	{
@@ -16,7 +16,7 @@ void LineDrawer::Draw(vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawC
 		pushConstant.debugColorA = line.colorA;
 		pushConstant.debugColorB = line.colorB;
 
-		pushConstant.compareStencilVal;
+		pushConstant.compareStencilVal = stencilCompareVal;
 		drawCommandBuffer.pushConstants<PushConstant_lines>(
 			pipelineLayout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 		drawCommandBuffer.draw(2, 1, 0,0);

@@ -48,7 +48,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 	vk::DeviceSize vertexBufferOffset = 0;
 	drawBuffer.bindVertexBuffers(0, meshDataManager.GetVertexBuffer(), vertexBufferOffset);
 
-	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.iterationElementIndex, 0);
+	const int indexHelper_firstChildIndex = NTree::GetChildElementIdx(actualPortalCount, info.cameraIndex, 0);
 
 	for (int i = 0; i < m_portals.size(); ++i)
 	{
@@ -57,8 +57,8 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 		const MeshDataRef& portalMeshRef = meshDataManager.GetMeshes()[m_portals[i].meshIndex];
 
 		PushConstant_portal pushConstant = {};
-		pushConstant.cameraIdx = info.iterationElementIndex;
-		pushConstant.compareStencilVal = info.stencilRef;
+		pushConstant.cameraIdx = info.cameraIndex;
+		pushConstant.compareStencilVal = info.stencilCompareValue;
 		pushConstant.firstHelperIndex = indexHelper_firstChildIndex;
 		pushConstant.firstCameraIndicesIndex = info.firstCameraIndicesIndex;
 		pushConstant.maxVisiblePortalCountForRecursion = info.maxVisiblePortalCount;

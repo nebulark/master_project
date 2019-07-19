@@ -148,7 +148,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(true)
+		.setStencilTestEnable(false)
 		.setFront(stencilOpState_writeReference)
 		.setBack(stencilOpState_writeReference)
 		;
@@ -170,7 +170,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(true)
+		.setStencilTestEnable(false)
 		.setFront(stencilOpState_renderifEqual_prototype)
 		;
 
@@ -188,20 +188,20 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(true)
+		.setStencilTestEnable(false)
 		.setFront(stencilOpState_writeReferenceIfEqual_prototype)
 		.setBack(stencilOpState_writeReferenceIfEqual_prototype)
 		;
 
-	const vk::DynamicState dynamicStates[] = {
-		vk::DynamicState::eStencilReference,
-		vk::DynamicState::eStencilCompareMask, // not really needed, but its convenient
-	};
+	//const vk::DynamicState dynamicStates[] = {
+	//	vk::DynamicState::eStencilReference,
+	//	vk::DynamicState::eStencilCompareMask, // not really needed, but its convenient
+	//};
 
-	const vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo{}
-		.setDynamicStateCount(GetSizeUint32(dynamicStates))
-		.setPDynamicStates(dynamicStates)
-		;
+	//const vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo{}
+	//	.setDynamicStateCount(GetSizeUint32(dynamicStates))
+	//	.setPDynamicStates(dynamicStates)
+	//	;
 
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_prototype(
 		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
@@ -237,7 +237,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
 		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
-		.setPDynamicState(&dynamicStateCreateInfo)
+//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 		;
 
@@ -258,7 +258,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_linesInitial))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_linesInitial))
 		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
-		.setPDynamicState(&dynamicStateCreateInfo)
+//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 		;
 
@@ -279,7 +279,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
 		.setPDepthStencilState(&depthStencilStateCreateInfo_portalSubsequent_dynamic_stencilRef_compareMask)
-		.setPDynamicState(&dynamicStateCreateInfo)
+//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 	;
 

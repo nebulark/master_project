@@ -20,7 +20,7 @@ struct DrawPortalsInfo
 
 	// pipeline layout for portal push constants
 	vk::PipelineLayout layout;
-	int iterationElementIndex;
+	int cameraIndex;
 
 	// number of bits we would need to shift a value, so that it won't overwrite important stencil Ref bits
 	int numBitsToShiftStencil;
@@ -29,7 +29,7 @@ struct DrawPortalsInfo
 	int maxVisiblePortalCount;
 
 	// stencil ref for testing, if we should render the portal
-	uint8_t stencilRef;
+	uint8_t stencilCompareValue;
 
 	// the first index in the camera indices array, that should be written by the portals
 	int firstCameraIndicesIndex;

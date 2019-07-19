@@ -1375,10 +1375,11 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 		// render pass
 		{
 
-			const auto lineDrawingFunction = [this, &extraLines](vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex)
+			const auto lineDrawingFunction = [this, &extraLines]
+			(vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex, uint32_t stencilCompareVal)
 			{
-				//LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines);
-				LineDrawer::Draw(layout, drawBuffer, cameraIndex, extraLines);
+				//LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines, stencilCompareVal);
+				LineDrawer::Draw(layout, drawBuffer, cameraIndex, extraLines, stencilCompareVal);
 			};
 
 			// initial / iteration 0
@@ -1386,6 +1387,8 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 				const int renderedInputIdx = 1;
 				constexpr int initialPipelineIndex = 0;
+				constexpr uint32_t stencilCompareVal = 0;
+				constexpr int cameraIndex = 0;
 				// render Scene Subpass
 				{
 					drawBuffer.beginRenderPass(
@@ -1411,8 +1414,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_scene.get(), 0, descriptorSets, {});
 
 
-					constexpr int cameraIndex = 0;
-					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndex, 0);
+					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, cameraIndex, stencilCompareVal);
 				}
 
 				{
@@ -1431,14 +1433,13 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_lines.get(), 0, descriptorSets, {});
 
-						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, 0);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, cameraIndex, stencilCompareVal);
 					}
 				}
 
 
 				// First Portal Pass
 				{
-					constexpr int iterationElementIndex = 0;
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[initialPipelineIndex].get());
 
@@ -1461,12 +1462,12 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.firstCameraIndicesIndex = 1;
-						info.iterationElementIndex = iterationElementIndex;
+						info.cameraIndex = cameraIndex;
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
 						info.numBitsToShiftStencil = 0;
-						info.stencilRef = 0;
+						info.stencilCompareValue = 0;
 
 
 						m_portalManager.DrawPortals(info);
@@ -1508,7 +1509,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				//draw Scene
 				{
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.scene[pipelineIndex].get());
-					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
+					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1527,7 +1528,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					{
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
-						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
+						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
 						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx, stencilRef);
 
 						// draw Camera
@@ -1544,6 +1545,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 							PushConstant_sceneObject pushConstant = {};
 							pushConstant.model = camera.CalcMat();
 							pushConstant.cameraIdx = elementIdx;
+							pushConstant.compareStencilVal = stencilRef;
 
 							drawBuffer.pushConstants<PushConstant_sceneObject>(m_pipelineLayout_scene.get(), vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, pushConstant);
 							drawBuffer.drawIndexed(cameraMeshRef.indexCount, 1, cameraMeshRef.firstIndex, 0, 1);
@@ -1563,7 +1565,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				{
 
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.line[pipelineIndex].get());
-					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
+					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1582,8 +1584,8 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					{
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
-						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
-						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx);
+						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
+						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx, stencilRef);
 					}
 				}
 				// Draw Portals
@@ -1610,7 +1612,7 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_portal.get(), 0, descriptorSets, {});
 					}
 
-					drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
+					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
 
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
@@ -1622,17 +1624,17 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
 						// not really needed
-						drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, stencilRef);
+						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, stencilRef);
 
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.firstCameraIndicesIndex = firstCameraIndex;
-						info.iterationElementIndex = elementIdx;
+						info.cameraIndex = elementIdx;
 						info.layout = m_pipelineLayout_portal.get();
 						info.maxVisiblePortalCount = m_stencilRefTree.GetVisiblePortalCountForLayer(0);
 						info.meshDataManager = m_meshData.get();
 						info.numBitsToShiftStencil = numRightShifts;
-						info.stencilRef = stencilRef;
+						info.stencilCompareValue = stencilRef;
 
 						m_portalManager.DrawPortals(info);
 					}
