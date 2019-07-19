@@ -117,10 +117,12 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthBiasClamp(0.f)
 		.setDepthBiasSlopeFactor(0.f);
 
-	const vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_onlyDepthTest = vk::PipelineDepthStencilStateCreateInfo()
+	const vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_onlyDepthTest = 
+		vk::PipelineDepthStencilStateCreateInfo()
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
 		.setDepthCompareOp(vk::CompareOp::eLess)
+		.setStencilTestEnable(false)
 		;
 	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal = vk::PipelineRasterizationStateCreateInfo{}
 		.setDepthClampEnable(false)
@@ -134,75 +136,6 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthBiasClamp(0.f)
 		.setDepthBiasSlopeFactor(0.f);
 
-
-	const vk::StencilOpState stencilOpState_writeReference = vk::StencilOpState{}
-		.setCompareOp(vk::CompareOp::eAlways)
-		.setPassOp(vk::StencilOp::eReplace)
-		.setFailOp(vk::StencilOp::eReplace)
-		.setDepthFailOp(vk::StencilOp::eKeep)
-		.setCompareMask(0b1111'1111)
-		.setWriteMask(0b1111'1111)
-		;
-
-	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_portalInitial = vk::PipelineDepthStencilStateCreateInfo()
-		.setDepthTestEnable(true)
-		.setDepthWriteEnable(true)
-		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(false)
-		.setFront(stencilOpState_writeReference)
-		.setBack(stencilOpState_writeReference)
-		;
-
-
-	const vk::StencilOpState stencilOpState_renderifEqual_prototype = vk::StencilOpState{}
-		.setCompareOp(vk::CompareOp::eEqual)
-		.setPassOp(vk::StencilOp::eKeep)
-		.setFailOp(vk::StencilOp::eKeep)
-		.setDepthFailOp(vk::StencilOp::eKeep)
-		.setWriteMask(0b1111'1111)
-		.setCompareMask(0b1111'1111) // will be changed by dynamic state
-		.setReference(1)  // will be changed by dynamic state
-		;
-
-
-	const vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask =
-		vk::PipelineDepthStencilStateCreateInfo()
-		.setDepthTestEnable(true)
-		.setDepthWriteEnable(true)
-		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(false)
-		.setFront(stencilOpState_renderifEqual_prototype)
-		;
-
-	const vk::StencilOpState stencilOpState_writeReferenceIfEqual_prototype = vk::StencilOpState{}
-		.setCompareOp(vk::CompareOp::eEqual)
-		.setPassOp(vk::StencilOp::eReplace)
-		.setFailOp(vk::StencilOp::eKeep)
-		.setDepthFailOp(vk::StencilOp::eKeep)
-		.setWriteMask(0b1111'1111)
-		.setCompareMask(0b1111'1111) // will be changed by dynamic state
-		.setReference(1)  // will be changed by dynamic state
-		;
-
-	const vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_portalSubsequent_dynamic_stencilRef_compareMask = vk::PipelineDepthStencilStateCreateInfo()
-		.setDepthTestEnable(true)
-		.setDepthWriteEnable(true)
-		.setDepthCompareOp(vk::CompareOp::eLess)
-		.setStencilTestEnable(false)
-		.setFront(stencilOpState_writeReferenceIfEqual_prototype)
-		.setBack(stencilOpState_writeReferenceIfEqual_prototype)
-		;
-
-	//const vk::DynamicState dynamicStates[] = {
-	//	vk::DynamicState::eStencilReference,
-	//	vk::DynamicState::eStencilCompareMask, // not really needed, but its convenient
-	//};
-
-	//const vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo{}
-	//	.setDynamicStateCount(GetSizeUint32(dynamicStates))
-	//	.setPDynamicStates(dynamicStates)
-	//	;
-
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo_prototype(
 		vk::PipelineCreateFlags(), //| vk::PipelineCreateFlagBits::eDerivative,
 		0, nullptr, // shaderstages, needs to be set!
@@ -210,9 +143,9 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		&inputAssembly_triangleList,
 		nullptr, // tesselationstate
 		&viewportStateCreateInfo,
-		nullptr, // rasterization state create info nees to be set!
+		nullptr, // rasterization state create info needs to be set!
 		&multisampleState_noMultisampling,
-		nullptr, // depthStencilState info nees to be set!
+		nullptr, // depthStencilState info needs to be set!
 		nullptr, // color blend state needs to be set!
 		nullptr, // dynamic device state
 		nullptr,
@@ -236,8 +169,6 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_sceneInitial }
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_sceneSubsequent))
-		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
-//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 		;
 
@@ -257,8 +188,6 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 			vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_linesInitial }
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_linesInitial))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_linesInitial))
-		.setPDepthStencilState(&depthStencilStateCreateInfo_sceneSubsequent_dynamic_stencilRef_compareMask)
-//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 		;
 
@@ -268,7 +197,7 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalInitial))
 		.setPRasterizationState(&rasterizationStateCreateInfo_portal)
-		.setPDepthStencilState(&depthStencilStateCreateInfo_portalInitial)
+		.setPDepthStencilState(&depthStencilStateCreateInfo_onlyDepthTest)
 		.setLayout(createInfo.pipelineLayout_portal)
 		.setPColorBlendState(&colorblendstate_override_3)
 		.setSubpass(1)
@@ -278,8 +207,6 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		vk::GraphicsPipelineCreateInfo{ graphicsPipelineCreateInfo_portalInitial }
 		.setStageCount(GetSizeUint32(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
 		.setPStages(std::data(createInfo.pipelineShaderStageCreationInfos_portalSubsequent))
-		.setPDepthStencilState(&depthStencilStateCreateInfo_portalSubsequent_dynamic_stencilRef_compareMask)
-//		.setPDynamicState(&dynamicStateCreateInfo)
 		.setSubpass(-1)
 	;
 

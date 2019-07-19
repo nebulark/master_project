@@ -1509,7 +1509,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				//draw Scene
 				{
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.scene[pipelineIndex].get());
-					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1528,7 +1527,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					{
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
-						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
 						m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, elementIdx, stencilRef);
 
 						// draw Camera
@@ -1565,7 +1563,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 				{
 
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.scenePass.line[pipelineIndex].get());
-					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eFront, layerComparMask);
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1584,7 +1581,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 					{
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
 
-						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eFront, stencilRef);
 						lineDrawingFunction(m_pipelineLayout_lines.get(), drawBuffer, elementIdx, stencilRef);
 					}
 				}
@@ -1612,8 +1608,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 						drawBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout_portal.get(), 0, descriptorSets, {});
 					}
 
-					//drawBuffer.setStencilCompareMask(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, layerComparMask);
-
 					for (int elementIdx = layerStartIndex; elementIdx < layerEndIndex; ++elementIdx)
 					{
 
@@ -1622,9 +1616,6 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 
 						const uint8_t stencilRef = m_stencilRefTree.GetStencilRef(elementIdx);
-
-						// not really needed
-						//drawBuffer.setStencilReference(vk::StencilFaceFlagBits::eVkStencilFrontAndBack, stencilRef);
 
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
