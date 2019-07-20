@@ -316,16 +316,25 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_swapchain = Swapchain::Create(m_physicalDevice, m_device.get(), m_surface.get(), vk::Extent2D(windowWidth, windowHeight));
 
-	vk::Format preferedDepthFormats[] = { vk::Format::eD24UnormS8Uint, vk::Format::eD32SfloatS8Uint };
-	m_depthFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
+	// currently we only require depth component
+	vk::Format preferedDepthFormats[] = {
+		vk::Format::eD32Sfloat,
+		vk::Format::eD32SfloatS8Uint,  
+		vk::Format::eD24UnormS8Uint,
+		vk::Format::eD16Unorm,
+		vk::Format::eD16UnormS8Uint,
+	};
+
+	m_depthStencilFormat = VulkanUtils::ChooseFormat(m_physicalDevice, preferedDepthFormats, vk::ImageTiling::eOptimal,
 		vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
 	// Create Depth Stencil Buffer
 	{
+		
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo{}
 			.setImageType(vk::ImageType::e2D)
 			.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-			.setFormat(m_depthFormat)
+			.setFormat(m_depthStencilFormat)
 			.setExtent(vk::Extent3D(m_swapchain.extent.width, m_swapchain.extent.height, 1))
 			.setTiling(vk::ImageTiling::eOptimal)
 			.setArrayLayers(1)
@@ -343,10 +352,10 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		m_depthBufferView = m_device->createImageViewUnique(vk::ImageViewCreateInfo{}
 			.setViewType(vk::ImageViewType::e2D)
-			.setFormat(m_depthFormat)
+			.setFormat(m_depthStencilFormat)
 			.setImage(m_depthBuffer.Get())
 			.setSubresourceRange(vk::ImageSubresourceRange()
-				.setAspectMask(vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil)
+				.setAspectMask(VulkanUtils::GetDepthStencilAspectMask(m_depthStencilFormat))
 				.setBaseMipLevel(0)
 				.setLevelCount(1)
 				.setBaseArrayLayer(0)
@@ -446,7 +455,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
-		m_depthFormat, renderedDepthFormat, renderedStencilFormat, recursionCount);
+		m_depthStencilFormat, renderedDepthFormat, renderedStencilFormat, recursionCount);
 
 	// create Framebuffer
 	{
@@ -1492,14 +1501,14 @@ void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraL
 
 				// clear depth attachment, to be able to render objects "behind" the portal
 				{
-					vk::ClearAttachment clearDepthOnly = vk::ClearAttachment{}
+					vk::ClearAttachment clearDepthStencil = vk::ClearAttachment{}
 						.setColorAttachment(1)
-						.setAspectMask(vk::ImageAspectFlagBits::eDepth)
-						.setClearValue(vk::ClearDepthStencilValue(1.f, 255));
+						.setAspectMask(VulkanUtils::GetDepthStencilAspectMask(m_depthStencilFormat))
+						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
 
 
 					const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
-					std::array<vk::ClearAttachment, 1> clearAttachments = { clearDepthOnly, };
+					std::array<vk::ClearAttachment, 1> clearAttachments = { clearDepthStencil, };
 					drawBuffer.clearAttachments(clearAttachments, wholeScreen);
 				}
 

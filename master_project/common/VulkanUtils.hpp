@@ -40,7 +40,22 @@ namespace VulkanUtils
 		gsl::span<const vk::PresentModeKHR> preferedModes);
 
 	inline bool HasStencilComponent(vk::Format format)
-	{ return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint; }
+	{ 
+		return format == vk::Format::eD32SfloatS8Uint
+			|| format == vk::Format::eD24UnormS8Uint
+			|| format == vk::Format::eD16UnormS8Uint
+			;
+	}
+
+	inline vk::ImageAspectFlags GetDepthStencilAspectMask(vk::Format format)
+	{
+		vk::ImageAspectFlags aspect = vk::ImageAspectFlagBits::eDepth;
+		if (HasStencilComponent(format))
+		{
+			aspect |= vk::ImageAspectFlagBits::eStencil;
+		}
+		return aspect;
+	}
 
 	vk::Format ChooseFormat(vk::PhysicalDevice physicalDevice, gsl::span<const vk::Format> preferedFormats, vk::ImageTiling tiling, vk::FormatFeatureFlags featureFlags);
 	vk::Extent2D ChooseExtent(const vk::SurfaceCapabilitiesKHR& capabilities, vk::Extent2D referedExtent);

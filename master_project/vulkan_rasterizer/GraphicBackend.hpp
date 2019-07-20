@@ -56,7 +56,7 @@ private:
 	vk::UniqueShaderModule m_fragShaderModule_portal_subsequent;
 
 	Swapchain m_swapchain;
-	vk::Format m_depthFormat;
+	vk::Format m_depthStencilFormat;
 	UniqueVmaImage m_depthBuffer;
 	vk::UniqueImageView m_depthBufferView;
 
