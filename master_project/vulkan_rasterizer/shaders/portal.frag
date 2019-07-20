@@ -51,10 +51,23 @@ void main()
 		discard;
 	}
 
-	if(gl_FragCoord.z <= subpassLoad(inputDepth).r * 1.00001)
+	float renderedDepthValueAndFacing = subpassLoad(inputDepth).r;
+	bool isRenderedDepthFrontFacing = renderedDepthValueAndFacing >= 0.0;
+	float renderedDepthValue = abs(renderedDepthValueAndFacing);
+	bool isSameFacing = gl_FrontFacing == isRenderedDepthFrontFacing;
+
+	// if the facing is the same add a little bit bias to easily discard almost equal values
+	// this way we can discard fragments of the partner portal, which would fight for depth with original portal
+	if(isSameFacing)
+	{
+		renderedDepthValue *= 1.00001;
+	}
+
+	if(gl_FragCoord.z <= renderedDepthValue)
 	{
 		discard;
 	}
+
 #endif
 
 	bool isLastPortalPass = pc.maxVisiblePortalCount == 0;
@@ -106,6 +119,13 @@ void main()
 		outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
 	}
 
-	outRenderedDepth = gl_FragCoord.z;
+	if(gl_FrontFacing)
+	{
+		outRenderedDepth = gl_FragCoord.z;
+	}
+	else
+	{
+		outRenderedDepth = -gl_FragCoord.z;
+	}
 	outColor =pc.debugColor;
 }

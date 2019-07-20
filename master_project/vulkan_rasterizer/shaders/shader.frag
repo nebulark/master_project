@@ -31,7 +31,7 @@ void main() {
 		discard;
 	}
 
-	if(gl_FragCoord.z <= subpassLoad(inputDepth).r) 
+	if(gl_FragCoord.z <= abs(subpassLoad(inputDepth).r)) 
 	{
 		discard;
 	}
