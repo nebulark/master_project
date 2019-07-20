@@ -57,44 +57,55 @@ void main()
 	}
 #endif
 
-	int firstHelperIndex = cameraIndexAndStencilCompare * maxPortalCount;
-	int helperIndex = firstHelperIndex + pc.portalIndex;
+	bool isLastPortalPass = pc.maxVisiblePortalCount == 0;
 
-	int currentViewMatIndex = cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[cameraIndexAndStencilCompare];
-
-	int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
-	int currentPortalCameraIndex = firstPortalCameraIndex + pc.portalIndex;
-
-	int firstCameraIndicesIndexAndStencilWrite = pc.nextLayerStartIndex + (inInstanceIndex * pc.maxVisiblePortalCount);
-	// count previous visible portals
-	// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
-	int previousVisiblePortals = 0;
-	for(int i = 0; i < maxPortalCount; ++i)
+	if(isLastPortalPass)
 	{
-		int index = i + firstHelperIndex;
+		outRenderedStencil = 0;
+		// don't touch helper index and camera indices as we might be out of range
+		// TODO: this if is know at compile time actually
+	}
+	else
+	{
+		int firstHelperIndex = cameraIndexAndStencilCompare * maxPortalCount;
+		int helperIndex = firstHelperIndex + pc.portalIndex;
 
-		// don't count myself, as I am currently writing to it an the value may be zero or 1
-		if(index != helperIndex)
+		int currentViewMatIndex = cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[cameraIndexAndStencilCompare];
+
+		int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
+		int currentPortalCameraIndex = firstPortalCameraIndex + pc.portalIndex;
+
+		int firstCameraIndicesIndexAndStencilWrite = pc.nextLayerStartIndex + (inInstanceIndex * pc.maxVisiblePortalCount);
+		// count previous visible portals
+		// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
+		int previousVisiblePortals = 0;
+		for(int i = 0; i < maxPortalCount; ++i)
 		{
-			previousVisiblePortals+= (pih.indices[i + firstHelperIndex]) == 0 ? 0 : 1;
+			int index = i + firstHelperIndex;
+
+			// don't count myself, as I am currently writing to it an the value may be zero or 1
+			if(index != helperIndex)
+			{
+				previousVisiblePortals+= (pih.indices[i + firstHelperIndex]) == 0 ? 0 : 1;
+			}
 		}
+
+		if(previousVisiblePortals >= pc.maxVisiblePortalCount)
+		{
+			// to many visible portals, sadly we won't be visible,
+			// we could set a value, so that subsequent portals won't be rendered to maybe improb perf
+			discard;
+		}
+
+		// mark that we are a visible portal
+		pih.indices[helperIndex] = previousVisiblePortals + 1;
+
+		// write our camera index into camera index buffer
+		ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
+
+		outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
 	}
 
-	if(previousVisiblePortals >= pc.maxVisiblePortalCount)
-	{
-		// to many visible portals, sadly we won't be visible,
-		// we could set a value, so that subsequent portals won't be rendered to maybe improb perf
-		discard;
-	}
-
-	// mark that we are a visible portal
-	pih.indices[helperIndex] = previousVisiblePortals + 1;
-
-	outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
-
-	// write our camera index into camera index buffer
-	ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
 	outRenderedDepth = gl_FragCoord.z;
-
 	outColor =pc.debugColor;
 }
