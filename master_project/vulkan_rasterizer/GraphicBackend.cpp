@@ -16,6 +16,8 @@
 #include "ShaderSpecialisation.hpp"
 #include "UniqueVmaMemoryMap.hpp"
 #include "RecursionTree.hpp"
+#include "LevelLoader.hpp"
+
 
 namespace
 {
@@ -962,16 +964,42 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	const char* objsToLoad[ObjectIds::enum_size] = { "torus.obj" , "sphere.obj" ,"cube.obj", "plane.obj", "halfSphere.obj", "inverted_cube.obj" };
 	// use graphics present queue to avoid ownership transfer
-	m_meshData->LoadObjs(objsToLoad, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
 
-	for (const char* obj : objsToLoad)
+
+	LevelLoader::LoadLevelResult levelLoadResult = LevelLoader::LoadLevel("level.xml");
+
+	std::vector<const char*> objFileNames;
+	for (int i = 0; i < levelLoadResult.objFileNames.size(); ++i)
+	{
+		objFileNames.push_back(levelLoadResult.objFileNames[i].c_str());
+	}
+
+	const char* additionalObjFiles[] =
+	{
+		"torus.obj",
+		"sphere.obj",
+		"cube.obj",
+		"plane.obj",
+		"halfSphere.obj",
+		"inverted_cube.obj",
+	};
+
+	const int meshIndexOffset = levelLoadResult.objFileNames.size();
+
+	objFileNames.insert(objFileNames.end(), std::begin(additionalObjFiles), std::end(additionalObjFiles));
+
+
+	m_meshData->LoadObjs(objFileNames, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
+
+	for (const char* obj : objFileNames)
 	{
 		m_triangleMeshes.emplace_back();
 		m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
 
 	}
+
+
 
 	Line testLine = {};
 	testLine.pointA = glm::vec4(glm::vec3(0.f), 1.f);
@@ -980,10 +1008,18 @@ void GraphicsBackend::Init(SDL_Window* window)
 	testLine.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
 	testLine.colorB = glm::vec4(0.f, 1.f, 0.f, 1.f);
 
+	m_scene = std::make_unique<Scene>(m_allocator.get());
+
+	for (const LevelLoader::LevelObject levelObject : levelLoadResult.objects)
+	{
+		m_scene->Add(levelObject.meshId, levelObject.mat);
+	}
 	// Init Scene
+	if (false)
 	{
 
-		m_scene = std::make_unique<Scene>(m_allocator.get());
+
+		
 		{
 			const glm::vec3 torusPositions[] = {
 				glm::vec3(0),
@@ -993,21 +1029,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 				glm::vec3(6.f, 10.f , 15.f),
 			};
 
-			const glm::vec4 debugColors[] =
-			{
-				glm::vec4(1.f,1.f,1.f,1.f),
-				glm::vec4(1.f,1.f,1.f,1.f),
-				glm::vec4(1.f,1.f,1.f,1.f),
-				glm::vec4(0.f,0.f,0.f,1.f),
-				glm::vec4(0.33f,0.33f,0.33f,1.f),
-				glm::vec4(.66f,.66f,.66f,1.f),
-			};
 
-
-			for (int i = 0; i < std::size(torusPositions); ++i)
-			{
-				m_scene->Add(ObjectIds::torusIdx, glm::translate(glm::mat4(1), torusPositions[i]), debugColors[i]);
-			}
 		}
 		{
 			Transform floorTransform = Transform(glm::vec3(0.f, -5.f, 0.f), glm::vec3(100.f, 1.f, 100.f), glm::identity<glm::quat>());
@@ -1115,14 +1137,14 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx +meshIndexOffset, portal_a.ToMat(), portal_b.ToMat()));
 	}
 	{
 		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
 
 		const Transform portal_b = Transform(glm::vec3(35.f, 15.f, 20.f), 10.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(1.f, 0.f, 0.f)));
 
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx, portal_a.ToMat(), portal_b.ToMat()));
+		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx + meshIndexOffset, portal_a.ToMat(), portal_b.ToMat()));
 	}
 
 	{

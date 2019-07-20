@@ -56,13 +56,14 @@ void MeshDataManager::LoadObjs(gsl::span<const char* const> objFileNames,
 	{
 
 		// we could also use the member variable, but we would need to keep it up to date
-		const int currentIndexBufferElementCount = initialIndexElementCount + gsl::narrow<int>(indices.size());
+		const int previousIndexSize = gsl::narrow<int>(indices.size());
+		const int currentIndexBufferElementCount = initialIndexElementCount + previousIndexSize;
 		MeshDataRef staticSceneMesh;
 		staticSceneMesh.meshName = filename;
 		staticSceneMesh.firstIndex = currentIndexBufferElementCount;
 
 		Vertex::LoadObjWithIndices_append(filename, vertices, indices);
-		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(indices.size() - currentIndexBufferElementCount);
+		staticSceneMesh.indexCount = gsl::narrow<uint32_t>(gsl::narrow<int>(indices.size()) - previousIndexSize);
 		
 		m_meshes.push_back(std::move(staticSceneMesh));
 	}

@@ -33,3 +33,8 @@
 #include <vulkan/vulkan.hpp>
 #pragma warning(pop)
 #include "VulkanMemoryAllocator/vk_mem_alloc.h"
+
+#include "rapidxml/rapidxml.hpp"
+#include "rapidxml/rapidxml_iterators.hpp"
+#include "rapidxml/rapidxml_print.hpp"
+#include "rapidxml/rapidxml_utils.hpp"

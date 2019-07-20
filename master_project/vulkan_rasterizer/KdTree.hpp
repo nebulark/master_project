@@ -203,7 +203,9 @@ inline void KdTree::Init(gsl::span<const Triangle> triangles, const AABB& triang
 
 inline KdNode KdTree::CreateNodeRecursive(const AABB& boundingBox, gsl::span<const Triangle> dataElements, SplitAxis currentSplitAxis, SplitAxis lastSplitAxis, std::vector<DataIndex_t>&& indices)
 {
-	if (indices.size() == 0)
+
+	// we are currently not using kd tree
+	if (true || indices.size() == 0)
 	{
 		return KdNode::CreateLeaf(DataIndicesIndexView{ 0, 0 });
 	}

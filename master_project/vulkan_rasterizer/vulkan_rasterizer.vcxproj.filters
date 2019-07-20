@@ -124,6 +124,9 @@
     <ClCompile Include="RecursionTree.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="LevelLoader.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -247,6 +250,9 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="RecursionTree.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="LevelLoader.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

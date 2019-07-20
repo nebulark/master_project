@@ -69,6 +69,7 @@
     <Import Project="..\common_props\custom_build_tool_spirv.props" />
     <Import Project="..\common_props\include_tinyObj.props" />
     <Import Project="..\common_props\include_vulkan_memory_allocator.props" />
+    <Import Project="..\common_props\include_rapidxml.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -82,6 +83,7 @@
     <Import Project="..\common_props\custom_build_tool_spirv.props" />
     <Import Project="..\common_props\include_tinyObj.props" />
     <Import Project="..\common_props\include_vulkan_memory_allocator.props" />
+    <Import Project="..\common_props\include_rapidxml.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -95,6 +97,7 @@
     <Import Project="..\common_props\custom_build_tool_spirv.props" />
     <Import Project="..\common_props\include_tinyObj.props" />
     <Import Project="..\common_props\include_vulkan_memory_allocator.props" />
+    <Import Project="..\common_props\include_rapidxml.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -108,6 +111,7 @@
     <Import Project="..\common_props\custom_build_tool_spirv.props" />
     <Import Project="..\common_props\include_tinyObj.props" />
     <Import Project="..\common_props\include_vulkan_memory_allocator.props" />
+    <Import Project="..\common_props\include_rapidxml.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -199,6 +203,7 @@
     <ClCompile Include="KdTreeTraverser.cpp" />
     <ClCompile Include="KdTreeUtils.cpp" />
     <ClCompile Include="Key.cpp" />
+    <ClCompile Include="LevelLoader.cpp" />
     <ClCompile Include="LineDrawer.cpp" />
     <ClCompile Include="Loader.cpp" />
     <ClCompile Include="main.cpp">
@@ -261,6 +266,7 @@
     <ClInclude Include="KdTreeTraverser.hpp" />
     <ClInclude Include="KdTreeUtils.hpp" />
     <ClInclude Include="Key.hpp" />
+    <ClInclude Include="LevelLoader.hpp" />
     <ClInclude Include="LineDrawer.hpp" />
     <ClInclude Include="Loader.hpp" />
     <ClInclude Include="MeshDataRef.hpp" />
