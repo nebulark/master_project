@@ -6,6 +6,7 @@
 #include "Editor.h"
 #include "EngineUtils.h"
 
+#include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Exporters/StaticMeshExporterOBJ.h"
 #include "OutputDeviceFile.h"
@@ -13,10 +14,12 @@
 #include "EditorLevelLibrary.h"
 #include "Misc/FileHelper.h"
 #include "CString.h"
+#include "PortalActor.h"
 
 #include "rapidxml/rapidxml.hpp"
 #include "rapidxml/rapidxml_utils.hpp"
 #include "rapidxml/rapidxml_print.hpp"
+#include "Camera/CameraActor.h"
 
 
 namespace
@@ -26,6 +29,14 @@ namespace
 		int32 meshId;
 		FString name;
 		FTransform transform;
+	};
+
+	struct PortalObject
+	{
+		int32 meshId;
+		FString name;
+		FTransform transformA;
+		FTransform transformB;
 	};
 
 	void ExportMesh(const UStaticMesh& mesh, FArchive& ar)
@@ -87,6 +98,34 @@ namespace
 			}
 		}
 	}
+
+	template<size_t arraySize>
+	int TransformToString(char(&buffer)[arraySize], const FTransform& transform)
+	{
+		const FMatrix mat = transform.ToMatrixWithScale();
+		int matAsStringLength = std::snprintf(buffer, std::size(buffer),
+			"%f %f %f %f"
+			"%f %f %f %f"
+			"%f %f %f %f"
+			"%f %f %f %f",
+
+			// flip y and z to convert from ue coordinate system to ours
+			mat.M[0][0], mat.M[0][2], mat.M[0][1], mat.M[0][3],
+			mat.M[2][0], mat.M[2][2], mat.M[2][1], mat.M[2][3],
+			mat.M[1][0], mat.M[1][2], mat.M[1][1], mat.M[1][3],
+			mat.M[3][0], mat.M[3][2], mat.M[3][1], mat.M[3][3]
+
+			/*
+				does not work, ue4 has different coordinate system
+				mat.M[0][0], mat.M[0][1], mat.M[0][2], mat.M[0][3],
+				mat.M[1][0], mat.M[1][1], mat.M[1][2], mat.M[1][3],
+				mat.M[2][0], mat.M[2][1], mat.M[2][2], mat.M[2][3],
+				mat.M[3][0], mat.M[3][1], mat.M[3][2], mat.M[3][3]*/
+		);
+
+		check(matAsStringLength < std::size(buffer));
+		return matAsStringLength;
+	}
 }
 
 
@@ -98,20 +137,44 @@ void ULevelExport::ExportLevel()
 	TArray<UStaticMesh*> staticMeshes;
 
 	TArray<LevelObject> levelObjects;
+	TArray<PortalObject> portalObjects;
 
 
 	EActorIteratorFlags flags = EActorIteratorFlags::OnlyActiveLevels | EActorIteratorFlags::SkipPendingKill;
 
 	TArray<AActor*> actors = UEditorLevelLibrary::GetAllLevelActors();
 
-	
+	struct SceneCamera
+	{
+		FVector Position;
+		FVector LookTarget;
+	};
+
+	TArray<SceneCamera> cameras;
+
 	for (AActor* actor : actors)
 	{
-		if (UStaticMeshComponent* staticMeshComponent = actor->FindComponentByClass<UStaticMeshComponent>())
+
+		if (APortalActor *PortalActor = Cast<APortalActor>(actor))
 		{
-			UStaticMesh* staticMesh = staticMeshComponent->GetStaticMesh();
+			UStaticMesh* staticMesh = PortalActor->Root->GetStaticMesh();
+			const int32 foundIndex = staticMeshes.AddUnique(staticMesh);
+			portalObjects.Add({ foundIndex, PortalActor->GetName(), PortalActor->GetTransformA(), PortalActor->GetTransformB() });
+		}
+		else if (AStaticMeshActor * staticMeshActor = Cast<AStaticMeshActor>(actor))
+		{
+			UStaticMesh* staticMesh = staticMeshActor->GetStaticMeshComponent()->GetStaticMesh();
 			const int32 foundIndex = staticMeshes.AddUnique(staticMesh);
 			levelObjects.Add({ foundIndex, actor->GetName(), actor->GetTransform() });
+		}
+		else if (ACameraActor * cameraActor = Cast<ACameraActor>(actor))
+		{
+			const FVector cameraLocation = cameraActor->GetActorLocation();
+
+			cameras.Add({
+				cameraLocation,
+				cameraLocation + cameraActor->GetActorForwardVector() * cameraLocation.GetAbsMax()
+				});
 		}
 	}
 
@@ -159,44 +222,78 @@ void ULevelExport::ExportLevel()
 			}
 			{
 				
-				FMatrix mat = lvObject.transform.ToMatrixWithScale();
-				int matAsStringLength = std::snprintf(buffer, std::size(buffer),
-					"%f %f %f %f"
-					"%f %f %f %f"
-					"%f %f %f %f"
-					"%f %f %f %f",
-
-					// flip y and z to convert from ue coordinate system to ours
-					mat.M[0][0], mat.M[0][2], mat.M[0][1], mat.M[0][3],
-					mat.M[2][0], mat.M[2][2], mat.M[2][1], mat.M[2][3],
-					mat.M[1][0], mat.M[1][2], mat.M[1][1], mat.M[1][3],
-					mat.M[3][0], mat.M[3][2], mat.M[3][1], mat.M[3][3]
-
-				/*	
-					does not work, ue4 has different coordinate system
-					mat.M[0][0], mat.M[0][1], mat.M[0][2], mat.M[0][3],
-					mat.M[1][0], mat.M[1][1], mat.M[1][2], mat.M[1][3],
-					mat.M[2][0], mat.M[2][1], mat.M[2][2], mat.M[2][3],
-					mat.M[3][0], mat.M[3][1], mat.M[3][2], mat.M[3][3]*/
-					);
-
-				check(matAsStringLength < std::size(buffer));
-
+				int matAsStringLength = TransformToString(buffer, lvObject.transform);
+				
 				char* matAsString = doc.allocate_string(buffer, matAsStringLength);
 				objectNode->append_node(doc.allocate_node(rapidxml::node_element, "transform", matAsString, 0, matAsStringLength));
 			}
 		}
 
+		for (const PortalObject& portal : portalObjects)
+		{
+
+			rapidxml::xml_node<>* objectNode = doc.allocate_node(rapidxml::node_element, "portal");
+			scene->append_node(objectNode);
+
+			{
+				int meshIndexCharCount = snprintf(buffer, std::size(buffer), "%i", portal.meshId);
+				char* meshIndexString = doc.allocate_string(buffer, meshIndexCharCount);
+				objectNode->append_node(doc.allocate_node(rapidxml::node_element, "meshindex", meshIndexString, 0, meshIndexCharCount));
+			}
+			{
+				char* nameString = doc.allocate_string(TCHAR_TO_ANSI(*portal.name));
+				objectNode->append_node(doc.allocate_node(rapidxml::node_element, "name", nameString));
+			}
+			{
+				
+				int matAsStringLength = TransformToString(buffer, portal.transformA);
+				
+				char* matAsString = doc.allocate_string(buffer, matAsStringLength);
+				objectNode->append_node(doc.allocate_node(rapidxml::node_element, "transformA", matAsString, 0, matAsStringLength));
+			}
+			{
+
+				int matAsStringLength = TransformToString(buffer, portal.transformB);
+				char* matAsString = doc.allocate_string(buffer, matAsStringLength);
+				objectNode->append_node(doc.allocate_node(rapidxml::node_element, "transformB", matAsString, 0, matAsStringLength));
+			}
+
+		}
+
+		int camCount = 0;
+		for (const SceneCamera& cam : cameras)
+		{
+			rapidxml::xml_node<>* cameraNode = doc.allocate_node(rapidxml::node_element, "camera");
+			scene->append_node(cameraNode);
+			{
+				int camIdStringCount = snprintf(buffer, std::size(buffer), "%i", camCount);
+				char* camIdString = doc.allocate_string(buffer, camIdStringCount);
+				cameraNode->append_node(doc.allocate_node(rapidxml::node_element, "id", camIdString, 0, camIdStringCount));
+			}
+			{
+				int positionStringSize = snprintf(buffer, std::size(buffer), "%f %f %f", cam.Position.X, cam.Position.Y, cam.Position.Z );
+				char* positionString = doc.allocate_string(buffer, positionStringSize);
+				cameraNode->append_node(doc.allocate_node(rapidxml::node_element, "position", positionString, 0, positionStringSize));
+			}
+			{
+				int targetStringSize = snprintf(buffer, std::size(buffer), "%f %f %f", cam.LookTarget.X, cam.LookTarget.Y, cam.LookTarget.Z);
+				char* targetString = doc.allocate_string(buffer, targetStringSize);
+				cameraNode->append_node(doc.allocate_node(rapidxml::node_element, "target", targetString, 0, targetStringSize));
+			}
+			++camCount;
+		}
+
+
 		{
 			FString fileName = FPaths::ProjectContentDir() + exportFolderName + "level.xml";
 			fileName.Replace(TEXT("/"), TEXT("\\"));
-	
+
 			std::ofstream file;
 			file.open(TCHAR_TO_ANSI(*fileName));
 			file << doc;
 		}
-		
-	
+
+
 	}
 
 	// create c++ script
