@@ -35,7 +35,7 @@ namespace
 		const char object[] = "object";
 		const char portal[] = "portal";
 		const char camera[] = "camera";
-		const char target[] = "target";
+		const char direction[] = "direction";
 	}
 
 	struct LevelObject
@@ -226,8 +226,8 @@ void ULevelExport::ExportLevel()
 
 	struct SceneCamera
 	{
-		FVector Position;
-		FVector LookTarget;
+		FVector position;
+		FVector dir;
 	};
 
 	TArray<SceneCamera> cameras;
@@ -250,10 +250,11 @@ void ULevelExport::ExportLevel()
 		else if (ACameraActor * cameraActor = Cast<ACameraActor>(actor))
 		{
 			const FVector cameraLocation = cameraActor->GetActorLocation();
+			const FVector cameraDir = cameraActor->GetActorForwardVector();
 
 			cameras.Add({
 				cameraLocation,
-				cameraLocation + cameraActor->GetActorForwardVector() * cameraLocation.GetAbsMax()
+				cameraDir
 				});
 		}
 	}
@@ -310,8 +311,8 @@ void ULevelExport::ExportLevel()
 		{
 			rapidxml::xml_node<>* cameraNode = doc.allocate_node(rapidxml::node_element, NodeNames::camera);
 			sceneNode->append_node(cameraNode);
-			AppendVec(doc, cameraNode, cam.Position, NodeNames::position);
-			AppendVec(doc, cameraNode, cam.LookTarget, NodeNames::target);
+			AppendVec(doc, cameraNode, cam.position, NodeNames::position);
+			AppendVec(doc, cameraNode, cam.dir, NodeNames::direction);
 		}
 
 

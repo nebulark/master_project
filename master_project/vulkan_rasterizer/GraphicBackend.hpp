@@ -20,7 +20,7 @@ class Camera;
 class GraphicsBackend
 {
 public:
-	void Init(SDL_Window* window);
+	void Init(SDL_Window* window, Camera& camera);
 	void Render(const Camera& camera, gsl::span<const Line> extraLines);
 	void WaitIdle() { m_device->waitIdle(); }
 

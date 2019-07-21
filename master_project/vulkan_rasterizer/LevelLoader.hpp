@@ -22,7 +22,7 @@ namespace LevelLoader
 	struct CameraObject
 	{
 		glm::vec3 positon;
-		glm::vec3 target;
+		glm::vec3 direction;
 	};
 
 	struct LoadLevelResult

@@ -19,7 +19,7 @@ namespace
 		const char object[] = "object";
 		const char portal[] = "portal";
 		const char camera[] = "camera";
-		const char target[] = "target";
+		const char direction[] = "direction";
 
 		const char root[] = "root";
 		const char meshes[] = "meshes";
@@ -150,7 +150,7 @@ LevelLoader::LoadLevelResult LevelLoader::LoadLevel(const char* fileName)
 
 			CameraObject camera;
 			camera.positon = ReadVecNode(cameraNode->first_node(NodeNames::position));
-			camera.target = ReadVecNode(cameraNode->first_node(NodeNames::target));
+			camera.direction = ReadVecNode(cameraNode->first_node(NodeNames::direction));
 			result.cameras.push_back(camera);
 		}
 	}

@@ -90,7 +90,7 @@ namespace
 }
 
 
-void GraphicsBackend::Init(SDL_Window* window)
+void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 {
 	const char* enabledValidationLayers[] =
 	{
@@ -169,6 +169,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 	{
 		LevelLoader::LoadLevelResult levelLoadResult = LevelLoader::LoadLevel("level.xml");
 		
+		if (levelLoadResult.cameras.size() != 0)
+		{
+			camera.SetPosition(levelLoadResult.cameras[0].positon);
+			camera.LookDir(levelLoadResult.cameras[0].direction, glm::vec3(0.f, 1.f, 0.f));
+		}
+
 		{
 			std::vector<const char*> objFileNames;
 			for (int i = 0; i < levelLoadResult.objFileNames.size(); ++i)
