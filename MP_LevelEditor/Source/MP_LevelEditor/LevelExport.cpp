@@ -14,9 +14,10 @@
 #include "Misc/FileHelper.h"
 #include "CString.h"
 
-#include "rapidxml.hpp"
-#include "rapidxml_utils.hpp"
-#include "rapidxml_print.hpp"
+#include "rapidxml/rapidxml.hpp"
+#include "rapidxml/rapidxml_utils.hpp"
+#include "rapidxml/rapidxml_print.hpp"
+
 
 namespace
 {
@@ -93,7 +94,7 @@ namespace
 void ULevelExport::ExportLevel()
 {
 
-
+	FString exportFolderName("level/");
 	TArray<UStaticMesh*> staticMeshes;
 
 	TArray<LevelObject> levelObjects;
@@ -118,7 +119,7 @@ void ULevelExport::ExportLevel()
 	// create obj files
 	for (UStaticMesh* mesh : staticMeshes)
 	{
-		FString fileName = FPaths::ProjectContentDir() + mesh->GetName() + ".obj";
+		FString fileName = FPaths::ProjectContentDir() + exportFolderName + mesh->GetName() + ".obj";
 		TUniquePtr<FArchive> file(IFileManager::Get().CreateFileWriter(*fileName));
 		ExportMesh(*mesh, *file);
 	}
@@ -165,10 +166,18 @@ void ULevelExport::ExportLevel()
 					"%f %f %f %f"
 					"%f %f %f %f",
 
+					// flip y and z to convert from ue coordinate system to ours
+					mat.M[0][0], mat.M[0][2], mat.M[0][1], mat.M[0][3],
+					mat.M[2][0], mat.M[2][2], mat.M[2][1], mat.M[2][3],
+					mat.M[1][0], mat.M[1][2], mat.M[1][1], mat.M[1][3],
+					mat.M[3][0], mat.M[3][2], mat.M[3][1], mat.M[3][3]
+
+				/*	
+					does not work, ue4 has different coordinate system
 					mat.M[0][0], mat.M[0][1], mat.M[0][2], mat.M[0][3],
 					mat.M[1][0], mat.M[1][1], mat.M[1][2], mat.M[1][3],
 					mat.M[2][0], mat.M[2][1], mat.M[2][2], mat.M[2][3],
-					mat.M[3][0], mat.M[3][1], mat.M[3][2], mat.M[3][3]
+					mat.M[3][0], mat.M[3][1], mat.M[3][2], mat.M[3][3]*/
 					);
 
 				check(matAsStringLength < std::size(buffer));
@@ -179,7 +188,7 @@ void ULevelExport::ExportLevel()
 		}
 
 		{
-			FString fileName = FPaths::ProjectContentDir() + "level.xml";
+			FString fileName = FPaths::ProjectContentDir() + exportFolderName + "level.xml";
 			fileName.Replace(TEXT("/"), TEXT("\\"));
 	
 			std::ofstream file;
