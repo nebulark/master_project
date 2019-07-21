@@ -50,13 +50,14 @@ void main() {
 		viewMat *
 		pc.model *
 		vec4(inPosition, 1.0);
+		fragNormal = vec3(transpose(inverse(pc.model)) * vec4(inNormal, 0.0));
 	}
 	else
 	{
 		gl_Position = vec4(1);
+		fragNormal = inNormal;
 	}
 
-    fragNormal = inNormal;
     fragTexCoord = inTexCoord;
 
  }
