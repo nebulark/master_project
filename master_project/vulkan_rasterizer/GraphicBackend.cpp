@@ -164,6 +164,37 @@ void GraphicsBackend::Init(SDL_Window* window)
 	}
 
 
+	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
+	m_scene = std::make_unique<Scene>(m_allocator.get());
+	{
+		LevelLoader::LoadLevelResult levelLoadResult = LevelLoader::LoadLevel("level.xml");
+		
+		{
+			std::vector<const char*> objFileNames;
+			for (int i = 0; i < levelLoadResult.objFileNames.size(); ++i)
+			{
+				objFileNames.push_back(levelLoadResult.objFileNames[i].c_str());
+			}
+
+			m_meshData->LoadObjs(objFileNames, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
+			for (const char* obj : objFileNames)
+			{
+				m_triangleMeshes.emplace_back();
+				m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
+			}
+		}
+
+		for (const LevelLoader::LevelObject& levelObject : levelLoadResult.objects)
+		{
+			m_scene->Add(levelObject.meshId, levelObject.transform);
+		}
+		for (const LevelLoader::PortalObject& portal : levelLoadResult.portals)
+		{
+			m_portalManager.Add(Portal::CreateWithPortalTransforms(portal.meshId, portal.transformA.ToMat(), portal.transformB.ToMat()));
+		}
+
+	}
+
 	// Load Textures 
 	{
 		int texWidth, texHeight, texChannels;
@@ -321,7 +352,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 	// currently we only require depth component
 	vk::Format preferedDepthFormats[] = {
 		vk::Format::eD32Sfloat,
-		vk::Format::eD32SfloatS8Uint,  
+		vk::Format::eD32SfloatS8Uint,
 		vk::Format::eD24UnormS8Uint,
 		vk::Format::eD16Unorm,
 		vk::Format::eD16UnormS8Uint,
@@ -332,7 +363,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 	// Create Depth Stencil Buffer
 	{
-		
+
 		vk::ImageCreateInfo imageCreateInfo = vk::ImageCreateInfo{}
 			.setImageType(vk::ImageType::e2D)
 			.setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
@@ -500,8 +531,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	const int expectedPortalCount = 4;
-	const int cameraMatElements = PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount);
+	const int cameraMatElements = m_portalManager.GetCameraBufferElementCount(recursionCount);
 
 	// Creating Descriptor Set Buffers
 	{
@@ -536,8 +566,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 				VulkanDebug::SetObjectName(m_device.get(), m_cameraIndexBuffer[i].Get(), (std::string("camera index") + indexAsString).c_str());
 			}
 			{
-				const int indexhelperBufferElementCount = 
-					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * expectedPortalCount;
+				const gsl::index indexhelperBufferElementCount =
+					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
 
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
 					.setSize(indexhelperBufferElementCount * sizeof(uint32_t))
@@ -830,7 +860,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write camera mat descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat,
-			PortalManager::GetCameraBufferElementCount(recursionCount, expectedPortalCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+			m_portalManager.GetCameraBufferElementCount(recursionCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
 
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
@@ -839,7 +869,8 @@ void GraphicsBackend::Init(SDL_Window* window)
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * expectedPortalCount * sizeof(uint32_t), vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
+			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount() * sizeof(uint32_t),
+			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 
 		// write rendered Depth descriptor Set
@@ -962,192 +993,16 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_pipelineLayout_scene = m_device->createPipelineLayoutUnique(pipelineLayoutcreateInfo);
 	}
 
-	m_meshData = std::make_unique<MeshDataManager>(m_allocator.get());
 
-	// use graphics present queue to avoid ownership transfer
-
-
-	LevelLoader::LoadLevelResult levelLoadResult = LevelLoader::LoadLevel("level.xml");
-
-	std::vector<const char*> objFileNames;
-	for (int i = 0; i < levelLoadResult.objFileNames.size(); ++i)
+	if(false)
 	{
-		objFileNames.push_back(levelLoadResult.objFileNames[i].c_str());
-	}
+		Line testLine = {};
+		testLine.pointA = glm::vec4(glm::vec3(0.f), 1.f);
+		testLine.pointB = glm::vec4(0.f, 100.f, 0.f, 1.f);
 
-	const char* additionalObjFiles[] =
-	{
-		"torus.obj",
-		"sphere.obj",
-		"cube.obj",
-		"plane.obj",
-		"halfSphere.obj",
-		"inverted_cube.obj",
-	};
+		testLine.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
+		testLine.colorB = glm::vec4(0.f, 1.f, 0.f, 1.f);
 
-	const int meshIndexOffset = levelLoadResult.objFileNames.size();
-
-	objFileNames.insert(objFileNames.end(), std::begin(additionalObjFiles), std::end(additionalObjFiles));
-
-
-	m_meshData->LoadObjs(objFileNames, m_device.get(), m_graphicsPresentCommandPools[0].get(), m_graphicsPresentQueues);
-
-	for (const char* obj : objFileNames)
-	{
-		m_triangleMeshes.emplace_back();
-		m_triangleMeshes.back() = TriangleMesh::FromFile(obj);
-
-	}
-
-
-
-	Line testLine = {};
-	testLine.pointA = glm::vec4(glm::vec3(0.f), 1.f);
-	testLine.pointB = glm::vec4(0.f, 100.f, 0.f, 1.f);
-
-	testLine.colorA = glm::vec4(1.f, 0.f, 0.f, 1.f);
-	testLine.colorB = glm::vec4(0.f, 1.f, 0.f, 1.f);
-
-	m_scene = std::make_unique<Scene>(m_allocator.get());
-
-	for (const LevelLoader::LevelObject levelObject : levelLoadResult.objects)
-	{
-		m_scene->Add(levelObject.meshId, levelObject.mat);
-	}
-	// Init Scene
-	if (false)
-	{
-
-
-		
-		{
-			const glm::vec3 torusPositions[] = {
-				glm::vec3(0),
-				glm::vec3(0.f,1.f,0.f),
-				glm::vec3(0.f,-1.f, 0.f),
-				glm::vec3(-6.f,10.f, -15.f),
-				glm::vec3(6.f, 10.f , 15.f),
-			};
-
-
-		}
-		{
-			Transform floorTransform = Transform(glm::vec3(0.f, -5.f, 0.f), glm::vec3(100.f, 1.f, 100.f), glm::identity<glm::quat>());
-			m_scene->Add(ObjectIds::cubeIdx, floorTransform.ToMat());
-
-			floorTransform.translation.y += 80.f;
-
-			m_scene->Add(ObjectIds::cubeIdx, floorTransform.ToMat());
-		}
-
-		// perspective warped cube
-		{
-			glm::mat4 perspectiveMat(1.f);
-
-			perspectiveMat[1][1] = 2.f;
-			perspectiveMat[1][3] = 1.f;
-			perspectiveMat[3][1] = +1.f;
-			perspectiveMat[3][3] = 1.f;
-
-			Transform trans(glm::vec3(-5.f, 5.f, 0.f), 3.f, glm::identity<glm::quat>());
-
-
-			m_scene->Add(ObjectIds::cubeIdx, trans.ToMat() * perspectiveMat);
-		}
-
-		{
-			Transform enclosingCube = Transform(glm::vec3{}, 150.f, glm::identity<glm::quat>());
-			//m_scene->Add(invertedCubeIdx, enclosingCube.ToMat());
-		}
-
-		{
-			const glm::vec3 spherePos[] = {
-					glm::vec3(-3.f,10.f, -5.f),
-					glm::vec3(3.f, 10.f , 5.f),
-			};
-
-			const glm::vec4 debugColors[] =
-			{
-				glm::vec4(1.f,0.33f,0.33f,1.f),
-				glm::vec4(1.f,.66f,.66f,1.f),
-			};
-
-			for (int i = 0; i < std::size(spherePos); ++i)
-			{
-				m_scene->Add(ObjectIds::sphereIdx, glm::translate(glm::mat4(1), spherePos[i]), debugColors[i]);
-			}
-
-		}
-		{
-			const glm::vec3 cubePos[] = {
-							glm::vec3(-7.f,13.f, -9.f),
-							glm::vec3(1.f, 10.f , -9.f),
-			};
-
-			const glm::vec4 debugColors[] =
-			{
-				glm::vec4(.66f,0.33f,0.99f,1.f),
-				glm::vec4(.33f,.66f,.99f,1.f),
-			};
-
-			for (int i = 0; i < std::size(cubePos); ++i)
-			{
-				m_scene->Add(ObjectIds::cubeIdx, glm::translate(glm::mat4(1), cubePos[i]), debugColors[i]);
-			}
-		}
-
-		{
-
-			const glm::vec4 debugColors[] =
-			{
-
-				glm::vec4(0.75f, 0.25f, 0.f, 1.f),
-				glm::vec4(0.5f, 0.5f, 0.f, 1.f),
-				glm::vec4(0.25f, 0.75f, 0.f, 1.f),
-				glm::vec4(0.f, 1.f, 0.f, 1.f),
-				glm::vec4(0.f, 0.75f, 0.25f, 1.f),
-				glm::vec4(0.f, 0.5f, 0.5f, 1.f),
-				glm::vec4(0.f, 0.25f, 0.75f, 1.f),
-				glm::vec4(0.f, 0.f, 1.f, 1.f),
-				glm::vec4(0.25f, 0.f, 1.f, 0.75f),
-				glm::vec4(0.5f, 0.f, 1.f, 0.5f),
-				glm::vec4(0.75f, 0.f, 1.f, 0.25f),
-
-			};
-
-
-			int count = 8;
-			const glm::vec3 baseTranslation = glm::vec3(0.f, 0.f, 50.f);
-			for (int i = 0; i < count; ++i)
-			{
-				const glm::vec3 trans = glm::rotate(glm::angleAxis(glm::radians((360.f / 8) * i), glm::vec3(0.f, 1.f, 0.f)), baseTranslation);
-
-
-				Transform transf(trans, glm::vec3(3.f, 10.f, 3.f), glm::identity<glm::quat>());
-				m_scene->Add(ObjectIds::cubeIdx, transf.ToMat(), debugColors[i]);
-			}
-
-
-		}
-
-	}
-
-	{
-		const Transform portal_a(glm::vec3(0.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
-
-		const Transform portal_b = Transform(glm::vec3(5.f, 10.f, 30.f), 10.f, glm::angleAxis(glm::radians(0.0f), glm::vec3(1.f, 0.f, 0.f)));
-
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::halfSphereIdx +meshIndexOffset, portal_a.ToMat(), portal_b.ToMat()));
-	}
-	{
-		const Transform portal_a(glm::vec3(30.f, 10.f, 0.f), 10.f, glm::angleAxis(glm::radians(90.0f), glm::vec3(1.f, 0.f, 0.f)));
-
-		const Transform portal_b = Transform(glm::vec3(35.f, 15.f, 20.f), 10.f, glm::angleAxis(glm::radians(45.0f), glm::vec3(1.f, 0.f, 0.f)));
-
-		m_portalManager.Add(Portal::CreateWithPortalTransforms(ObjectIds::planeIdx + meshIndexOffset, portal_a.ToMat(), portal_b.ToMat()));
-	}
-
-	{
 		const auto addLines = [](
 			std::vector<Line>& lineContainer,
 			AABBEdgePoints edgePoints,
@@ -1194,9 +1049,9 @@ void GraphicsBackend::Init(SDL_Window* window)
 		};
 
 
-		const ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes_camerMats = [this, expectedPortalCount]() {
+		const ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes_camerMats = [this]() {
 			ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes{};
-			multibytes.data[max_portal_count_cid] = expectedPortalCount;// gsl::narrow<uint8_t>(m_portalManager.GetPortalCount());
+			multibytes.data[max_portal_count_cid] = gsl::narrow<uint32_t>(m_portalManager.GetPortalCount());
 			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
 			return multibytes;
 		}();
@@ -1316,7 +1171,7 @@ void GraphicsBackend::Init(SDL_Window* window)
 		createInfo.pipelineShaderStageCreationInfos_portalInitial = shaderStage_portal_initial;
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
-		GraphicsPipeline::PipelinesCreateResult result  = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
+		GraphicsPipeline::PipelinesCreateResult result = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
 			createInfo, recursionCount);
 
 		m_pipelines.scenePass.scene = std::move(result.scenePassPipelines.scene);
@@ -1333,14 +1188,12 @@ void GraphicsBackend::Init(SDL_Window* window)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
-	assert(m_portalManager.GetPortalCount() == expectedPortalCount);
-
-	constexpr int maxStencilValue =  RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
+	constexpr int maxStencilValue = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
 
 	static_assert(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255);
 }
 
-void GraphicsBackend::Render(const Camera & camera, gsl::span<const Line> extraLines)
+void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLines)
 {
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);

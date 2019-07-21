@@ -28,9 +28,9 @@ Scene::Scene(VmaAllocator allocator)
 
 }
 
-void Scene::Add(int MeshIdx, const glm::mat4& modelmat, glm::vec4 debugColor /*= glm::vec4(0.f)*/)
+void Scene::Add(int MeshIdx, const Transform& transform, glm::vec4 debugColor /*= glm::vec4(0.f)*/)
 {
-	m_objects.push_back(SceneObject{ modelmat, MeshIdx, debugColor });
+	m_objects.push_back(SceneObject{ transform, MeshIdx, debugColor });
 }
 
 void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLayout, vk::CommandBuffer drawCommandBuffer, uint32_t layerStartIndex, uint32_t layerEndIndex) const
@@ -47,7 +47,7 @@ void Scene::Draw(MeshDataManager& meshdataManager, vk::PipelineLayout pipelineLa
 	{
 
 		PushConstant_sceneObject pushConstant = {};
-		pushConstant.model = object.modelMat;
+		pushConstant.model = object.transform.ToMat();
 		pushConstant.layerStartIndex = layerStartIndex;
 		pushConstant.debugColor = object.debugColor;
 

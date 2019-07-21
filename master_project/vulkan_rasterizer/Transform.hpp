@@ -31,11 +31,6 @@ public:
 		return result;
 	}
 
-	glm::mat4 ToViewMat() const
-	{
-		return glm::inverse(ToMat());
-	}
-
 	Transform CalcInversion() const;
 
 	Transform& Translate(glm::vec3 inTranslation) { translation + inTranslation; return *this; }
