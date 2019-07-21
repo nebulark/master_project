@@ -27,7 +27,7 @@ void Camera::UpdateFromMouse(float yawInput, float pitchInput)
 	const glm::quat yawRotation = glm::angleAxis(-yawInput, glm::vec3(0, 1, 0));
 	const glm::quat pitchRotation = glm::angleAxis(-pitchInput, glm::vec3(1, 0, 0));
 
-	m_transform.rotation = glm::normalize(m_transform.rotation * pitchRotation * yawRotation);
+	m_transform.rotation = glm::normalize(yawRotation * m_transform.rotation * pitchRotation);
 }
 
 glm::vec3 Camera::CalcForwardVector() const 
