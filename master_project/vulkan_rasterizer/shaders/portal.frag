@@ -38,7 +38,6 @@ layout(push_constant) uniform PushConstant {
 	int currentPortalCount;
 } pc;
 
-
 void main() 
 {
 	
@@ -74,6 +73,8 @@ void main()
 	if(isLastPortalPass)
 	{
 		outRenderedStencil = 0;
+		outColor = vec4(0.5);
+
 		// don't touch helper index and camera indices as we might be out of range
 		// TODO: this if is know at compile time actually
 	}
@@ -109,7 +110,7 @@ void main()
 			// write our camera index into camera index buffer
 			ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
 			outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
-			outColor =pc.debugColor;
+			outColor = vec4(vec3(0.0),1.f);// pc.debugColor;
 		}
 		else
 		{
