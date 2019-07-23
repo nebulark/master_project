@@ -60,10 +60,10 @@ void main()
 	// this way we can discard fragments of the partner portal, which would fight for depth with original portal
 	if(isSameFacing)
 	{
-		renderedDepthValue *= 1.00001;
+		renderedDepthValue *= 0.9999;
 	}
 
-	if(gl_FragCoord.z <= renderedDepthValue)
+	if(gl_FragCoord.z >= renderedDepthValue)
 	{
 		discard;
 	}

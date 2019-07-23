@@ -117,11 +117,14 @@ GraphicsPipeline::PipelinesCreateResult GraphicsPipeline::CreateGraphicPipelines
 		.setDepthBiasClamp(0.f)
 		.setDepthBiasSlopeFactor(0.f);
 
+	constexpr vk::CompareOp depthBufferCompareOp = vk::CompareOp::eLess;
+	constexpr vk::CompareOp inverseDepthBufferCompareOp = vk::CompareOp::eGreater;
+
 	const vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo_onlyDepthTest = 
 		vk::PipelineDepthStencilStateCreateInfo()
 		.setDepthTestEnable(true)
 		.setDepthWriteEnable(true)
-		.setDepthCompareOp(vk::CompareOp::eLess)
+		.setDepthCompareOp(inverseDepthBufferCompareOp)
 		.setStencilTestEnable(false)
 		;
 	const vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo_portal = vk::PipelineRasterizationStateCreateInfo{}

@@ -25,7 +25,7 @@ Application_Rasterizer::Application_Rasterizer()
 	};
 
 
-	m_camera.SetPerspection( 1.f, 100000.0f, glm::radians(45.f), glm::vec2(width, height));
+	m_camera.SetPerspection_InverseZBuffer( 1.f, glm::radians(45.f), glm::vec2(width, height));
 
 	m_camera.SetPosition(glm::vec3(0.f, 0.05f, 3.f) * 20.f);
 	m_camera.LookDir(glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));

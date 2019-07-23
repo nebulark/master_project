@@ -9,6 +9,8 @@ class Camera
 public:
 	Camera();
 	void SetPerspection(float nearPlane, float farPlane, float fieldOfViewRadians, glm::vec2 aspectRatio);
+
+	void SetPerspection_InverseZBuffer(float nearPlane, float fieldOfViewRadians, glm::vec2 aspectRatio);
 	const glm::mat4& GetProjectionMatrix() const;
 
 	void UpdateFromMouse(float yawInput, float pitchInput);

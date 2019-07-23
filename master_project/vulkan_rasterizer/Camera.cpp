@@ -17,6 +17,23 @@ void Camera::SetPerspection(float nearPlane, float farPlane, float fieldOfView, 
 	m_perspectionMatrix[1][1] *= -1;
 }
 
+
+void Camera::SetPerspection_InverseZBuffer(float nearPlane, float fieldOfViewRadians, glm::vec2 aspectRatio)
+{
+	m_nearClipping = nearPlane;
+	m_farClipping = std::numeric_limits<float>::infinity();
+
+	float h = glm::cos(0.5f * fieldOfViewRadians) / glm::sin(0.5f * fieldOfViewRadians);
+	float w = h * aspectRatio.y / aspectRatio.x;
+
+	m_perspectionMatrix  = glm::mat4(
+		w,		0.0f,	0.0f,		0.0f,
+		0.0f,	-h,		0.0f,		0.0f,
+		0.0f,	0.0f,	0.0f,		-1.0f,
+		0.0f,	0.0f,	nearPlane,	0.0f);
+
+}
+
 const glm::mat4& Camera::GetProjectionMatrix() const
 {
 	return m_perspectionMatrix;

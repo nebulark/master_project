@@ -1242,19 +1242,41 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 	m_device->resetCommandPool(m_graphicsPresentCommandPools[m_currentframe].get(), {});
 	vk::CommandBuffer drawBuffer = m_graphicsPresentBuffer[m_currentframe].get();
 
+	constexpr float depthBufferClearValue = 1.f;
+	constexpr float inverseDepthBufferClearValue = 0.f;
+
+	constexpr float inverseDepthFrontBufferClearValue = 1.f;
+
+	const vk::ClearDepthStencilValue clearDepthStencilValue(inverseDepthBufferClearValue, 0);
+
+	const std::array<float, 4> frontBufferClearValue = [&inverseDepthFrontBufferClearValue]()
+	{
+		std::array<float, 4> frontBufferClearValue;
+		frontBufferClearValue.fill(inverseDepthFrontBufferClearValue);
+		return frontBufferClearValue;
+	}();
+
+	const std::array<float, 4> manualStencilClearValue = []()
+	{
+		std::array<float, 4> manualStencilClearValue;
+		manualStencilClearValue.fill(0.f);
+		return manualStencilClearValue;
+	}();
+
+
 	// drawing
 	{
 		vk::ClearValue clearValues[] = {
 			// output
 			vk::ClearColorValue(std::array<float, 4>{ 100.f / 255.f, 149.f / 255.f, 237.f / 255.f, 1.f }),
 			// depth Stencil
-			vk::ClearDepthStencilValue(1.f, 0),
-			// rendered depth x 2
-			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-			// rendered stencil x 2
-			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
-			vk::ClearColorValue(std::array<float, 4>{ 0.f, 0.f, 0.f, 0.f }),
+			clearDepthStencilValue,
+
+			vk::ClearColorValue(frontBufferClearValue),
+			vk::ClearColorValue(frontBufferClearValue),
+
+			vk::ClearColorValue(manualStencilClearValue),
+			vk::ClearColorValue(manualStencilClearValue),
 		};
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
@@ -1385,7 +1407,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 					vk::ClearAttachment clearDepthStencil = vk::ClearAttachment{}
 						.setColorAttachment(1)
 						.setAspectMask(VulkanUtils::GetDepthStencilAspectMask(m_depthStencilFormat))
-						.setClearValue(vk::ClearDepthStencilValue(1.f, 0));
+						.setClearValue(clearDepthStencilValue);
 
 
 					const vk::ClearRect wholeScreen(vk::Rect2D(vk::Offset2D(0, 0), m_swapchain.extent), 0, 1);
