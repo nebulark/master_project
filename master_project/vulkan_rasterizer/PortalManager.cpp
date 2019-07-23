@@ -80,8 +80,12 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 			
 			drawBuffer.drawIndexed(portalMeshRef.indexCount, instanceCount, portalMeshRef.firstIndex, 0, 0);
 
+#undef MemoryBarrier
+
+			vk::MemoryBarrier barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
+
 			drawBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eFragmentShader,
-				vk::DependencyFlags{}, {}, {}, {});
+				vk::DependencyFlags{}, barrier, {}, {});
 
 		}
 	}

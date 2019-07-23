@@ -98,24 +98,25 @@ void main()
 			// don't count myself, as I am currently writing to it an the value may be zero or 1
 			if(index != helperIndex)
 			{
-				previousVisiblePortals+= (pih.indices[i + firstHelperIndex]) == 0 ? 0 : 1;
+				previousVisiblePortals+= (pih.indices[i + firstHelperIndex]) <= 0 ? 0 : 1;
 			}
 		}
 
-		if(previousVisiblePortals >= pc.maxVisiblePortalCount)
+		if (previousVisiblePortals < pc.maxVisiblePortalCount)
 		{
-			// to many visible portals, sadly we won't be visible,
-			// we could set a value, so that subsequent portals won't be rendered to maybe improb perf
-			discard;
+			// mark that we are a visible portal
+			pih.indices[helperIndex] = previousVisiblePortals + 1;
+			// write our camera index into camera index buffer
+			ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
+			outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
+			outColor =pc.debugColor;
 		}
-
-		// mark that we are a visible portal
-		pih.indices[helperIndex] = previousVisiblePortals + 1;
-
-		// write our camera index into camera index buffer
-		ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
-
-		outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
+		else
+		{
+			pih.indices[helperIndex] = -1;
+			outRenderedStencil = 0;
+			outColor = vec4(1.f);
+		}
 	}
 
 	if(gl_FrontFacing)
@@ -126,5 +127,4 @@ void main()
 	{
 		outRenderedDepth = -gl_FragCoord.z;
 	}
-	outColor =pc.debugColor;
 }
