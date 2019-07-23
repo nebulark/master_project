@@ -10,8 +10,8 @@ namespace
 
 Application_Rasterizer::Application_Rasterizer()
 {
-	constexpr int width = 1920 / 2;
-	constexpr int height = 1080 / 2;
+	constexpr int width = 1920 / 1.5;
+	constexpr int height = 1080 / 1.5;
 
 	m_sdlWindow = WindowPtr{
 		SDL_CreateWindow(
