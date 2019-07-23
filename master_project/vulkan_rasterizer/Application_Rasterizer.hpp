@@ -30,4 +30,5 @@ private:
 	std::vector<Line> m_extraLines;
 	glm::vec3 m_savedLocation;
 	glm::vec3 m_oldCameraPos;
+	bool m_showFrameMilliseconds = true;
 };

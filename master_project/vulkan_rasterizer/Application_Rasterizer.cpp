@@ -76,7 +76,7 @@ void Application_Rasterizer::HandleEvent(SDL_Event event)
 
 void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 {	
-	constexpr float movementMultiplicator = 100.f;
+	constexpr float movementMultiplicator = 500.f;
 	constexpr float pitchMultiplicator = 2.f;
 	constexpr float yawMultiplicator = 2.f;
 	float yawInput = 0;
@@ -223,6 +223,14 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	}
 
 
-	std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
+	if (m_inputManager.GetKey(KeyCode::KEY_F).GetNumPressed() > 0)
+	{
+		m_showFrameMilliseconds = !m_showFrameMilliseconds;
+	}
+
+	if (m_showFrameMilliseconds)
+	{
+		std::printf("delta Milliseconds: %f \n", DeltaSeconds * 1000.f);
+	}
 }
 
