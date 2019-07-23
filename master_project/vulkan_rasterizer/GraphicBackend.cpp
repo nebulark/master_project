@@ -71,7 +71,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
-	constexpr vk::Format renderedStencilFormat = vk::Format::eR8Uint;
+	constexpr vk::Format renderedStencilFormat = vk::Format::eR16Uint;
 
 	namespace ObjectIds
 	{
@@ -1206,7 +1206,9 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 	 }
 	constexpr int maxStencilValue = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
 
-	static_assert(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255);
+	static_assert(
+		(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255)
+		|| renderedStencilFormat == vk::Format::eR16Uint && maxStencilValue <= 255 * 255);
 }
 
 void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLines)
@@ -1425,7 +1427,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 				}
 
 				// last iteration draw all portals
-				const int numVisiblePortalsforLayer = gsl::narrow<int>((iteration == recursionCount - 1)
+				const int maxVisiblePortalCount = gsl::narrow<int>((iteration == recursionCount - 1)
 					? 0
 					: maxVisiblePortalsForRecursion[iteration + 1]);
 
@@ -1527,7 +1529,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 					DrawPortalsInfo info = {};
 					info.drawBuffer = drawBuffer;
 					info.layout = m_pipelineLayout_portal.get();
-					info.maxVisiblePortalCount = isLastIteration ? 0 : maxVisiblePortalsForRecursion[0];
+					info.maxVisiblePortalCount = maxVisiblePortalCount;
 					info.meshDataManager = m_meshData.get();
 					info.layerStartIndex = layerStartIndex;
 					info.nextLayerStartIndex = layerEndIndex;
