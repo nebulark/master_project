@@ -127,6 +127,9 @@
     <ClCompile Include="LevelLoader.cpp">
       <Filter>Code</Filter>
     </ClCompile>
+    <ClCompile Include="Hsv.cpp">
+      <Filter>Code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.hpp">
@@ -253,6 +256,9 @@
       <Filter>Code</Filter>
     </ClInclude>
     <ClInclude Include="LevelLoader.hpp">
+      <Filter>Code</Filter>
+    </ClInclude>
+    <ClInclude Include="Hsv.hpp">
       <Filter>Code</Filter>
     </ClInclude>
   </ItemGroup>

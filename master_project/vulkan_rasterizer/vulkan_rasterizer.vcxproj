@@ -198,6 +198,7 @@
     <ClCompile Include="DebugUtils.cpp" />
     <ClCompile Include="GraphicBackend.cpp" />
     <ClCompile Include="GraphicsPipeline.cpp" />
+    <ClCompile Include="Hsv.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="KdTree.cpp" />
     <ClCompile Include="KdTreeTraverser.cpp" />
@@ -261,6 +262,7 @@
     <ClInclude Include="DebugUtils.hpp" />
     <ClInclude Include="GraphicBackend.hpp" />
     <ClInclude Include="GraphicsPipeline.hpp" />
+    <ClInclude Include="Hsv.hpp" />
     <ClInclude Include="InputManager.hpp" />
     <ClInclude Include="KdTree.hpp" />
     <ClInclude Include="KdTreeTraverser.hpp" />

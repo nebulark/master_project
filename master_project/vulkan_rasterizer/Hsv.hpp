@@ -4,7 +4,7 @@
 inline constexpr glm::vec4 ColorFromHSV(float hDegrees, float s, float v) 
 {
 
-	assert(0.f < hDegrees && hDegrees < 360.f);
+	assert(0.f <= hDegrees && hDegrees < 360.f);
 	
 	if (s == 0.f)
 	{
