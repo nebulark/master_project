@@ -104,7 +104,7 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
 
-	const uint32_t portalCount = GetPortalCount();
+	const uint32_t portalCount = gsl::narrow<uint32_t>(GetPortalCount());
 	const uint32_t matrixCount =  NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
 	assert(outCameraTransforms.size() >= matrixCount);
 
@@ -136,7 +136,7 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 
 int PortalManager::GetCurrentCameraBufferElementCount(int maxRecursionCount) const
 {
-	const int cameraBufferElementCount = NTree::CalcTotalElements(GetPortalCount(), maxRecursionCount + 1);
+	const int cameraBufferElementCount = NTree::CalcTotalElements(gsl::narrow<uint32_t>(GetPortalCount()), maxRecursionCount + 1);
 	return cameraBufferElementCount;
 }
 
