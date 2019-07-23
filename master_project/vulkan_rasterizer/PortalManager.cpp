@@ -99,8 +99,8 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 	// each portal struct actually defines two portals
 	// this value will we uses a N for the NTree
 
-	const uint32_t portalCount = gsl::narrow<uint32_t>(m_portals.size() * 2);
-	const uint32_t matrixCount = NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
+	const uint32_t portalCount = GetPortalCount();
+	const uint32_t matrixCount =  NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
 	assert(outCameraTransforms.size() >= matrixCount);
 
 	outCameraTransforms[0] = cameraMat;
@@ -129,17 +129,12 @@ void PortalManager::CreateCameraMats(glm::mat4 cameraMat, int maxRecursionCount,
 
 }
 
-int PortalManager::GetCameraBufferElementCount(int maxRecursionCount) const
+int PortalManager::GetCurrentCameraBufferElementCount(int maxRecursionCount) const
 {
-	const int portalCount = gsl::narrow<int>(m_portals.size() * 2);
-	return GetCameraBufferElementCount(maxRecursionCount, portalCount);
-}
-
-int PortalManager::GetCameraBufferElementCount(int maxRecursionCount, int portalCount)
-{
-	const int cameraBufferElementCount = NTree::CalcTotalElements(portalCount, maxRecursionCount + 1);
+	const int cameraBufferElementCount = NTree::CalcTotalElements(GetPortalCount(), maxRecursionCount + 1);
 	return cameraBufferElementCount;
 }
+
 
 std::optional<PortalManager::RayTraceResult> PortalManager::RayTrace(const Ray& ray, const gsl::span<const TriangleMesh> portalMeshes) const
 {

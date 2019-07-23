@@ -43,12 +43,7 @@ public:
 		int maxRecursionCount,
 		gsl::span<glm::mat4> outCameraTransforms) const;
 
-
-	int GetCameraBufferElementCount(int maxRecursionCount) const;
-
-	static int GetCameraBufferElementCount(int maxRecursionCount, int portalCount);
-
-
+	int GetCurrentCameraBufferElementCount(int maxRecursionCount) const;
 	gsl::index GetPortalCount() const { return m_portals.size() * 2; }
 
 	struct RayTraceResult

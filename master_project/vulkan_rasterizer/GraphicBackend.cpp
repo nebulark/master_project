@@ -537,8 +537,6 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 		m_fragShaderModule_portal_subsequent = VulkanUtils::CreateShaderModuleFromFile("portal_subsequent.frag.spv", m_device.get());
 	}
 
-	const int cameraMatElements = m_portalManager.GetCameraBufferElementCount(recursionCount);
-
 	// Creating Descriptor Set Buffers
 	{
 
@@ -548,7 +546,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 			{
 				const vk::BufferCreateInfo cameraMatBufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(cameraMatElements * sizeof(glm::mat4))
+					.setSize(cameraMatricesMaxCount * sizeof(glm::mat4))
 					.setUsage(vk::BufferUsageFlagBits::eUniformBuffer)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -573,7 +571,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 			}
 			{
 				const gsl::index indexhelperBufferElementCount =
-					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
+					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount;
 
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
 					.setSize(indexhelperBufferElementCount * sizeof(uint32_t))
@@ -866,7 +864,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 		// write camera mat descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameratMat_buffer, m_descriptorSet_cameratMat,
-			m_portalManager.GetCameraBufferElementCount(recursionCount) * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
+			cameraMatricesMaxCount * sizeof(glm::mat4), vk::DescriptorType::eUniformBuffer, 0 /*matches shader code*/);
 
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
@@ -875,7 +873,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount() * sizeof(uint32_t),
+			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount * sizeof(uint32_t),
 			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 
@@ -1057,8 +1055,8 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 		const ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes_camerMats = [this]() {
 			ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes{};
-			multibytes.data[max_portal_count_cid] = gsl::narrow<uint32_t>(m_portalManager.GetPortalCount());
-			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(m_portalManager.GetCameraBufferElementCount(recursionCount));
+			multibytes.data[max_portal_count_cid] = gsl::narrow<uint32_t>(maxPortalCount);
+			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(NTree::CalcTotalElements(maxPortalCount, recursionCount + 1));
 			return multibytes;
 		}();
 
@@ -1194,6 +1192,10 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 		m_renderFinishedSem[i] = m_device->createSemaphoreUnique(vk::SemaphoreCreateInfo{});
 	}
 
+	 if(m_portalManager.GetPortalCount() > maxPortalCount)
+	 {
+		 throw std::logic_error("m_portalManager.GetPortalCount() > maxPortalCount failed");
+	 }
 	constexpr int maxStencilValue = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
 
 	static_assert(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255);
@@ -1204,6 +1206,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
+	const int currentCameraBufferElementCount = m_portalManager.GetCurrentCameraBufferElementCount(recursionCount);
 
 	{
 		VmaAllocation ubo_Allocation = m_ubo_buffer[m_currentframe].GetAllocation();
@@ -1215,10 +1218,8 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 	}
 
 	{
-		const int cameraBufferElementCount = m_portalManager.GetCameraBufferElementCount(recursionCount);
-
 		std::vector<glm::mat4> cameraViewMats;
-		cameraViewMats.resize(cameraBufferElementCount);
+		cameraViewMats.resize(currentCameraBufferElementCount);
 
 		m_portalManager.CreateCameraMats(camera.CalcMat(), recursionCount, cameraViewMats);
 		std::transform(std::begin(cameraViewMats), std::end(cameraViewMats), std::begin(cameraViewMats), [](const glm::mat4& e)
@@ -1281,7 +1282,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-		const gsl::index indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * m_portalManager.GetPortalCount();
+		const gsl::index indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount;
 
 		// clear the helper buffer
 		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0,
@@ -1417,7 +1418,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 
 				// last iteration draw all portals
 				const int numVisiblePortalsforLayer = gsl::narrow<int>((iteration == recursionCount - 1)
-					? m_portalManager.GetPortalCount()
+					? 0
 					: maxVisiblePortalsForRecursion[iteration + 1]);
 
 				const int layerStartIndex = RecursionTree::CalcLayerStartIndex(iteration, maxVisiblePortalsForRecursion);

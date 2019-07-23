@@ -28,8 +28,10 @@ public:
 	const PortalManager& GetPortalManager() const { return m_portalManager; }
 private:
 	static constexpr int MaxInFlightFrames = 2;	
-	static constexpr int maxVisiblePortalsForRecursion[] = {4,4,3};
+	static constexpr int maxVisiblePortalsForRecursion[] = {8,2,2};
+	static constexpr int maxPortalCount = 32;
 	static constexpr int recursionCount = gsl::narrow<int>(std::size(maxVisiblePortalsForRecursion));
+	static constexpr int cameraMatricesMaxCount = NTree::CalcTotalElements(maxPortalCount, recursionCount + 1);
 
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;
