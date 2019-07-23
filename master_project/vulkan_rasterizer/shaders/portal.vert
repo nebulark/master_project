@@ -30,6 +30,7 @@ layout(push_constant) uniform PushConstant {
 	int nextLayerStartIndex;
 	int portalIndex;
 	int maxVisiblePortalCount;
+	int currentPortalCount;
 } pc;
 
 void main() {

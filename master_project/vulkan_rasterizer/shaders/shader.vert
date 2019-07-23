@@ -26,8 +26,6 @@ layout(location = 0) out vec3 fragNormal;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out flat int outInstanceIndex;
 
-layout(constant_id = 0) const int maxPortalCount = 4;
-
 layout(set = 4, binding = 0) buffer CameraIndices {
     int cIndices[];
 } ci;

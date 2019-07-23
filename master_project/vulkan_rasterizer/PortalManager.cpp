@@ -53,6 +53,7 @@ void PortalManager::DrawPortals(const DrawPortalsInfo& info)
 	pushConstant.layerStartIndex = info.layerStartIndex;
 	pushConstant.nextLayerStartIndex = info.nextLayerStartIndex;
 	pushConstant.maxVisiblePortalCount = info.maxVisiblePortalCount;
+	pushConstant.currentPortalCount = gsl::narrow<uint32_t>(GetPortalCount());
 
 	const int instanceCount = info.nextLayerStartIndex - info.layerStartIndex;
 

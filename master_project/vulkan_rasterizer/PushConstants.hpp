@@ -9,6 +9,7 @@ struct PushConstant_portal
 	int32_t nextLayerStartIndex;
 	int32_t portalIndex;
 	int32_t maxVisiblePortalCount;
+	int32_t currentPortalCount;
 };
 
 constexpr size_t PushConstant_Size = sizeof(PushConstant_portal);

@@ -15,8 +15,6 @@ layout (input_attachment_index = 0, set = 3, binding = 0) uniform subpassInput i
 layout (input_attachment_index = 1, set = 3, binding = 1) uniform usubpassInput inputStencil;
 #endif
 
-layout(constant_id = 0) const int maxPortalCount = 4;
-
 layout(set = 2, binding = 0) uniform ubo_cameraMats
 {
 	mat4 mats[];
@@ -37,6 +35,7 @@ layout(push_constant) uniform PushConstant {
 	int nextLayerStartIndex;
 	int portalIndex;
 	int maxVisiblePortalCount;
+	int currentPortalCount;
 } pc;
 
 
@@ -80,19 +79,19 @@ void main()
 	}
 	else
 	{
-		int firstHelperIndex = cameraIndexAndStencilCompare * maxPortalCount;
+		int firstHelperIndex = cameraIndexAndStencilCompare * pc.currentPortalCount;
 		int helperIndex = firstHelperIndex + pc.portalIndex;
 
 		int currentViewMatIndex = cameraIndexAndStencilCompare == 0 ? 0 :  ci.cIndices[cameraIndexAndStencilCompare];
 
-		int firstPortalCameraIndex = currentViewMatIndex * maxPortalCount + 1;
+		int firstPortalCameraIndex = currentViewMatIndex * pc.currentPortalCount + 1;
 		int currentPortalCameraIndex = firstPortalCameraIndex + pc.portalIndex;
 
 		int firstCameraIndicesIndexAndStencilWrite = pc.nextLayerStartIndex + (inInstanceIndex * pc.maxVisiblePortalCount);
 		// count previous visible portals
 		// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
 		int previousVisiblePortals = 0;
-		for(int i = 0; i < maxPortalCount; ++i)
+		for(int i = 0; i < pc.currentPortalCount; ++i)
 		{
 			int index = i + firstHelperIndex;
 

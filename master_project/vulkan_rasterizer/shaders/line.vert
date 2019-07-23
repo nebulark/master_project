@@ -20,8 +20,6 @@ layout(set = 2, binding = 0) uniform ubo_cameraMats
 } u_cMats;
 
 
-layout(constant_id = 0) const int maxPortalCount = 4;
-
 layout(set = 4, binding = 0) buffer CameraIndices {
     int cIndices[];
 } ci;
