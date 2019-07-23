@@ -44,7 +44,7 @@ void main() {
 	}
 
 
-	const float ambient = 0.2;
+	const float ambient = 0.4;
 
 	vec3 normal = normalize(fragNormal);
 	float diffuse = max(0, dot(directionalLightDir, normal));

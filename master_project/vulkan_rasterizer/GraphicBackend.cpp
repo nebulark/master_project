@@ -17,7 +17,7 @@
 #include "UniqueVmaMemoryMap.hpp"
 #include "RecursionTree.hpp"
 #include "LevelLoader.hpp"
-
+#include "Hsv.hpp"
 
 namespace
 {
@@ -190,9 +190,17 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 			}
 		}
 
-		for (const LevelLoader::LevelObject& levelObject : levelLoadResult.objects)
 		{
-			m_scene->Add(levelObject.meshId, levelObject.transform);
+			float degrees = 0;
+			for (const LevelLoader::LevelObject& levelObject : levelLoadResult.objects)
+			{
+				m_scene->Add(levelObject.meshId, levelObject.transform, ColorFromHSV(degrees, 0.5f, 0.9f));
+				degrees += 40.f;
+				if (degrees >= 360.f)
+				{
+					degrees -= 360.f;
+				}
+			}
 		}
 		for (const LevelLoader::PortalObject& portal : levelLoadResult.portals)
 		{
