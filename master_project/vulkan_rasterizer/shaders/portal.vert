@@ -5,7 +5,7 @@ layout(set = 1, binding = 0) uniform Ubo_GlobalRenderData {
     mat4 proj;
 } u_grd;
 
-layout(constant_id = 1) const int maxCameraMatCount = 33825;
+layout(constant_id = 1) const int maxCameraMatCount = 3257437;
 layout(set = 2, binding = 0) uniform ubo_cameraMats
 {
 	mat4 mats[maxCameraMatCount];
