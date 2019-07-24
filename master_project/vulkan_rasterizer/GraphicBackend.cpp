@@ -1460,8 +1460,8 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 						vk::DeviceSize vertexBufferOffset = 0;
 						drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
 
-						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[2];
-						const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
+						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[m_meshData->GetMeshes().size()-1];
+						//const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
 
 						PushConstant_sceneObject pushConstant = {};
 						pushConstant.model = camera.CalcMat();
