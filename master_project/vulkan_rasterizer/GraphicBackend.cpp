@@ -118,7 +118,6 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 	const char* deviceExtensions[] = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME,
 	};
 
 	VulkanDevice::QueueRequirement queueRequirement[1];
