@@ -2,13 +2,11 @@
 
 
 #include "LevelExport.h"
-#include "Editor/EditorEngine.h"
 #include "Editor.h"
 #include "EngineUtils.h"
 
 #include "Engine/StaticMeshActor.h"
 #include "Components/StaticMeshComponent.h"
-#include "Exporters/StaticMeshExporterOBJ.h"
 #include "OutputDeviceFile.h"
 #include "Paths.h"
 #include "EditorLevelLibrary.h"
@@ -212,8 +210,8 @@ namespace
 
 void ULevelExport::ExportLevel()
 {
-
-	FString exportFolderName("level/");
+	UWorld* editorWorld =	UEditorLevelLibrary::GetEditorWorld();
+	FString exportFolderName = FString("level/") + editorWorld->GetMapName() + "/";
 	TArray<UStaticMesh*> staticMeshes;
 
 	TArray<LevelObject> levelObjects;
