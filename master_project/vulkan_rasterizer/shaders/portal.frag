@@ -70,7 +70,7 @@ void main()
 	if(isLastPortalPass)
 	{
 		outRenderedStencil = 0;
-		outColor = vec4(0.5);
+		outColor = gl_FrontFacing ? vec4(0.75) : vec4(0.25);
 
 		// don't touch helper index and camera indices as we might be out of range
 		// TODO: this if is know at compile time actually
