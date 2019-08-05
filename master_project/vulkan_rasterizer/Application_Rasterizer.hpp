@@ -24,10 +24,11 @@ private:
 	GraphicsBackend m_graphcisBackend;
 	Camera m_camera;
 	InputManager m_inputManager;
+	bool m_shouldLockrotation = false;
 	void HandleEvent(SDL_Event event);
 	void GameUpdate(float Seconds);
 	ClockType::time_point m_lastTime;
-	std::vector<Line> m_extraLines;
+	DrawOptions m_drawOptions;
 	glm::vec3 m_savedLocation;
 	glm::vec3 m_oldCameraPos;
 	bool m_showFrameMilliseconds = true;

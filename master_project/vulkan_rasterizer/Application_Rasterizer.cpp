@@ -10,8 +10,8 @@ namespace
 
 Application_Rasterizer::Application_Rasterizer()
 {
-	constexpr int width = static_cast<int>( 1920 / 1.5);
-	constexpr int height = static_cast<int>(1080 / 1.5);
+	constexpr int width = static_cast<int>(1920);// / 1.5);
+	constexpr int height = static_cast<int>(1080);// / 1.5);
 
 	m_sdlWindow = WindowPtr{
 		SDL_CreateWindow(
@@ -52,7 +52,7 @@ bool Application_Rasterizer::Update()
 		HandleEvent(event);
 	}
 	GameUpdate(DeltaSeconds);
-	m_graphcisBackend.Render(m_camera, m_extraLines);
+	m_graphcisBackend.Render(m_camera, m_drawOptions);
 	SDL_UpdateWindowSurface(m_sdlWindow.get());
 	return true;
 }
@@ -115,8 +115,12 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		upInput -= 1.f;
 	}
 
+	if (m_inputManager.GetKey(KeyCode::KEY_K).GetNumPressed() > 0)
+	{
+		m_shouldLockrotation = !m_shouldLockrotation;
+	}
 
-	if (!m_inputManager.GetKey(KeyCode::KEY_LEFT_SHIFT).IsPressed())
+	if (!m_inputManager.GetKey(KeyCode::KEY_LEFT_SHIFT).IsPressed() ^ m_shouldLockrotation)
 	{
 		yawInput += m_inputManager.GetMouseMotion().x * DeltaSeconds * yawMultiplicator;
 		pitchInput += m_inputManager.GetMouseMotion().y * DeltaSeconds * pitchMultiplicator;
@@ -169,7 +173,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 	}
 
 
-	if (m_inputManager.GetKey(KeyCode::KEY_P).GetNumPressed() > 0)
+	if (m_inputManager.GetKey(KeyCode::KEY_L).GetNumPressed() > 0)
 	{
 		std::puts("     --- Seperation -----        ");
 	}
@@ -185,7 +189,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 
 		const PortalManager& portalmanger = m_graphcisBackend.GetPortalManager();
 
-		m_extraLines.push_back(Line(glm::vec4(m_savedLocation, 1.f), glm::vec4(currentLocation, 1.f)));
+		m_drawOptions.extraLines.push_back(Line(glm::vec4(m_savedLocation, 1.f), glm::vec4(currentLocation, 1.f)));
 
 		const Ray ray = Ray::FromStartAndEndpoint(m_savedLocation, currentLocation);
 
@@ -195,7 +199,7 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 		if (maybeResult.has_value())
 		{
 			const glm::vec3 hitPos = maybeResult->hitLocation;
-			m_extraLines.push_back(Line(glm::vec4(hitPos.x, -100.f, hitPos.z, 1.f), glm::vec4(hitPos.x, +100.f, hitPos.z, 1.f)));
+			m_drawOptions.extraLines.push_back(Line(glm::vec4(hitPos.x, -100.f, hitPos.z, 1.f), glm::vec4(hitPos.x, +100.f, hitPos.z, 1.f)));
 		}
 
 
@@ -216,12 +220,16 @@ void Application_Rasterizer::GameUpdate(float DeltaSeconds)
 
 		if (!maybeResult.has_value())
 		{
-			m_extraLines.push_back(Line(missedA, missedB));
+			m_drawOptions.extraLines.push_back(Line(missedA, missedB));
 		}
 
 		const bool b = maybeResult.has_value();
 	}
 
+	if (m_inputManager.GetKey(KeyCode::KEY_P).GetNumPressed() > 0)
+	{
+		m_drawOptions.maxRecursion = m_drawOptions.maxRecursion == 0 ? std::numeric_limits<int>::max() : 0;
+	}
 
 	if (m_inputManager.GetKey(KeyCode::KEY_F).GetNumPressed() > 0)
 	{

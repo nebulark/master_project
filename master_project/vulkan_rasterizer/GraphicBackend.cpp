@@ -1210,7 +1210,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 		|| renderedStencilFormat == vk::Format::eR16Uint && maxStencilValue <= 255 * 255);
 }
 
-void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLines)
+void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoptions)
 {
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
@@ -1304,11 +1304,11 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 		// render pass
 		{
 
-			const auto lineDrawingFunction = [this, &extraLines]
+			const auto lineDrawingFunction = [this, &drawoptions]
 			(vk::PipelineLayout layout, vk::CommandBuffer drawBuffer, int cameraIndex, uint32_t stencilCompareVal)
 			{
 				//LineDrawer::Draw(layout, drawBuffer, cameraIndex, m_portalAABBLines, stencilCompareVal);
-				LineDrawer::Draw(layout, drawBuffer, extraLines, stencilCompareVal);
+				LineDrawer::Draw(layout, drawBuffer, drawoptions.extraLines, stencilCompareVal);
 			};
 
 			// initial / iteration 0
@@ -1397,6 +1397,10 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 						info.layerStartIndex = layerStartIndex;
 						info.nextLayerStartIndex = layerEndIndex;
 
+						if (drawoptions.maxRecursion == 0)
+						{
+							info.maxVisiblePortalCount = 0;
+						}
 
 						m_portalManager.DrawPortals(info);
 
@@ -1452,6 +1456,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 
 					m_scene->Draw(*m_meshData, m_pipelineLayout_scene.get(), drawBuffer, layerStartIndex, layerEndIndex);
 
+
 					// draw Camera
 					{
 
@@ -1460,7 +1465,7 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 						vk::DeviceSize vertexBufferOffset = 0;
 						drawBuffer.bindVertexBuffers(0, m_meshData->GetVertexBuffer(), vertexBufferOffset);
 
-						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[m_meshData->GetMeshes().size()-1];
+						const MeshDataRef& cameraMeshRef = m_meshData->GetMeshes()[m_meshData->GetMeshes().size() - 1];
 						//const MeshDataRef& cameraMeshRef2 = m_meshData->GetMeshes()[1];
 
 						PushConstant_sceneObject pushConstant = {};
@@ -1532,8 +1537,12 @@ void GraphicsBackend::Render(const Camera& camera, gsl::span<const Line> extraLi
 					info.meshDataManager = m_meshData.get();
 					info.layerStartIndex = layerStartIndex;
 					info.nextLayerStartIndex = layerEndIndex;
-
+					if (drawoptions.maxRecursion < iteration)
+					{
+						info.maxVisiblePortalCount = 0;
+					}
 					m_portalManager.DrawPortals(info);
+
 				}
 
 			}
