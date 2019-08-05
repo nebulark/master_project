@@ -1,7 +1,4 @@
 #version 450
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shader_stencil_export : enable
-
 
 layout(location = 0) in flat int inInstanceIndex;
 
@@ -106,15 +103,15 @@ void main()
 		if (previousVisiblePortals < pc.maxVisiblePortalCount)
 		{
 			// mark that we are a visible portal
-			pih.indices[helperIndex] = previousVisiblePortals + 1;
+			atomicExchange(pih.indices[helperIndex], previousVisiblePortals + 1);
 			// write our camera index into camera index buffer
-			ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals] =  currentPortalCameraIndex;
+			atomicExchange(ci.cIndices[firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals],  currentPortalCameraIndex);
 			outRenderedStencil = firstCameraIndicesIndexAndStencilWrite + previousVisiblePortals;
 			outColor = vec4(vec3(0.0),1.f);// pc.debugColor;
 		}
 		else
 		{
-			pih.indices[helperIndex] = -1;
+			atomicExchange(pih.indices[helperIndex],-1);
 			outRenderedStencil = 0;
 			outColor = vec4(1.f);
 		}
