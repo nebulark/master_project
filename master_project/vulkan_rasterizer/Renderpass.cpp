@@ -49,7 +49,7 @@ vk::UniqueRenderPass Renderpass::Portals_One_Pass_dynamicState(vk::Device logica
 		attachmentsDescritpions[renderedDepth_0] = vk::AttachmentDescription()
 			.setFormat(renderedDepthFormat)
 			.setSamples(samples)
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setLoadOp(vk::AttachmentLoadOp::eDontCare)
 			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
 			.setInitialLayout(vk::ImageLayout::eUndefined)
 			.setFinalLayout(vk::ImageLayout::eColorAttachmentOptimal)
