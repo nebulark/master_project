@@ -89,15 +89,9 @@ void main()
 		// count previous visible portals
 		// we can use a fixed iteration count here, as the other portals won't have be processed / written and will always be zero
 		int previousVisiblePortals = 0;
-		for(int i = 0; i < pc.currentPortalCount; ++i)
+		for(int i = firstHelperIndex; i < helperIndex; ++i)
 		{
-			int index = i + firstHelperIndex;
-
-			// don't count myself, as I am currently writing to it an the value may be zero or 1
-			if(index != helperIndex)
-			{
-				previousVisiblePortals+= (pih.indices[i + firstHelperIndex]) <= 0 ? 0 : 1;
-			}
+			previousVisiblePortals+= (pih.indices[i]) <= 0 ? 0 : 1;
 		}
 
 		if (previousVisiblePortals < pc.maxVisiblePortalCount)
