@@ -71,7 +71,7 @@ namespace
 
 	const vk::Format renderedDepthFormat = vk::Format::eR32Sfloat;
 
-	constexpr vk::Format renderedStencilFormat = vk::Format::eR16Uint;
+	constexpr vk::Format renderedStencilFormat = vk::Format::eR32Uint;
 
 	namespace ObjectIds
 	{
@@ -501,7 +501,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 	std::vector<std::string> debugRenderpass;
 	m_portalRenderPass = Renderpass::Portals_One_Pass_dynamicState(m_device.get(), m_swapchain.surfaceFormat.format,
-		m_depthStencilFormat, renderedDepthFormat, renderedStencilFormat, recursionCount);
+		m_depthStencilFormat, renderedDepthFormat, renderedStencilFormat, worstRecursionCount);
 
 	// create Framebuffer
 	{
@@ -566,7 +566,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 			{
 				const vk::BufferCreateInfo cameraIndexBufferCreateInfo = vk::BufferCreateInfo{}
-					.setSize(RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t))
+					.setSize(RecursionTree::GetCameraIndexBufferElementCount(worstMaxVisiblePortalsForRecursion) * sizeof(uint32_t))
 					.setUsage(vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst)
 					.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -578,7 +578,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 			}
 			{
 				const gsl::index indexhelperBufferElementCount =
-					RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount;
+					RecursionTree::GetCameraIndexBufferElementCount(worstMaxVisiblePortalsForRecursion) * maxPortalCount;
 
 				const vk::BufferCreateInfo portalIdxHelperCreateInfo = vk::BufferCreateInfo{}
 					.setSize(indexhelperBufferElementCount * sizeof(uint32_t))
@@ -875,12 +875,12 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 
 		// write camera index descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_cameraIndexBuffer, m_descriptorSet_cameraIndices,
-			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t),
+			RecursionTree::GetCameraIndexBufferElementCount(worstMaxVisiblePortalsForRecursion) * sizeof(uint32_t),
 			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 		// write portal index helper descriptor set
 		updateDescriptorSetsBuffers(m_device.get(), m_portalIndexHelperBuffer, m_descriptorSet_portalIndexHelper,
-			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount * sizeof(uint32_t),
+			RecursionTree::GetCameraIndexBufferElementCount(worstMaxVisiblePortalsForRecursion) * maxPortalCount * sizeof(uint32_t),
 			vk::DescriptorType::eStorageBuffer, 0 /*matches shader code*/);
 
 
@@ -1063,7 +1063,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 		const ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes_camerMats = [this]() {
 			ShaderSpecialisation::MultiBytes<uint32_t, enum_size_specialisationId> multibytes{};
 			multibytes.data[max_portal_count_cid] = gsl::narrow<uint32_t>(maxPortalCount);
-			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(NTree::CalcTotalElements(maxPortalCount, recursionCount + 1));
+			multibytes.data[camera_mat_count_cid] = gsl::narrow<uint32_t>(NTree::CalcTotalElements(maxPortalCount, worstRecursionCount + 1));
 			return multibytes;
 		}();
 
@@ -1183,7 +1183,7 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 		createInfo.pipelineShaderStageCreationInfos_portalSubsequent = shaderStage_portal_subsequent;
 
 		GraphicsPipeline::PipelinesCreateResult result = GraphicsPipeline::CreateGraphicPipelines_dynamicState(
-			createInfo, recursionCount);
+			createInfo, worstRecursionCount);
 
 		m_pipelines.scenePass.scene = std::move(result.scenePassPipelines.scene);
 		m_pipelines.scenePass.line = std::move(result.scenePassPipelines.lines);
@@ -1203,11 +1203,15 @@ void GraphicsBackend::Init(SDL_Window* window, Camera& camera)
 	 {
 		 throw std::logic_error("m_portalManager.GetPortalCount() > maxPortalCount failed");
 	 }
-	constexpr int maxStencilValue = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion);
+	constexpr int maxStencilValue = RecursionTree::GetCameraIndexBufferElementCount(worstMaxVisiblePortalsForRecursion);
 
 	static_assert(
-		(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= 255)
-		|| renderedStencilFormat == vk::Format::eR16Uint && maxStencilValue <= 255 * 255);
+		(renderedStencilFormat == vk::Format::eR8Uint && maxStencilValue <= std::numeric_limits<uint8_t>::max())
+		|| renderedStencilFormat == vk::Format::eR16Uint && maxStencilValue <= std::numeric_limits<uint16_t>::max()
+		|| renderedStencilFormat == vk::Format::eR32Uint && maxStencilValue <= std::numeric_limits<uint32_t>::max()	
+		);
+
+	m_maxVisiblePortalsForRecursion = gsl::make_span(std::data(worstMaxVisiblePortalsForRecursion), std::size(worstMaxVisiblePortalsForRecursion));
 }
 
 void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoptions)
@@ -1215,6 +1219,7 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 	constexpr uint64_t noTimeout = std::numeric_limits<uint64_t>::max();
 	m_device->waitForFences(m_frameFence[m_currentframe].get(), true, noTimeout);
 	m_device->resetFences(m_frameFence[m_currentframe].get());
+	const int recursionCount = m_maxVisiblePortalsForRecursion.size();
 	const int currentCameraBufferElementCount = m_portalManager.GetCurrentCameraBufferElementCount(recursionCount);
 
 	{
@@ -1291,7 +1296,7 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 
 		drawBuffer.begin(vk::CommandBufferBeginInfo{}.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-		const gsl::index indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * maxPortalCount;
+		const gsl::index indexhelperBufferElementCount = RecursionTree::GetCameraIndexBufferElementCount(m_maxVisiblePortalsForRecursion) * maxPortalCount;
 
 		// clear the helper buffer
 		drawBuffer.fillBuffer(m_portalIndexHelperBuffer[m_currentframe].Get(), 0,
@@ -1299,7 +1304,7 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 
 		// set all values of camera index buffer to all 1s, so we can find invalid indices
 		drawBuffer.fillBuffer(m_cameraIndexBuffer[m_currentframe].Get(), 0,
-			RecursionTree::GetCameraIndexBufferElementCount(maxVisiblePortalsForRecursion) * sizeof(uint32_t), ~(uint32_t(0)));
+			RecursionTree::GetCameraIndexBufferElementCount(m_maxVisiblePortalsForRecursion) * sizeof(uint32_t), ~(uint32_t(0)));
 
 		// render pass
 		{
@@ -1392,7 +1397,7 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 						DrawPortalsInfo info = {};
 						info.drawBuffer = drawBuffer;
 						info.layout = m_pipelineLayout_portal.get();
-						info.maxVisiblePortalCount = maxVisiblePortalsForRecursion[0];
+						info.maxVisiblePortalCount = recursionCount == 0 ? 0 : m_maxVisiblePortalsForRecursion[0];
 						info.meshDataManager = m_meshData.get();
 						info.layerStartIndex = layerStartIndex;
 						info.nextLayerStartIndex = layerEndIndex;
@@ -1432,10 +1437,10 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 				// last iteration draw all portals
 				const int maxVisiblePortalCount = gsl::narrow<int>((iteration == recursionCount - 1)
 					? 0
-					: maxVisiblePortalsForRecursion[iteration + 1]);
+					: m_maxVisiblePortalsForRecursion[iteration + 1]);
 
-				const int layerStartIndex = RecursionTree::CalcLayerStartIndex(iteration, maxVisiblePortalsForRecursion);
-				const int layerEndIndex = layerStartIndex + RecursionTree::CalcLayerElementCount(iteration, maxVisiblePortalsForRecursion);
+				const int layerStartIndex = RecursionTree::CalcLayerStartIndex(iteration, m_maxVisiblePortalsForRecursion);
+				const int layerEndIndex = layerStartIndex + RecursionTree::CalcLayerElementCount(iteration, m_maxVisiblePortalsForRecursion);
 
 				//draw Scene
 				{
@@ -1513,9 +1518,11 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 					drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 					drawBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines.portalPass.portal[pipelineIndex].get());
 
-					const int cameraIndicesLayerStartIndex = isLastIteration ? 0 : RecursionTree::CalcLayerStartIndex(iteration + 1, maxVisiblePortalsForRecursion);
+					const int cameraIndicesLayerStartIndex =
+						isLastIteration ? 0 : RecursionTree::CalcLayerStartIndex(iteration + 1, m_maxVisiblePortalsForRecursion);
 
-					const int firstCameraIndicesOffsetForLayer = isLastIteration ? 0 : maxVisiblePortalsForRecursion[iteration + 1];
+					const int firstCameraIndicesOffsetForLayer =
+						isLastIteration ? 0 : m_maxVisiblePortalsForRecursion[iteration + 1];
 
 					{
 						std::array<vk::DescriptorSet, 6> descriptorSets = {
@@ -1545,6 +1552,14 @@ void GraphicsBackend::Render(const Camera& camera, const DrawOptions& drawoption
 
 				}
 
+			
+			}
+
+			// make up for skipped passes
+			for (int i = recursionCount; i < worstRecursionCount; ++i)
+			{
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
+				drawBuffer.nextSubpass(vk::SubpassContents::eInline);
 			}
 
 			drawBuffer.endRenderPass();

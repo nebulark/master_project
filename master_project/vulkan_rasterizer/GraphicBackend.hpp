@@ -32,13 +32,20 @@ public:
 
 	gsl::span<const TriangleMesh> GetTriangleMeshes() const { return m_triangleMeshes; }
 	const PortalManager& GetPortalManager() const { return m_portalManager; }
+
+	void SetMaxVisiblePortalsForRecursion(gsl::span<const int> visiblePortals) { m_maxVisiblePortalsForRecursion = visiblePortals; }
 private:
 	static constexpr int MaxInFlightFrames = 2;	
-	static constexpr int maxVisiblePortalsForRecursion[] = { 12, 6, 4 };
 	static constexpr int maxPortalCount = 12;
-	static constexpr int recursionCount = gsl::narrow<int>(std::size(maxVisiblePortalsForRecursion));
-	static constexpr int cameraMatricesMaxCount = NTree::CalcTotalElements(maxPortalCount, recursionCount + 1);
+	static constexpr int worstMaxVisiblePortalsForRecursion[] = 
+		{ maxPortalCount, maxPortalCount, maxPortalCount, maxPortalCount, maxPortalCount };
+	static constexpr int worstRecursionCount = gsl::narrow<int>(std::size(worstMaxVisiblePortalsForRecursion));
+
+
+	static constexpr int cameraMatricesMaxCount = NTree::CalcTotalElements(maxPortalCount, worstRecursionCount + 1);
 	static_assert(cameraMatricesMaxCount <= 3257437);
+
+	gsl::span<const int> m_maxVisiblePortalsForRecursion;
 
 	vk::UniqueInstance m_vkInstance;
 	vk::PhysicalDevice m_physicalDevice;
